@@ -6,20 +6,7 @@ plugins {
     alias(libs.plugins.composeCompiler)
 }
 
-kotlin {
-    compilerOptions {
-        jvmTarget = JvmTarget.JVM_11
-    }
-}
-dependencies {
-    implementation(projects.app.shared)
-
-    implementation(libs.androidx.activity.compose)
-
-    implementation(libs.compose.uiToolingPreview)
-    debugImplementation(libs.compose.uiTooling)
-}
-
+// در AGP 9.0+ تنظیمات کاتلین مستقیماً در بلاک اندروید یا از طریق ابزارهای جدید اعمال می‌شود.
 android {
     namespace = "com.braveboy.hotelzagrous"
     compileSdk = libs.versions.android.compileSdk.get().toInt()
@@ -31,18 +18,23 @@ android {
         versionCode = 1
         versionName = "1.0"
     }
-    packaging {
-        resources {
-            excludes += "/META-INF/{AL2.0,LGPL2.1}"
-        }
-    }
-    buildTypes {
-        getByName("release") {
-            isMinifyEnabled = false
-        }
-    }
+    
     compileOptions {
         sourceCompatibility = JavaVersion.VERSION_11
         targetCompatibility = JavaVersion.VERSION_11
     }
+}
+
+// تنظیم JvmTarget برای تمام تسک‌های کاتلین در این ماژول
+tasks.withType<org.jetbrains.kotlin.gradle.tasks.KotlinCompile>().configureEach {
+    compilerOptions {
+        jvmTarget.set(JvmTarget.JVM_11)
+    }
+}
+
+dependencies {
+    implementation(projects.app.shared)
+    implementation(libs.androidx.activity.compose)
+    implementation(libs.compose.uiToolingPreview)
+    debugImplementation(libs.compose.uiTooling)
 }
