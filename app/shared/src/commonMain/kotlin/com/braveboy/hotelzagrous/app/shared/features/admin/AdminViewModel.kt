@@ -19,6 +19,7 @@ class AdminViewModel(
         when (intent) {
             is AdminIntent.LoadData -> loadData()
             is AdminIntent.UpdateRoomStay -> updateRoom(intent)
+            is AdminIntent.AddRoom -> addRoom(intent)
             is AdminIntent.ExportPdf -> exportToPdf()
         }
     }
@@ -33,6 +34,11 @@ class AdminViewModel(
 
     private fun updateRoom(intent: AdminIntent.UpdateRoomStay) {
         repository.updateRoomStay(intent.roomNumber, intent.checkIn, intent.checkOut)
+        loadData()
+    }
+
+    private fun addRoom(intent: AdminIntent.AddRoom) {
+        repository.addRoom(intent.room)
         loadData()
     }
 

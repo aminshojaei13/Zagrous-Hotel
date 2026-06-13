@@ -37,6 +37,14 @@ class HotelRepository {
         _reservations.value = current
     }
 
+    fun addRoom(room: Room) {
+        val current = _rooms.value.toMutableList()
+        if (current.none { it.roomNumber == room.roomNumber }) {
+            current.add(room)
+            _rooms.value = current
+        }
+    }
+
     fun updateRoomStay(roomNumber: String, checkIn: String, checkOut: String) {
         val current = _rooms.value.toMutableList()
         val index = current.indexOfFirst { it.roomNumber == roomNumber }

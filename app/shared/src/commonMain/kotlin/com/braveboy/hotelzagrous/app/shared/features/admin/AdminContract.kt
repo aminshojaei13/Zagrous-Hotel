@@ -12,6 +12,7 @@ data class AdminState(
 
 sealed class AdminIntent {
     data class UpdateRoomStay(val roomNumber: String, val checkIn: String, val checkOut: String) : AdminIntent()
+    data class AddRoom(val room: Room) : AdminIntent()
     object ExportPdf : AdminIntent()
     object LoadData : AdminIntent()
 }
