@@ -37,6 +37,11 @@ fun AdminScreen(viewModel: AdminViewModel) {
 
         Spacer(Modifier.height(16.dp))
 
+        state.error?.let { error ->
+            Text(error, color = MaterialTheme.colorScheme.error)
+            Spacer(Modifier.height(8.dp))
+        }
+
         Text("مدیریت اتاق‌ها", style = MaterialTheme.typography.titleLarge)
         
         LazyColumn(modifier = Modifier.weight(1f)) {

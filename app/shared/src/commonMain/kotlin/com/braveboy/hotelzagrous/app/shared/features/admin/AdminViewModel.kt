@@ -27,25 +27,44 @@ class AdminViewModel(
     private fun loadData() {
         updateState { it.copy(isLoading = true) }
         scope.launch(Dispatchers.Main) {
-            val rooms = repository.getRooms()
-            updateState { it.copy(isLoading = false, rooms = rooms) } 
+            runCatching {
+                repository.getRooms() to repository.getAllReservations()
+            }.onSuccess { (rooms, reservations) ->
+                updateState { it.copy(isLoading = false, rooms = rooms, reservations = reservations, error = null) }
+            }.onFailure {
+                updateState { it.copy(isLoading = false, error = "ارتباط با سرور برقرار نشد") }
+            }
         }
     }
 
     private fun updateRoom(intent: AdminIntent.UpdateRoomStay) {
-        repository.updateRoomStay(
-            intent.roomNumber, 
-            intent.checkIn, 
-            intent.checkOut,
-            intent.checkInMillis,
-            intent.checkOutMillis
-        )
-        loadData()
+        scope.launch(Dispatchers.Main) {
+            runCatching {
+                repository.updateRoomStay(
+                    intent.roomNumber,
+                    intent.checkIn,
+                    intent.checkOut,
+                    intent.checkInMillis,
+                    intent.checkOutMillis
+                )
+            }.onSuccess {
+                loadData()
+            }.onFailure {
+                updateState { current -> current.copy(error = "به‌روزرسانی اتاق انجام نشد") }
+            }
+        }
     }
 
     private fun addRoom(intent: AdminIntent.AddRoom) {
-        repository.addRoom(intent.room)
-        loadData()
+        scope.launch(Dispatchers.Main) {
+            runCatching {
+                repository.addRoom(intent.room)
+            }.onSuccess {
+                loadData()
+            }.onFailure {
+                updateState { current -> current.copy(error = "افزودن اتاق انجام نشد") }
+            }
+        }
     }
 
     private fun exportToPdf() {

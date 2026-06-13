@@ -12,7 +12,15 @@ class ReservationViewModel(
 ) : BaseViewModel<ReservationState, ReservationIntent>(ReservationState()) {
 
     init {
-        updateState { it.copy(availableFoods = repository.getAvailableFoods()) }
+        scope.launch {
+            runCatching {
+                repository.getAvailableFoods()
+            }.onSuccess { foods ->
+                updateState { it.copy(availableFoods = foods, error = null) }
+            }.onFailure {
+                updateState { it.copy(error = "ارتباط با سرور برقرار نشد") }
+            }
+        }
     }
 
     override fun onIntent(intent: ReservationIntent) {
@@ -25,11 +33,19 @@ class ReservationViewModel(
     }
 
     private fun login() {
-        val room = repository.getRoom(state.value.roomNumber)
-        if (room != null) {
-            updateState { it.copy(room = room, isLoggedIn = true, error = null) }
-        } else {
-            updateState { it.copy(error = "شماره اتاق یافت نشد") }
+        scope.launch {
+            updateState { it.copy(isLoading = true) }
+            runCatching {
+                repository.getRoom(state.value.roomNumber)
+            }.onSuccess { room ->
+                if (room != null) {
+                    updateState { it.copy(room = room, isLoggedIn = true, isLoading = false, error = null) }
+                } else {
+                    updateState { it.copy(isLoading = false, error = "شماره اتاق یافت نشد") }
+                }
+            }.onFailure {
+                updateState { it.copy(isLoading = false, error = "ارتباط با سرور برقرار نشد") }
+            }
         }
     }
 
@@ -57,8 +73,13 @@ class ReservationViewModel(
     private fun submit() {
         scope.launch {
             updateState { it.copy(isLoading = true) }
-            state.value.tempReservations.forEach { repository.saveReservation(it) }
-            updateState { it.copy(isLoading = false, error = "رزرو با موفقیت ثبت شد") }
+            runCatching {
+                state.value.tempReservations.forEach { repository.saveReservation(it) }
+            }.onSuccess {
+                updateState { it.copy(isLoading = false, error = "رزرو با موفقیت ثبت شد") }
+            }.onFailure {
+                updateState { it.copy(isLoading = false, error = "ثبت رزرو انجام نشد") }
+            }
         }
     }
 }

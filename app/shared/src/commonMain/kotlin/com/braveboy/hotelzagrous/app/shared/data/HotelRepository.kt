@@ -1,61 +1,75 @@
 package com.braveboy.hotelzagrous.app.shared.data
 
-import com.braveboy.hotelzagrous.core.Room
 import com.braveboy.hotelzagrous.core.FoodItem
-import com.braveboy.hotelzagrous.core.FoodType
 import com.braveboy.hotelzagrous.core.FoodReservation
-import kotlinx.coroutines.flow.MutableStateFlow
-import kotlinx.coroutines.flow.StateFlow
+import com.braveboy.hotelzagrous.core.Room
+import com.braveboy.hotelzagrous.core.UpdateRoomStayRequest
+import io.ktor.client.HttpClient
+import io.ktor.client.call.body
+import io.ktor.client.plugins.contentnegotiation.ContentNegotiation
+import io.ktor.client.request.get
+import io.ktor.client.request.post
+import io.ktor.client.request.put
+import io.ktor.client.request.setBody
+import io.ktor.http.ContentType
+import io.ktor.http.contentType
+import io.ktor.serialization.kotlinx.json.json
+import kotlinx.serialization.json.Json
 
-class HotelRepository {
-    private val _rooms = MutableStateFlow(listOf(
-        Room("101", "رضا احمدی", "1402/08/01", "1402/08/05", 1698823800000L, 1699169400000L),
-        Room("102", "مریم علوی", "1402/08/02", "1402/08/06", 1698910200000L, 1699255800000L),
-        Room("103", "محمد محمدی", "1402/08/05", "1402/08/10", 1699169400000L, 1699601400000L)
-    ))
-    
-    private val _foods = listOf(
-        FoodItem("1", "چلو کباب", FoodType.LUNCH),
-        FoodItem("2", "جوجه کباب", FoodType.LUNCH),
-        FoodItem("3", "خورشت قیمه", FoodType.LUNCH),
-        FoodItem("4", "پیتزا مخصوص", FoodType.DINNER),
-        FoodItem("5", "خوراک مرغ", FoodType.DINNER),
-        FoodItem("6", "سوپ جو", FoodType.DINNER)
-    )
-
-    private val _reservations = MutableStateFlow<List<FoodReservation>>(emptyList())
-
-    fun getRoom(roomNumber: String): Room? = _rooms.value.find { it.roomNumber == roomNumber }
-    fun getRooms(): List<Room> = _rooms.value
-    fun getAvailableFoods(): List<FoodItem> = _foods
-    fun getAllReservations(): StateFlow<List<FoodReservation>> = _reservations
-
-    fun saveReservation(reservation: FoodReservation) {
-        val current = _reservations.value.toMutableList()
-        current.removeAll { it.roomNumber == reservation.roomNumber && it.date == reservation.date }
-        current.add(reservation)
-        _reservations.value = current
-    }
-
-    fun addRoom(room: Room) {
-        val current = _rooms.value.toMutableList()
-        if (current.none { it.roomNumber == room.roomNumber }) {
-            current.add(room)
-            _rooms.value = current
+class HotelRepository(
+    private val apiBaseUrl: String = defaultApiBaseUrl(),
+    httpClient: HttpClient = createHotelHttpClient()
+) {
+    private val client = httpClient.config {
+        install(ContentNegotiation) {
+            json(
+                Json {
+                    ignoreUnknownKeys = true
+                    encodeDefaults = true
+                }
+            )
         }
     }
 
-    fun updateRoomStay(roomNumber: String, checkIn: String, checkOut: String, checkInMillis: Long, checkOutMillis: Long) {
-        val current = _rooms.value.toMutableList()
-        val index = current.indexOfFirst { it.roomNumber == roomNumber }
-        if (index != -1) {
-            current[index] = current[index].copy(
-                checkInDate = checkIn, 
-                checkOutDate = checkOut,
-                checkInEpochMillis = checkInMillis,
-                checkOutEpochMillis = checkOutMillis
+    suspend fun getRoom(roomNumber: String): Room? {
+        return try {
+            client.get("$apiBaseUrl/rooms/$roomNumber").body()
+        } catch (_: Throwable) {
+            null
+        }
+    }
+
+    suspend fun getRooms(): List<Room> = client.get("$apiBaseUrl/rooms").body()
+
+    suspend fun getAvailableFoods(): List<FoodItem> = client.get("$apiBaseUrl/foods").body()
+
+    suspend fun getAllReservations(): List<FoodReservation> = client.get("$apiBaseUrl/reservations").body()
+
+    suspend fun saveReservation(reservation: FoodReservation) {
+        client.post("$apiBaseUrl/reservations") {
+            contentType(ContentType.Application.Json)
+            setBody(reservation)
+        }
+    }
+
+    suspend fun addRoom(room: Room) {
+        client.post("$apiBaseUrl/rooms") {
+            contentType(ContentType.Application.Json)
+            setBody(room)
+        }
+    }
+
+    suspend fun updateRoomStay(roomNumber: String, checkIn: String, checkOut: String, checkInMillis: Long, checkOutMillis: Long) {
+        client.put("$apiBaseUrl/rooms/$roomNumber/stay") {
+            contentType(ContentType.Application.Json)
+            setBody(
+                UpdateRoomStayRequest(
+                    checkIn = checkIn,
+                    checkOut = checkOut,
+                    checkInMillis = checkInMillis,
+                    checkOutMillis = checkOutMillis
+                )
             )
-            _rooms.value = current
         }
     }
 }

@@ -7,7 +7,8 @@ data class AdminState(
     val rooms: List<Room> = emptyList(),
     val reservations: List<FoodReservation> = emptyList(),
     val isLoading: Boolean = false,
-    val selectedRoom: Room? = null
+    val selectedRoom: Room? = null,
+    val error: String? = null
 )
 
 sealed class AdminIntent {
