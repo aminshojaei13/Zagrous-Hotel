@@ -41,5 +41,14 @@ kotlin {
         commonTest.dependencies {
             implementation(libs.kotlin.test)
         }
+        androidMain.dependencies {
+            implementation(libs.persiandatetime)
+        }
+        jvmMain.dependencies {
+            implementation(libs.persiandatetime)
+        }
+        wasmJsMain.dependencies {
+            implementation(libs.persiandatetime)
+        }
     }
 }
