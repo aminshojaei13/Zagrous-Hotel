@@ -8,6 +8,7 @@ import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.unit.dp
+import com.braveboy.hotelzagrous.core.DateUtils
 import com.braveboy.hotelzagrous.core.FoodItem
 import com.braveboy.hotelzagrous.core.FoodType
 
@@ -55,14 +56,28 @@ fun LoginSection(number: String, onNumberChange: (String) -> Unit, onLogin: () -
 
 @Composable
 fun UserDashboard(state: ReservationState, viewModel: ReservationViewModel) {
+    val room = state.room
+    val stayDays = remember(room) {
+        if (room != null && room.checkInEpochMillis != 0L && room.checkOutEpochMillis != 0L) {
+            val days = mutableListOf<String>()
+            var currentMillis = room.checkInEpochMillis
+            // تبدیل بازه زمانی به لیست تاریخ‌ها (روزانه)
+            while (currentMillis <= room.checkOutEpochMillis) {
+                days.add(DateUtils.convertMillisToJalaliString(currentMillis))
+                currentMillis += 24 * 60 * 60 * 1000L // اضافه کردن یک روز
+            }
+            days
+        } else {
+            emptyList()
+        }
+    }
+
     Column {
-        Text("خوش آمدید، اتاق ${state.room?.roomNumber}", style = MaterialTheme.typography.titleLarge)
-        Text("مسافر: ${state.room?.guestName}")
-        Text("مدت اقامت: ${state.room?.checkInDate} تا ${state.room?.checkOutDate}")
+        Text("خوش آمدید، اتاق ${room?.roomNumber}", style = MaterialTheme.typography.titleLarge)
+        Text("مسافر: ${room?.guestName}")
+        Text("مدت اقامت: ${room?.checkInDate} تا ${room?.checkOutDate}")
         
         Spacer(Modifier.height(16.dp))
-        
-        val stayDays = listOf("1402/08/21", "1402/08/22", "1402/08/23")
         
         LazyColumn(modifier = Modifier.weight(1f)) {
             items(stayDays) { date ->

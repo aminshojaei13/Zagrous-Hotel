@@ -33,7 +33,13 @@ class AdminViewModel(
     }
 
     private fun updateRoom(intent: AdminIntent.UpdateRoomStay) {
-        repository.updateRoomStay(intent.roomNumber, intent.checkIn, intent.checkOut)
+        repository.updateRoomStay(
+            intent.roomNumber, 
+            intent.checkIn, 
+            intent.checkOut,
+            intent.checkInMillis,
+            intent.checkOutMillis
+        )
         loadData()
     }
 

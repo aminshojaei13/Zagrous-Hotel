@@ -10,6 +10,7 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.unit.dp
 import com.braveboy.hotelzagrous.core.Room
+import kotlinx.datetime.*
 
 @Composable
 fun AdminScreen(viewModel: AdminViewModel) {
@@ -40,8 +41,8 @@ fun AdminScreen(viewModel: AdminViewModel) {
         
         LazyColumn(modifier = Modifier.weight(1f)) {
             items(state.rooms) { room ->
-                RoomAdminCard(room) { checkIn, checkOut ->
-                    viewModel.onIntent(AdminIntent.UpdateRoomStay(room.roomNumber, checkIn, checkOut))
+                RoomAdminCard(room) { checkIn, checkOut, checkInMillis, checkOutMillis ->
+                    viewModel.onIntent(AdminIntent.UpdateRoomStay(room.roomNumber, checkIn, checkOut, checkInMillis, checkOutMillis))
                 }
             }
         }
@@ -63,7 +64,7 @@ fun AdminScreen(viewModel: AdminViewModel) {
 fun DatePickerField(
     label: String,
     value: String,
-    onDateSelected: (String) -> Unit,
+    onDateSelected: (String, Long) -> Unit,
     modifier: Modifier = Modifier
 ) {
     var showDatePicker by remember { mutableStateOf(false) }
@@ -90,9 +91,8 @@ fun DatePickerField(
             confirmButton = {
                 TextButton(onClick = {
                     datePickerState.selectedDateMillis?.let { millis ->
-                        // به دلیل تداخل در کامپایلر IR، فعلاً از فرمت‌دهی دستی یا ساده استفاده می‌کنیم
                         val formattedDate = convertMillisToDateString(millis)
-                        onDateSelected(formattedDate)
+                        onDateSelected(formattedDate, millis)
                     }
                     showDatePicker = false
                 }) {
@@ -110,11 +110,40 @@ fun DatePickerField(
     }
 }
 
-// تابع کمکی برای تبدیل میلی‌ثانیه به رشته تاریخ (بدون نیاز به کتابخانه‌های مشکل‌ساز در Common)
 fun convertMillisToDateString(millis: Long): String {
-    // در اینجا می‌توانید منطق تبدیل تاریخ میلادی به شمسی را قرار دهید
-    // فعلاً برای رفع خطا و نمایش خروجی، یک تاریخ نمونه برمی‌گردانیم
-    return "1402/08/30"
+    val instant = Instant.fromEpochMilliseconds(millis)
+    val localDate = instant.toLocalDateTime(TimeZone.UTC).date
+    return gregorianToJalali(localDate.year, localDate.monthNumber, localDate.dayOfMonth)
+}
+
+fun gregorianToJalali(gy: Int, gm: Int, gd: Int): String {
+    val gDaysInMonth = intArrayOf(0, 31, 28, 31, 30, 31, 30, 31, 31, 30, 31, 30, 31)
+    val jDaysInMonth = intArrayOf(0, 31, 31, 31, 31, 31, 31, 30, 30, 30, 30, 30, 29)
+
+    var gDayNo = 365 * (gy - 1600) + (gy - 1501) / 4 - (gy - 1601) / 100 + (gy - 1201) / 400
+    for (i in 1 until gm) gDayNo += gDaysInMonth[i]
+    if (gm > 2 && ((gy % 4 == 0 && gy % 100 != 0) || (gy % 400 == 0))) gDayNo++
+    gDayNo += gd - 1
+
+    var jDayNo = gDayNo - 79
+    val jNp = jDayNo / 12053
+    jDayNo %= 12053
+    var jy = 979 + 33 * jNp + 4 * (jDayNo / 1461)
+    jDayNo %= 1461
+    if (jDayNo >= 366) {
+        jy += (jDayNo - 1) / 365
+        jDayNo = (jDayNo - 1) % 365
+    }
+
+    var jm = 0
+    for (i in 1..12) {
+        jm = i
+        if (jDayNo < jDaysInMonth[i]) break
+        jDayNo -= jDaysInMonth[i]
+    }
+    val jd = jDayNo + 1
+    
+    return "$jy/${jm.toString().padStart(2, '0')}/${jd.toString().padStart(2, '0')}"
 }
 
 @Composable
@@ -123,6 +152,8 @@ fun AddRoomDialog(onDismiss: () -> Unit, onConfirm: (Room) -> Unit) {
     var guestName by remember { mutableStateOf("") }
     var checkIn by remember { mutableStateOf("") }
     var checkOut by remember { mutableStateOf("") }
+    var checkInMillis by remember { mutableStateOf(0L) }
+    var checkOutMillis by remember { mutableStateOf(0L) }
 
     AlertDialog(
         onDismissRequest = onDismiss,
@@ -144,13 +175,19 @@ fun AddRoomDialog(onDismiss: () -> Unit, onConfirm: (Room) -> Unit) {
                 DatePickerField(
                     label = "تاریخ ورود",
                     value = checkIn,
-                    onDateSelected = { checkIn = it },
+                    onDateSelected = { date, millis -> 
+                        checkIn = date
+                        checkInMillis = millis
+                    },
                     modifier = Modifier.fillMaxWidth()
                 )
                 DatePickerField(
                     label = "تاریخ خروج",
                     value = checkOut,
-                    onDateSelected = { checkOut = it },
+                    onDateSelected = { date, millis -> 
+                        checkOut = date
+                        checkOutMillis = millis
+                    },
                     modifier = Modifier.fillMaxWidth()
                 )
             }
@@ -158,7 +195,7 @@ fun AddRoomDialog(onDismiss: () -> Unit, onConfirm: (Room) -> Unit) {
         confirmButton = {
             Button(onClick = {
                 if (roomNumber.isNotBlank() && guestName.isNotBlank()) {
-                    onConfirm(Room(roomNumber, guestName, checkIn, checkOut))
+                    onConfirm(Room(roomNumber, guestName, checkIn, checkOut, checkInMillis, checkOutMillis))
                 }
             }) {
                 Text("تایید")
@@ -173,9 +210,11 @@ fun AddRoomDialog(onDismiss: () -> Unit, onConfirm: (Room) -> Unit) {
 }
 
 @Composable
-fun RoomAdminCard(room: Room, onUpdate: (String, String) -> Unit) {
+fun RoomAdminCard(room: Room, onUpdate: (String, String, Long, Long) -> Unit) {
     var checkIn by remember { mutableStateOf(room.checkInDate) }
     var checkOut by remember { mutableStateOf(room.checkOutDate) }
+    var checkInMillis by remember { mutableStateOf(room.checkInEpochMillis) }
+    var checkOutMillis by remember { mutableStateOf(room.checkOutEpochMillis) }
 
     Card(modifier = Modifier.fillMaxWidth().padding(vertical = 4.dp)) {
         Column(modifier = Modifier.padding(12.dp)) {
@@ -184,18 +223,24 @@ fun RoomAdminCard(room: Room, onUpdate: (String, String) -> Unit) {
                 DatePickerField(
                     label = "ورود",
                     value = checkIn,
-                    onDateSelected = { checkIn = it },
+                    onDateSelected = { date, millis -> 
+                        checkIn = date
+                        checkInMillis = millis
+                    },
                     modifier = Modifier.weight(1f)
                 )
                 DatePickerField(
                     label = "خروج",
                     value = checkOut,
-                    onDateSelected = { checkOut = it },
+                    onDateSelected = { date, millis -> 
+                        checkOut = date
+                        checkOutMillis = millis
+                    },
                     modifier = Modifier.weight(1f)
                 )
             }
             Button(
-                onClick = { onUpdate(checkIn, checkOut) },
+                onClick = { onUpdate(checkIn, checkOut, checkInMillis, checkOutMillis) },
                 modifier = Modifier.align(Alignment.End).padding(top = 8.dp)
             ) {
                 Text("به‌روزرسانی")

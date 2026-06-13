@@ -9,9 +9,9 @@ import kotlinx.coroutines.flow.StateFlow
 
 class HotelRepository {
     private val _rooms = MutableStateFlow(listOf(
-        Room("101", "رضا احمدی", "1402/08/01", "1402/08/05"),
-        Room("102", "مریم علوی", "1402/08/02", "1402/08/06"),
-        Room("103", "محمد محمدی", "1402/08/05", "1402/08/10")
+        Room("101", "رضا احمدی", "1402/08/01", "1402/08/05", 1698823800000L, 1699169400000L),
+        Room("102", "مریم علوی", "1402/08/02", "1402/08/06", 1698910200000L, 1699255800000L),
+        Room("103", "محمد محمدی", "1402/08/05", "1402/08/10", 1699169400000L, 1699601400000L)
     ))
     
     private val _foods = listOf(
@@ -45,11 +45,16 @@ class HotelRepository {
         }
     }
 
-    fun updateRoomStay(roomNumber: String, checkIn: String, checkOut: String) {
+    fun updateRoomStay(roomNumber: String, checkIn: String, checkOut: String, checkInMillis: Long, checkOutMillis: Long) {
         val current = _rooms.value.toMutableList()
         val index = current.indexOfFirst { it.roomNumber == roomNumber }
         if (index != -1) {
-            current[index] = current[index].copy(checkInDate = checkIn, checkOutDate = checkOut)
+            current[index] = current[index].copy(
+                checkInDate = checkIn, 
+                checkOutDate = checkOut,
+                checkInEpochMillis = checkInMillis,
+                checkOutEpochMillis = checkOutMillis
+            )
             _rooms.value = current
         }
     }

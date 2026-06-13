@@ -4,7 +4,9 @@ data class Room(
     val roomNumber: String,
     val guestName: String = "",
     val checkInDate: String = "",
-    val checkOutDate: String = ""
+    val checkOutDate: String = "",
+    val checkInEpochMillis: Long = 0,
+    val checkOutEpochMillis: Long = 0
 )
 
 data class FoodItem(
