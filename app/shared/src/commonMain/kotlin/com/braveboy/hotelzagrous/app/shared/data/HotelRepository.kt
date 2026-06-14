@@ -59,7 +59,7 @@ class HotelRepository(
         }
     }
 
-    suspend fun updateRoomStay(roomNumber: String, checkIn: String, checkOut: String, checkInMillis: Long, checkOutMillis: Long) {
+    suspend fun updateRoomStay(roomNumber: String, checkIn: String, checkOut: String, checkInMillis: Long, checkOutMillis: Long, guestCount: Int) {
         client.put("$apiBaseUrl/rooms/$roomNumber/stay") {
             contentType(ContentType.Application.Json)
             setBody(
@@ -67,7 +67,8 @@ class HotelRepository(
                     checkIn = checkIn,
                     checkOut = checkOut,
                     checkInMillis = checkInMillis,
-                    checkOutMillis = checkOutMillis
+                    checkOutMillis = checkOutMillis,
+                    guestCount = guestCount
                 )
             )
         }

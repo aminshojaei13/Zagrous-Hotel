@@ -30,9 +30,16 @@ class AdminViewModel(
             runCatching {
                 val rooms = repository.getRooms()
                 val reservations = repository.getAllReservations()
-                rooms to reservations
-            }.onSuccess { (rooms, reservations) ->
-                updateState { it.copy(isLoading = false, rooms = rooms, reservations = reservations, error = null) }
+                val foods = repository.getAvailableFoods()
+                Triple(rooms, reservations, foods)
+            }.onSuccess { (rooms, reservations, foods) ->
+                updateState { it.copy(
+                    isLoading = false,
+                    rooms = rooms,
+                    reservations = reservations,
+                    foods = foods,
+                    error = null
+                ) }
             }.onFailure { e ->
                 println("AdminViewModel Error: ${e.message}")
                 e.printStackTrace()
@@ -49,7 +56,8 @@ class AdminViewModel(
                     intent.checkIn,
                     intent.checkOut,
                     intent.checkInMillis,
-                    intent.checkOutMillis
+                    intent.checkOutMillis,
+                    intent.guestCount
                 )
             }.onSuccess {
                 loadData()

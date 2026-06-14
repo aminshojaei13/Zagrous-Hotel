@@ -1,11 +1,13 @@
 package com.braveboy.hotelzagrous.app.shared.features.admin
 
+import com.braveboy.hotelzagrous.core.FoodItem
 import com.braveboy.hotelzagrous.core.FoodReservation
 import com.braveboy.hotelzagrous.core.Room
 
 data class AdminState(
     val rooms: List<Room> = emptyList(),
     val reservations: List<FoodReservation> = emptyList(),
+    val foods: List<FoodItem> = emptyList(),
     val isLoading: Boolean = false,
     val selectedRoom: Room? = null,
     val error: String? = null
@@ -17,7 +19,8 @@ sealed class AdminIntent {
         val checkIn: String, 
         val checkOut: String,
         val checkInMillis: Long,
-        val checkOutMillis: Long
+        val checkOutMillis: Long,
+        val guestCount: Int
     ) : AdminIntent()
     data class AddRoom(val room: Room) : AdminIntent()
     object ExportPdf : AdminIntent()

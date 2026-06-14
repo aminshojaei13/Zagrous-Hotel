@@ -17,6 +17,11 @@ data class ReservationState(
 sealed class ReservationIntent {
     data class UpdateRoomNumber(val roomNumber: String) : ReservationIntent()
     object Login : ReservationIntent()
-    data class ChangeFood(val date: String, val foodId: String, val isLunch: Boolean) : ReservationIntent()
+    data class ChangeFood(
+        val date: String,
+        val guestIndex: Int,
+        val foodId: String?,
+        val isLunch: Boolean
+    ) : ReservationIntent()
     object ConfirmReservation : ReservationIntent()
 }

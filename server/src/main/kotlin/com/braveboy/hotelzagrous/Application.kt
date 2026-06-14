@@ -88,7 +88,8 @@ fun Application.module() {
                     checkIn = request.checkIn,
                     checkOut = request.checkOut,
                     checkInMillis = request.checkInMillis,
-                    checkOutMillis = request.checkOutMillis
+                    checkOutMillis = request.checkOutMillis,
+                    guestCount = request.guestCount
                 )
                 if (updated) {
                     call.respond(HttpStatusCode.OK, database.getRoom(roomNumber)!!)

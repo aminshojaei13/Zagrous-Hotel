@@ -6,6 +6,7 @@ import kotlinx.serialization.Serializable
 data class Room(
     val roomNumber: String,
     val guestName: String = "",
+    val guestCount: Int = 1,
     val checkInDate: String = "",
     val checkOutDate: String = "",
     val checkInEpochMillis: Long = 0,
@@ -26,6 +27,12 @@ enum class FoodType { LUNCH, DINNER }
 data class FoodReservation(
     val roomNumber: String,
     val date: String,
+    val guestMealSelections: List<GuestMealSelection> = emptyList()
+)
+
+@Serializable
+data class GuestMealSelection(
+    val guestIndex: Int,
     val lunchFoodId: String? = null,
     val dinnerFoodId: String? = null
 )
@@ -35,7 +42,8 @@ data class UpdateRoomStayRequest(
     val checkIn: String,
     val checkOut: String,
     val checkInMillis: Long,
-    val checkOutMillis: Long
+    val checkOutMillis: Long,
+    val guestCount: Int
 )
 
 @Serializable

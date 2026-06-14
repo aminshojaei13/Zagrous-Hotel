@@ -49,7 +49,11 @@ fun LoginSection(number: String, onNumberChange: (String) -> Unit, onLogin: () -
             Text(error, color = MaterialTheme.colorScheme.error, modifier = Modifier.padding(top = 8.dp))
         }
         Button(onClick = onLogin, modifier = Modifier.padding(top = 16.dp)) {
-            Text("ورود")
+            if (number.isBlank()) {
+                Text("ورود")
+            } else {
+                Text("ورود به اتاق $number")
+            }
         }
     }
 }
@@ -61,10 +65,9 @@ fun UserDashboard(state: ReservationState, viewModel: ReservationViewModel) {
         if (room != null && room.checkInEpochMillis != 0L && room.checkOutEpochMillis != 0L) {
             val days = mutableListOf<String>()
             var currentMillis = room.checkInEpochMillis
-            // تبدیل بازه زمانی به لیست تاریخ‌ها (روزانه)
             while (currentMillis <= room.checkOutEpochMillis) {
                 days.add(DateUtils.convertMillisToJalaliString(currentMillis))
-                currentMillis += 24 * 60 * 60 * 1000L // اضافه کردن یک روز
+                currentMillis += 24 * 60 * 60 * 1000L
             }
             days
         } else {
@@ -73,20 +76,25 @@ fun UserDashboard(state: ReservationState, viewModel: ReservationViewModel) {
     }
 
     Column {
-        Text("خوش آمدید، اتاق ${room?.roomNumber}", style = MaterialTheme.typography.titleLarge)
-        Text("مسافر: ${room?.guestName}")
-        Text("مدت اقامت: ${room?.checkInDate} تا ${room?.checkOutDate}")
+        Card(modifier = Modifier.fillMaxWidth(), colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.primaryContainer)) {
+            Column(modifier = Modifier.padding(16.dp)) {
+                Text("خوش آمدید، اتاق ${room?.roomNumber}", style = MaterialTheme.typography.titleLarge)
+                Text("نام مسافر: ${room?.guestName}")
+                Text("تعداد نفرات: ${room?.guestCount} نفر")
+                Text("مدت اقامت: ${room?.checkInDate} تا ${room?.checkOutDate}")
+            }
+        }
         
         Spacer(Modifier.height(16.dp))
         
-        LazyColumn(modifier = Modifier.weight(1f)) {
+        LazyColumn(modifier = Modifier.weight(1f), verticalArrangement = Arrangement.spacedBy(8.dp)) {
             items(stayDays) { date ->
                 FoodRow(date, state, viewModel)
             }
         }
         
-        if (state.error != null) {
-             Text(state.error!!, color = MaterialTheme.colorScheme.primary, modifier = Modifier.padding(8.dp))
+        state.error?.let {
+             Text(it, color = MaterialTheme.colorScheme.error, modifier = Modifier.padding(8.dp))
         }
 
         Button(
@@ -95,7 +103,7 @@ fun UserDashboard(state: ReservationState, viewModel: ReservationViewModel) {
             enabled = !state.isLoading
         ) {
             if (state.isLoading) {
-                CircularProgressIndicator(modifier = Modifier.size(24.dp))
+                CircularProgressIndicator(modifier = Modifier.size(24.dp), color = MaterialTheme.colorScheme.onPrimary)
             } else {
                 Text("تایید نهایی رزروها")
             }
@@ -105,24 +113,43 @@ fun UserDashboard(state: ReservationState, viewModel: ReservationViewModel) {
 
 @Composable
 fun FoodRow(date: String, state: ReservationState, viewModel: ReservationViewModel) {
-    Card(modifier = Modifier.fillMaxWidth().padding(vertical = 4.dp)) {
+    val guestCount = state.room?.guestCount ?: 1
+    val reservation = state.tempReservations.find { it.date == date }
+
+    Card(modifier = Modifier.fillMaxWidth()) {
         Column(modifier = Modifier.padding(12.dp)) {
-            Text("تاریخ: $date", style = MaterialTheme.typography.labelLarge)
-            Row(modifier = Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.SpaceBetween) {
-                FoodDropdown(
-                    label = "نهار",
-                    foods = state.availableFoods.filter { it.type == FoodType.LUNCH },
-                    selectedId = state.tempReservations.find { it.date == date }?.lunchFoodId
-                ) { foodId ->
-                    viewModel.onIntent(ReservationIntent.ChangeFood(date, foodId, true))
-                }
+            Text("تاریخ: $date", style = MaterialTheme.typography.titleMedium, color = MaterialTheme.colorScheme.primary)
+            
+            repeat(guestCount) { index ->
+                val guestSelection = reservation?.guestMealSelections?.find { it.guestIndex == index }
                 
-                FoodDropdown(
-                    label = "شام",
-                    foods = state.availableFoods.filter { it.type == FoodType.DINNER },
-                    selectedId = state.tempReservations.find { it.date == date }?.dinnerFoodId
-                ) { foodId ->
-                    viewModel.onIntent(ReservationIntent.ChangeFood(date, foodId, false))
+                Column(modifier = Modifier.padding(top = 8.dp)) {
+                    Text("مهمان ${index + 1}:", style = MaterialTheme.typography.labelLarge)
+                    Row(
+                        modifier = Modifier.fillMaxWidth(),
+                        horizontalArrangement = Arrangement.spacedBy(8.dp)
+                    ) {
+                        FoodDropdown(
+                            label = "ناهار",
+                            foods = state.availableFoods.filter { it.type == FoodType.LUNCH },
+                            selectedId = guestSelection?.lunchFoodId,
+                            modifier = Modifier.weight(1f)
+                        ) { foodId ->
+                            viewModel.onIntent(ReservationIntent.ChangeFood(date, index, foodId, true))
+                        }
+                        
+                        FoodDropdown(
+                            label = "شام",
+                            foods = state.availableFoods.filter { it.type == FoodType.DINNER },
+                            selectedId = guestSelection?.dinnerFoodId,
+                            modifier = Modifier.weight(1f)
+                        ) { foodId ->
+                            viewModel.onIntent(ReservationIntent.ChangeFood(date, index, foodId, false))
+                        }
+                    }
+                }
+                if (index < guestCount - 1) {
+                    HorizontalDivider(modifier = Modifier.padding(vertical = 4.dp), thickness = 0.5.dp)
                 }
             }
         }
@@ -130,16 +157,33 @@ fun FoodRow(date: String, state: ReservationState, viewModel: ReservationViewMod
 }
 
 @Composable
-fun FoodDropdown(label: String, foods: List<FoodItem>, selectedId: String?, onSelect: (String) -> Unit) {
+fun FoodDropdown(
+    label: String, 
+    foods: List<FoodItem>, 
+    selectedId: String?, 
+    modifier: Modifier = Modifier,
+    onSelect: (String?) -> Unit
+) {
     var expanded by remember { mutableStateOf(false) }
     val selectedFood = foods.find { it.id == selectedId }
     val buttonText = selectedFood?.name ?: "انتخاب $label"
 
-    Box {
-        OutlinedButton(onClick = { expanded = true }) {
-            Text(buttonText)
+    Box(modifier = modifier) {
+        OutlinedButton(
+            onClick = { expanded = true },
+            modifier = Modifier.fillMaxWidth(),
+            contentPadding = PaddingValues(horizontal = 8.dp, vertical = 4.dp)
+        ) {
+            Text(buttonText, maxLines = 1)
         }
         DropdownMenu(expanded = expanded, onDismissRequest = { expanded = false }) {
+            DropdownMenuItem(
+                text = { Text("هیچکدام") },
+                onClick = {
+                    onSelect(null)
+                    expanded = false
+                }
+            )
             foods.forEach { food ->
                 DropdownMenuItem(
                     text = { Text(food.name) },
