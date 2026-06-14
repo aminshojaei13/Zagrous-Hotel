@@ -160,6 +160,36 @@ class HotelDatabase(
         }
     }
 
+    fun getReservationsForRoom(roomNumber: String): List<FoodReservation> = connection.prepareStatement(
+        """
+        SELECT room_number, date, guest_meal_selections
+        FROM food_reservations
+        WHERE room_number = ?
+        ORDER BY date
+        """.trimIndent()
+    ).use { statement ->
+        statement.setString(1, roomNumber)
+        statement.executeQuery().use { rows ->
+            buildList {
+                while (rows.next()) {
+                    val selectionsJson = rows.getString("guest_meal_selections")
+                    val selections = try {
+                        Json.decodeFromString<List<GuestMealSelection>>(selectionsJson)
+                    } catch (e: Exception) {
+                        emptyList()
+                    }
+                    add(
+                        FoodReservation(
+                            roomNumber = rows.getString("room_number"),
+                            date = rows.getString("date"),
+                            guestMealSelections = selections
+                        )
+                    )
+                }
+            }
+        }
+    }
+
     fun saveReservation(reservation: FoodReservation) {
         connection.prepareStatement(
             """
@@ -206,19 +236,25 @@ class HotelDatabase(
                 """.trimIndent()
             )
             
-            // Re-create food_reservations to support multiple guests via JSON
-            statement.executeUpdate("DROP TABLE IF EXISTS food_reservations")
-            statement.executeUpdate(
-                """
-                CREATE TABLE IF NOT EXISTS food_reservations(
-                    room_number TEXT NOT NULL,
-                    date TEXT NOT NULL,
-                    guest_meal_selections TEXT NOT NULL,
-                    PRIMARY KEY(room_number, date),
-                    FOREIGN KEY(room_number) REFERENCES rooms(room_number)
+            // Note: If you have existing data in food_reservations from a previous version,
+            // you might need to migrate it. For now, we ensure the table has the right structure.
+            try {
+                statement.executeQuery("SELECT guest_meal_selections FROM food_reservations LIMIT 1")
+            } catch (e: Exception) {
+                // Table doesn't have the new column or doesn't exist, recreate it
+                statement.executeUpdate("DROP TABLE IF EXISTS food_reservations")
+                statement.executeUpdate(
+                    """
+                    CREATE TABLE IF NOT EXISTS food_reservations(
+                        room_number TEXT NOT NULL,
+                        date TEXT NOT NULL,
+                        guest_meal_selections TEXT NOT NULL,
+                        PRIMARY KEY(room_number, date),
+                        FOREIGN KEY(room_number) REFERENCES rooms(room_number)
+                    )
+                    """.trimIndent()
                 )
-                """.trimIndent()
-            )
+            }
         }
     }
 

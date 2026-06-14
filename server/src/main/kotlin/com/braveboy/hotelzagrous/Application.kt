@@ -106,6 +106,11 @@ fun Application.module() {
                 call.respond(database.getReservations())
             }
 
+            get("/rooms/{roomNumber}/reservations") {
+                val roomNumber = call.parameters["roomNumber"].orEmpty()
+                call.respond(database.getReservationsForRoom(roomNumber))
+            }
+
             post("/reservations") {
                 val reservation = call.receive<FoodReservation>()
                 database.saveReservation(reservation)

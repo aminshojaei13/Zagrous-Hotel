@@ -35,17 +35,25 @@ class ReservationViewModel(
 
     private fun login() {
         scope.launch {
-            updateState { it.copy(isLoading = true) }
+            updateState { it.copy(isLoading = true, error = null) }
             runCatching {
-                repository.getRoom(state.value.roomNumber)
-            }.onSuccess { room ->
+                val room = repository.getRoom(state.value.roomNumber)
+                val reservations = if (room != null) repository.getReservationsForRoom(room.roomNumber) else emptyList()
+                room to reservations
+            }.onSuccess { (room, reservations) ->
                 if (room != null) {
-                    updateState { it.copy(room = room, isLoggedIn = true, isLoading = false, error = null) }
+                    updateState { it.copy(
+                        room = room,
+                        tempReservations = reservations,
+                        isLoggedIn = true,
+                        isLoading = false,
+                        error = null
+                    ) }
                 } else {
                     updateState { it.copy(isLoading = false, error = "شماره اتاق یافت نشد") }
                 }
-            }.onFailure {
-                updateState { it.copy(isLoading = false, error = "ارتباط با سرور برقرار نشد") }
+            }.onFailure { e ->
+                updateState { it.copy(isLoading = false, error = "ارتباط با سرور برقرار نشد: ${e.message}") }
             }
         }
     }

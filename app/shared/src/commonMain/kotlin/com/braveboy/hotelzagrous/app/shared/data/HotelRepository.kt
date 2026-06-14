@@ -45,6 +45,9 @@ class HotelRepository(
 
     suspend fun getAllReservations(): List<FoodReservation> = client.get("$apiBaseUrl/reservations").body()
 
+    suspend fun getReservationsForRoom(roomNumber: String): List<FoodReservation> = 
+        client.get("$apiBaseUrl/rooms/$roomNumber/reservations").body()
+
     suspend fun saveReservation(reservation: FoodReservation) {
         client.post("$apiBaseUrl/reservations") {
             contentType(ContentType.Application.Json)

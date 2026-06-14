@@ -16,17 +16,15 @@ import com.braveboy.hotelzagrous.core.FoodType
 fun ReservationScreen(viewModel: ReservationViewModel) {
     val state by viewModel.state.collectAsState()
 
-    Column(modifier = Modifier.fillMaxSize().padding(16.dp)) {
-        if (!state.isLoggedIn) {
-            LoginSection(
-                number = state.roomNumber,
-                onNumberChange = { viewModel.onIntent(ReservationIntent.UpdateRoomNumber(it)) },
-                onLogin = { viewModel.onIntent(ReservationIntent.Login) },
-                error = state.error
-            )
-        } else {
-            UserDashboard(state, viewModel)
-        }
+    if (!state.isLoggedIn) {
+        LoginSection(
+            number = state.roomNumber,
+            onNumberChange = { viewModel.onIntent(ReservationIntent.UpdateRoomNumber(it)) },
+            onLogin = { viewModel.onIntent(ReservationIntent.Login) },
+            error = state.error
+        )
+    } else {
+        UserDashboard(state, viewModel)
     }
 }
 
@@ -35,7 +33,7 @@ fun LoginSection(number: String, onNumberChange: (String) -> Unit, onLogin: () -
     Column(
         horizontalAlignment = Alignment.CenterHorizontally,
         verticalArrangement = Arrangement.Center,
-        modifier = Modifier.fillMaxSize()
+        modifier = Modifier.fillMaxSize().padding(16.dp)
     ) {
         Text("ورود به سامانه رزرو غذا هتل زاگرس", style = MaterialTheme.typography.headlineSmall)
         Spacer(Modifier.height(20.dp))
@@ -75,37 +73,49 @@ fun UserDashboard(state: ReservationState, viewModel: ReservationViewModel) {
         }
     }
 
-    Column {
-        Card(modifier = Modifier.fillMaxWidth(), colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.primaryContainer)) {
-            Column(modifier = Modifier.padding(16.dp)) {
-                Text("خوش آمدید، اتاق ${room?.roomNumber}", style = MaterialTheme.typography.titleLarge)
-                Text("نام مسافر: ${room?.guestName}")
-                Text("تعداد نفرات: ${room?.guestCount} نفر")
-                Text("مدت اقامت: ${room?.checkInDate} تا ${room?.checkOutDate}")
+    Scaffold { paddingValues ->
+        LazyColumn(
+            modifier = Modifier
+                .fillMaxSize()
+                .padding(paddingValues)
+                .padding(horizontal = 16.dp),
+            verticalArrangement = Arrangement.spacedBy(16.dp)
+        ) {
+            item {
+                Spacer(Modifier.height(16.dp))
+                Card(
+                    modifier = Modifier.fillMaxWidth(),
+                    colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.primaryContainer)
+                ) {
+                    Column(modifier = Modifier.padding(16.dp)) {
+                        Text("خوش آمدید، اتاق ${room?.roomNumber}", style = MaterialTheme.typography.titleLarge)
+                        Text("نام مسافر: ${room?.guestName}")
+                        Text("تعداد نفرات: ${room?.guestCount ?: 0} نفر")
+                        Text("مدت اقامت: ${room?.checkInDate} تا ${room?.checkOutDate}")
+                    }
+                }
             }
-        }
-        
-        Spacer(Modifier.height(16.dp))
-        
-        LazyColumn(modifier = Modifier.weight(1f), verticalArrangement = Arrangement.spacedBy(8.dp)) {
+
             items(stayDays) { date ->
                 FoodRow(date, state, viewModel)
             }
-        }
-        
-        state.error?.let {
-             Text(it, color = MaterialTheme.colorScheme.error, modifier = Modifier.padding(8.dp))
-        }
 
-        Button(
-            onClick = { viewModel.onIntent(ReservationIntent.ConfirmReservation) },
-            modifier = Modifier.fillMaxWidth().padding(top = 16.dp),
-            enabled = !state.isLoading
-        ) {
-            if (state.isLoading) {
-                CircularProgressIndicator(modifier = Modifier.size(24.dp), color = MaterialTheme.colorScheme.onPrimary)
-            } else {
-                Text("تایید نهایی رزروها")
+            item {
+                state.error?.let {
+                    Text(it, color = MaterialTheme.colorScheme.error, modifier = Modifier.padding(8.dp))
+                }
+
+                Button(
+                    onClick = { viewModel.onIntent(ReservationIntent.ConfirmReservation) },
+                    modifier = Modifier.fillMaxWidth().padding(vertical = 16.dp),
+                    enabled = !state.isLoading
+                ) {
+                    if (state.isLoading) {
+                        CircularProgressIndicator(modifier = Modifier.size(24.dp), color = MaterialTheme.colorScheme.onPrimary)
+                    } else {
+                        Text("تایید نهایی رزروها")
+                    }
+                }
             }
         }
     }
