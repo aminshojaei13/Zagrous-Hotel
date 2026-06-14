@@ -4,6 +4,7 @@ import com.braveboy.hotelzagrous.core.ApiError
 import com.braveboy.hotelzagrous.core.FoodReservation
 import com.braveboy.hotelzagrous.core.Room
 import com.braveboy.hotelzagrous.core.UpdateRoomStayRequest
+import com.braveboy.hotelzagrous.core.normalizeDigits
 import io.ktor.http.*
 import io.ktor.server.application.*
 import io.ktor.server.engine.*
@@ -51,6 +52,7 @@ fun Application.module() {
         allowMethod(HttpMethod.Get)
         allowMethod(HttpMethod.Post)
         allowMethod(HttpMethod.Put)
+        allowMethod(HttpMethod.Delete)
         allowMethod(HttpMethod.Options)
     }
 
@@ -60,12 +62,18 @@ fun Application.module() {
         }
 
         route("/api") {
+            // Admin clear data endpoint
+            delete("/admin/clear-all") {
+                database.clearAllData()
+                call.respond(HttpStatusCode.OK, mapOf("message" to "All data cleared successfully"))
+            }
+
             get("/rooms") {
                 call.respond(database.getRooms())
             }
 
             get("/rooms/{roomNumber}") {
-                val roomNumber = call.parameters["roomNumber"].orEmpty()
+                val roomNumber = call.parameters["roomNumber"].orEmpty().normalizeDigits()
                 val room = database.getRoom(roomNumber)
                 if (room == null) {
                     call.respond(HttpStatusCode.NotFound, ApiError("شماره اتاق یافت نشد"))
@@ -76,12 +84,13 @@ fun Application.module() {
 
             post("/rooms") {
                 val room = call.receive<Room>()
-                database.upsertRoom(room)
-                call.respond(HttpStatusCode.Created, room)
+                val normalizedRoom = room.copy(roomNumber = room.roomNumber.normalizeDigits())
+                database.upsertRoom(normalizedRoom)
+                call.respond(HttpStatusCode.Created, normalizedRoom)
             }
 
             put("/rooms/{roomNumber}/stay") {
-                val roomNumber = call.parameters["roomNumber"].orEmpty()
+                val roomNumber = call.parameters["roomNumber"].orEmpty().normalizeDigits()
                 val request = call.receive<UpdateRoomStayRequest>()
                 val updated = database.updateRoomStay(
                     roomNumber = roomNumber,
@@ -107,14 +116,15 @@ fun Application.module() {
             }
 
             get("/rooms/{roomNumber}/reservations") {
-                val roomNumber = call.parameters["roomNumber"].orEmpty()
+                val roomNumber = call.parameters["roomNumber"].orEmpty().normalizeDigits()
                 call.respond(database.getReservationsForRoom(roomNumber))
             }
 
             post("/reservations") {
                 val reservation = call.receive<FoodReservation>()
-                database.saveReservation(reservation)
-                call.respond(HttpStatusCode.Created, reservation)
+                val normalizedRes = reservation.copy(roomNumber = reservation.roomNumber.normalizeDigits())
+                database.saveReservation(normalizedRes)
+                call.respond(HttpStatusCode.Created, normalizedRes)
             }
         }
     }

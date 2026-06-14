@@ -20,6 +20,15 @@ class HotelDatabase(
         seedDefaults()
     }
 
+    fun clearAllData() {
+        connection.createStatement().use { statement ->
+            statement.executeUpdate("DELETE FROM food_reservations")
+            statement.executeUpdate("DELETE FROM rooms")
+            // اگر می‌خواهید لیست غذاها هم پاک شود خط زیر را از کامنت خارج کنید:
+            // statement.executeUpdate("DELETE FROM food_items")
+        }
+    }
+
     fun getRooms(): List<Room> = connection.prepareStatement(
         """
         SELECT room_number, guest_name, guest_count, check_in_date, check_out_date, check_in_epoch_millis, check_out_epoch_millis
@@ -221,10 +230,6 @@ class HotelDatabase(
                 )
                 """.trimIndent()
             )
-            // Add guest_count column if it doesn't exist
-            try {
-                statement.executeUpdate("ALTER TABLE rooms ADD COLUMN guest_count INTEGER NOT NULL DEFAULT 1")
-            } catch (e: Exception) {}
 
             statement.executeUpdate(
                 """
@@ -236,25 +241,17 @@ class HotelDatabase(
                 """.trimIndent()
             )
             
-            // Note: If you have existing data in food_reservations from a previous version,
-            // you might need to migrate it. For now, we ensure the table has the right structure.
-            try {
-                statement.executeQuery("SELECT guest_meal_selections FROM food_reservations LIMIT 1")
-            } catch (e: Exception) {
-                // Table doesn't have the new column or doesn't exist, recreate it
-                statement.executeUpdate("DROP TABLE IF EXISTS food_reservations")
-                statement.executeUpdate(
-                    """
-                    CREATE TABLE IF NOT EXISTS food_reservations(
-                        room_number TEXT NOT NULL,
-                        date TEXT NOT NULL,
-                        guest_meal_selections TEXT NOT NULL,
-                        PRIMARY KEY(room_number, date),
-                        FOREIGN KEY(room_number) REFERENCES rooms(room_number)
-                    )
-                    """.trimIndent()
+            statement.executeUpdate(
+                """
+                CREATE TABLE IF NOT EXISTS food_reservations(
+                    room_number TEXT NOT NULL,
+                    date TEXT NOT NULL,
+                    guest_meal_selections TEXT NOT NULL,
+                    PRIMARY KEY(room_number, date),
+                    FOREIGN KEY(room_number) REFERENCES rooms(room_number)
                 )
-            }
+                """.trimIndent()
+            )
         }
     }
 
@@ -270,6 +267,8 @@ class HotelDatabase(
             ).forEach(::insertFood)
         }
 
+        // اگر لیست اتاق‌ها خالی باشد، مقادیر پیش‌فرض اضافه می‌شوند
+        // اگر می‌خواهید کاملاً خالی باشد، این بخش را کامنت کنید
         if (getRooms().isEmpty()) {
             listOf(
                 Room("101", "رضا احمدی", 2, "1402/08/01", "1402/08/05", 1698823800000L, 1699169400000L),

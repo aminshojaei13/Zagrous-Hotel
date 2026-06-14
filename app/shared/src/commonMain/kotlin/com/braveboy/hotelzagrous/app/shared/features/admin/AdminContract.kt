@@ -25,4 +25,5 @@ sealed class AdminIntent {
     data class AddRoom(val room: Room) : AdminIntent()
     object ExportPdf : AdminIntent()
     object LoadData : AdminIntent()
+    object ClearAllData : AdminIntent()
 }

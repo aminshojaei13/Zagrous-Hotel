@@ -21,6 +21,7 @@ class AdminViewModel(
             is AdminIntent.UpdateRoomStay -> updateRoom(intent)
             is AdminIntent.AddRoom -> addRoom(intent)
             is AdminIntent.ExportPdf -> exportToPdf()
+            is AdminIntent.ClearAllData -> clearAllData()
         }
     }
 
@@ -75,6 +76,19 @@ class AdminViewModel(
                 loadData()
             }.onFailure { e ->
                 updateState { current -> current.copy(error = "افزودن اتاق انجام نشد: ${e.message}") }
+            }
+        }
+    }
+
+    private fun clearAllData() {
+        updateState { it.copy(isLoading = true) }
+        scope.launch(Dispatchers.Main) {
+            runCatching {
+                repository.clearAllData()
+            }.onSuccess {
+                loadData()
+            }.onFailure { e ->
+                updateState { it.copy(isLoading = false, error = "حذف اطلاعات با خطا مواجه شد: ${e.message}") }
             }
         }
     }
