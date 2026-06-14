@@ -53,7 +53,7 @@ persiandatetime = { module = "io.github.faridsolgi:persianDateTime", version.ref
 wrappers-browser = { module = "org.jetbrains.kotlin-wrappers:kotlin-browser", version.ref = "kotlin-wrappers" }
 kotlinx-datetime = { module = "org.jetbrains.kotlinx:kotlinx-datetime", version.ref = "kotlinx-datetime" }
 kotlinx-serialization-json = { module = "org.jetbrains.kotlinx:kotlinx-serialization-json", version.ref = "kotlinx-serialization" }
-sqlite-jdbc = { module = "org.xerial:sqlite-jdbc", version = "3.51.0.0" }
+sqlite-jdbc = { module = "org.xerial:sqlite-jdbc", version = "3.45.1.0" }
 
 [plugins]
 androidApplication = { id = "com.android.application", version.ref = "agp" }

@@ -25,14 +25,18 @@ class AdminViewModel(
     }
 
     private fun loadData() {
-        updateState { it.copy(isLoading = true) }
+        updateState { it.copy(isLoading = true, error = null) }
         scope.launch(Dispatchers.Main) {
             runCatching {
-                repository.getRooms() to repository.getAllReservations()
+                val rooms = repository.getRooms()
+                val reservations = repository.getAllReservations()
+                rooms to reservations
             }.onSuccess { (rooms, reservations) ->
                 updateState { it.copy(isLoading = false, rooms = rooms, reservations = reservations, error = null) }
-            }.onFailure {
-                updateState { it.copy(isLoading = false, error = "ارتباط با سرور برقرار نشد") }
+            }.onFailure { e ->
+                println("AdminViewModel Error: ${e.message}")
+                e.printStackTrace()
+                updateState { it.copy(isLoading = false, error = "خطا در بارگذاری: ${e.message ?: "ارتباط با سرور برقرار نشد"}") }
             }
         }
     }
@@ -49,8 +53,8 @@ class AdminViewModel(
                 )
             }.onSuccess {
                 loadData()
-            }.onFailure {
-                updateState { current -> current.copy(error = "به‌روزرسانی اتاق انجام نشد") }
+            }.onFailure { e ->
+                updateState { current -> current.copy(error = "به‌روزرسانی اتاق انجام نشد: ${e.message}") }
             }
         }
     }
@@ -61,8 +65,8 @@ class AdminViewModel(
                 repository.addRoom(intent.room)
             }.onSuccess {
                 loadData()
-            }.onFailure {
-                updateState { current -> current.copy(error = "افزودن اتاق انجام نشد") }
+            }.onFailure { e ->
+                updateState { current -> current.copy(error = "افزودن اتاق انجام نشد: ${e.message}") }
             }
         }
     }

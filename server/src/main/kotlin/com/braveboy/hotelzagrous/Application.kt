@@ -17,13 +17,25 @@ import io.ktor.server.routing.*
 import kotlinx.serialization.json.Json
 
 fun main() {
-    val port = System.getenv("PORT")?.toIntOrNull() ?: 8090
-    embeddedServer(Netty, port = port, host = "0.0.0.0", module = Application::module)
-        .start(wait = true)
+    try {
+        val port = System.getenv("PORT")?.toIntOrNull() ?: 8090
+        println("Starting Hotel Zagrous API on port $port...")
+        embeddedServer(Netty, port = port, host = "0.0.0.0", module = Application::module)
+            .start(wait = true)
+    } catch (t: Throwable) {
+        t.printStackTrace()
+    }
 }
 
 fun Application.module() {
-    val database = HotelDatabase()
+    println("Initializing Application module...")
+    val database = try {
+        HotelDatabase()
+    } catch (e: Exception) {
+        println("Failed to initialize database: ${e.message}")
+        e.printStackTrace()
+        throw e
+    }
 
     install(ContentNegotiation) {
         json(

@@ -21,10 +21,8 @@ fun App(isAdmin: Boolean = false) {
     val repository = remember { HotelRepository() }
     val scope = rememberCoroutineScope()
     
-    // تعریف FontFamily با استفاده از فونت موجود در منابع
     val farsiFontFamily = FontFamily(Font(Res.font.BBadr))
     
-    // اعمال فونت به تمام استایل‌های متنی متریال ۳
     val defaultTypography = Typography()
     val typography = Typography(
         displayLarge = defaultTypography.displayLarge.copy(fontFamily = farsiFontFamily),
@@ -45,7 +43,6 @@ fun App(isAdmin: Boolean = false) {
     )
 
     MaterialTheme(typography = typography) {
-        // اجباری کردن چیدمان راست‌به‌چپ برای زبان فارسی
         CompositionLocalProvider(LocalLayoutDirection provides LayoutDirection.Rtl) {
             Surface(modifier = Modifier.fillMaxSize()) {
                 if (isAdmin) {
