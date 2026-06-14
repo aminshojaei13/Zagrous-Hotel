@@ -1,6 +1,7 @@
 package com.braveboy.hotelzagrous.app.shared.features.admin
 
 import androidx.compose.foundation.background
+import androidx.compose.foundation.basicMarquee
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
@@ -56,12 +57,14 @@ fun AdminScreen(viewModel: AdminViewModel) {
     var showClearDataDialog by remember { mutableStateOf(false) }
 
     Scaffold(
+        modifier = Modifier.padding(horizontal = 24.dp),
         topBar = {
             TopAppBar(
-                modifier = Modifier.background(Color.Gray),
                 title = {
                     Text(
+                        modifier = Modifier.basicMarquee(),
                         text = "پنل مدیریت هتل زاگرس",
+                        maxLines = 1,
                         style = MaterialTheme.typography.titleLarge,
                         fontWeight = FontWeight.Bold
                     )
@@ -87,23 +90,25 @@ fun AdminScreen(viewModel: AdminViewModel) {
             modifier = Modifier.fillMaxSize().padding(paddingValues).padding(horizontal = 16.dp),
             verticalArrangement = Arrangement.spacedBy(16.dp)
         ) {
-            item {
-                Spacer(Modifier.height(8.dp))
-                Button(
-                    onClick = { viewModel.onIntent(AdminIntent.ExportPdf) },
-                    modifier = Modifier.fillMaxWidth()
-                ) {
-                    Text("خروجی PDF گزارشات")
+            if (state.reservations.isNotEmpty()){
+                item {
+                    Text(
+                        "گزارش روزانه رستوران",
+                        style = MaterialTheme.typography.titleLarge,
+                        fontWeight = FontWeight.Bold
+                    )
+                    ReservationSummary(state.reservations, state.rooms, state.foods)
                 }
-            }
 
-            item {
-                Text(
-                    "گزارش روزانه رستوران",
-                    style = MaterialTheme.typography.titleLarge,
-                    fontWeight = FontWeight.Bold
-                )
-                ReservationSummary(state.reservations, state.rooms, state.foods)
+                item {
+                    Spacer(Modifier.height(8.dp))
+                    Button(
+                        onClick = { viewModel.onIntent(AdminIntent.ExportPdf) },
+                        modifier = Modifier
+                    ) {
+                        Text("خروجی PDF گزارشات")
+                    }
+                }
             }
 
             item {
@@ -114,7 +119,9 @@ fun AdminScreen(viewModel: AdminViewModel) {
                 )
             }
 
+            println("xavi is ${state.reservations}")
             items(state.rooms, key = { it.roomNumber }) { room ->
+
                 RoomAdminCard(room) { checkIn, checkOut, checkInMillis, checkOutMillis, guestCount ->
                     viewModel.onIntent(
                         AdminIntent.UpdateRoomStay(

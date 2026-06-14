@@ -34,6 +34,7 @@ class AdminViewModel(
                 val foods = repository.getAvailableFoods()
                 Triple(rooms, reservations, foods)
             }.onSuccess { (rooms, reservations, foods) ->
+                println("xavi load is success : ${rooms.last().guestCount}")
                 updateState { it.copy(
                     isLoading = false,
                     rooms = rooms,
@@ -61,8 +62,10 @@ class AdminViewModel(
                     intent.guestCount
                 )
             }.onSuccess {
+                println("xavi update is success")
                 loadData()
             }.onFailure { e ->
+                println("xavi load is faile : ${e.message}")
                 updateState { current -> current.copy(error = "به‌روزرسانی اتاق انجام نشد: ${e.message}") }
             }
         }

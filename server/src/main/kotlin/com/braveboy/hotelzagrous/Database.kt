@@ -8,7 +8,6 @@ import com.braveboy.hotelzagrous.core.GuestMealSelection
 import java.sql.Connection
 import java.sql.DriverManager
 import kotlinx.serialization.json.Json
-import kotlinx.serialization.encodeToString
 
 class HotelDatabase(
     databasePath: String = "hotel-zagrous.sqlite"

@@ -52,7 +52,7 @@ class HotelRepository(
     suspend fun getRooms(): List<Room> = try {
         val response: HttpResponse = client.get("$apiBaseUrl/rooms")
         if (response.status.isSuccess()) response.body() else emptyList()
-    } catch (_: Throwable) {
+    } catch (e: Throwable) {
         emptyList()
     }
 
@@ -66,7 +66,7 @@ class HotelRepository(
     suspend fun getAllReservations(): List<FoodReservation> = try {
         val response: HttpResponse = client.get("$apiBaseUrl/reservations")
         if (response.status.isSuccess()) response.body() else emptyList()
-    } catch (_: Throwable) {
+    } catch (e: Throwable) {
         emptyList()
     }
 
