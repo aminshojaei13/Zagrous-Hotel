@@ -2,6 +2,7 @@ package com.braveboy.hotelzagrous.app.shared.features.admin
 
 import androidx.compose.foundation.background
 import androidx.compose.foundation.basicMarquee
+import androidx.compose.foundation.border
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
@@ -15,6 +16,8 @@ import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.lazy.LazyColumn
+import androidx.compose.foundation.lazy.LazyItemScope
+import androidx.compose.foundation.lazy.LazyRow
 import androidx.compose.foundation.lazy.items
 import androidx.compose.material3.AlertDialog
 import androidx.compose.material3.Button
@@ -52,6 +55,7 @@ import com.braveboy.hotelzagrous.core.FoodItem
 import com.braveboy.hotelzagrous.core.FoodReservation
 import com.braveboy.hotelzagrous.core.Room
 import com.braveboy.hotelzagrous.core.normalizeDigits
+import kotlin.time.Clock
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
@@ -124,7 +128,7 @@ fun AdminScreen(viewModel: AdminViewModel) {
                     }
                 ) {
                     Text(
-                        "گزارش روزانه رستوران",
+                        "گزارش غذای مهمانان",
                         style = MaterialTheme.typography.labelLarge,
                         color = Color.Black
                     )
@@ -171,14 +175,30 @@ fun AdminScreen(viewModel: AdminViewModel) {
                     }
 
                     showReservationSummary && state.reservations.isNotEmpty() -> {
-                        Text(
-                            modifier = Modifier.padding(all = 24.dp),
-                            text = "گزارش روزانه رستوران",
-                            style = MaterialTheme.typography.titleLarge,
-                            fontWeight = FontWeight.Bold
-                        )
+                        LazyColumn(
+                            modifier = Modifier.padding(horizontal = 24.dp),
+                            verticalArrangement = Arrangement.spacedBy(16.dp)
+                        ) {
 
-                        ReservationSummary(state.reservations, state.rooms, state.foods)
+                            item {
+                                TodayReservationDetail(state)
+                            }
+
+                            item {
+                                TodayReservationDetailByRoom(state)
+                            }
+
+                            item {
+                                Text(
+                                    modifier = Modifier.padding(all = 24.dp),
+                                    text = "گزارش آتی",
+                                    style = MaterialTheme.typography.titleLarge,
+                                    fontWeight = FontWeight.Bold
+                                )
+
+                                ReservationSummary(state.reservations, state.rooms, state.foods)
+                            }
+                        }
                     }
 
                     else -> {
@@ -261,11 +281,17 @@ fun ReservationSummary(
     val roomMap = rooms.associateBy { it.roomNumber }
     val foodMap = foods.associateBy { it.id }
 
-    val summaryByDate = reservations.groupBy { it.date }.toList().sortedBy { it.first }
+    val today = DateUtils.convertMillisToJalaliString(Clock.System.now().toEpochMilliseconds())
+
+    val summaryByDate = reservations
+        .filter { it.date > today } // Filter: only today and future
+        .groupBy { it.date }
+        .toList()
+        .sortedBy { it.first }
 
     if (summaryByDate.isEmpty()) {
         Card(modifier = Modifier.fillMaxWidth()) {
-            Text("رزروی ثبت نشده است", modifier = Modifier.padding(16.dp))
+            Text("رزروی برای امروز یا آینده ثبت نشده است", modifier = Modifier.padding(16.dp))
         }
         return
     }
@@ -339,6 +365,218 @@ fun ReservationSummary(
         }
     }
 }
+
+@Composable
+fun LazyItemScope.TodayReservationDetailByRoom(state: AdminState) {
+    Text(
+        modifier = Modifier.padding(all = 24.dp),
+        text = "گزارش روزانه به تفکیک اتاق",
+        style = MaterialTheme.typography.titleLarge,
+        fontWeight = FontWeight.Bold
+    )
+
+    Card(modifier = Modifier.fillMaxWidth().padding(vertical = 4.dp)) {
+        val today = DateUtils.convertMillisToJalaliString(
+            Clock.System.now().toEpochMilliseconds()
+        )
+        val todayReservation =
+            state.reservations.groupBy { it.date == today }
+
+        Row(
+            modifier = Modifier
+                .fillParentMaxSize()
+                .padding(12.dp)
+        ) {
+            LazyColumn {
+                item {
+                    val validRes = todayReservation[true] ?: emptyList()
+                    validRes.forEach { res ->
+                        val room = state.rooms.associateBy { it.roomNumber }[res.roomNumber]
+                        val foodMap = state.foods.associateBy { it.id }
+                        Text(
+                            "اتاق ${res.roomNumber} (${room?.guestName ?: "نامعلوم"}):",
+                            style = MaterialTheme.typography.labelLarge
+                        )
+
+                        res.guestMealSelections.forEach { selection ->
+                            if (selection.lunchFoodId != null || selection.dinnerFoodId != null) {
+                                val lunch = foodMap[selection.lunchFoodId]?.name ?: "-"
+                                val dinner = foodMap[selection.dinnerFoodId]?.name ?: "-"
+                                // Icon(imageVector = Icons)
+                                Row(
+                                    Modifier.border(
+                                        width = 2.dp,
+                                        color = MaterialTheme.colorScheme.primary,
+                                        shape = MaterialTheme.shapes.medium
+                                    )
+                                ) {
+                                    Text(
+                                        "  - مهمان ${selection.guestIndex + 1}  :",
+                                        style = MaterialTheme.typography.bodySmall
+                                    )
+
+                                    Spacer(Modifier.width(8.dp))
+
+                                    Text(
+                                        ": ناهار: $lunch ",
+                                        style = MaterialTheme.typography.bodySmall
+                                    )
+
+                                    Spacer(Modifier.width(8.dp))
+
+                                    Text(
+                                        ": شام: $dinner ",
+                                        style = MaterialTheme.typography.bodySmall
+                                    )
+
+                                }
+                            }
+                        }
+                        Spacer(Modifier.height(4.dp))
+                    }
+                }
+            }
+        }
+    }
+}
+
+
+@Composable
+fun LazyItemScope.TodayReservationDetail(state: AdminState) {
+    Text(
+        modifier = Modifier.padding(all = 24.dp),
+        text = "گزارش روز",
+        style = MaterialTheme.typography.titleLarge,
+        fontWeight = FontWeight.Bold
+    )
+
+    Card(modifier = Modifier.fillMaxWidth().padding(vertical = 4.dp)) {
+        Column(modifier = Modifier.padding(12.dp)) {
+            val today = DateUtils.convertMillisToJalaliString(
+                Clock.System.now().toEpochMilliseconds()
+            )
+            val todayReservation =
+                state.reservations.groupBy { it.date == today }
+            Text(
+                modifier = Modifier.padding(all = 8.dp),
+                text = "گزارش مجموع غذای روز (تاریخ: $today)",
+                style = MaterialTheme.typography.bodyLarge,
+                fontWeight = FontWeight.Bold,
+                color = MaterialTheme.colorScheme.primary
+            )
+
+            HorizontalDivider(modifier = Modifier.padding(vertical = 8.dp))
+
+            val todayResList = todayReservation[true] ?: emptyList()
+            val foodMap = state.foods.associateBy { it.id }
+
+            val allLunch =
+                todayResList.flatMap { it.guestMealSelections }
+                    .mapNotNull { it.lunchFoodId }
+            val allDinner =
+                todayResList.flatMap { it.guestMealSelections }
+                    .mapNotNull { it.dinnerFoodId }
+
+            if (allLunch.isNotEmpty()) {
+                Text(
+                    text = "ناهار",
+                    fontWeight = FontWeight.Bold
+                )
+
+                Spacer(Modifier.height(8.dp))
+
+                Row(Modifier.fillParentMaxWidth()) {
+                    LazyRow {
+                        item {
+                            allLunch.groupBy { it }
+                                .forEach { (id, list) ->
+                                    Text(
+                                        modifier = Modifier
+                                            .padding(horizontal = 8.dp)
+                                            .border(
+                                                width = 2.dp,
+                                                color = MaterialTheme.colorScheme.primary,
+                                                shape = MaterialTheme.shapes.medium
+                                            )
+                                            .padding(all = 8.dp),
+                                        text = foodMap[id]?.name + " (${list.size} پرس )",
+                                        style = MaterialTheme.typography.bodyMedium
+                                    )
+                                }
+                        }
+                    }
+
+                    Spacer(modifier = Modifier.weight(1F))
+
+                    Text(
+                        modifier = Modifier
+                            .padding(horizontal = 8.dp)
+                            .border(
+                                width = 2.dp,
+                                color = MaterialTheme.colorScheme.primary,
+                                shape = MaterialTheme.shapes.medium
+                            )
+                            .padding(all = 8.dp),
+                        text = "مجموع ناهار: ${allLunch.size} پرس",
+                        fontWeight = FontWeight.SemiBold
+                    )
+                }
+            }
+
+            if (allLunch.isNotEmpty() && allDinner.isNotEmpty()) {
+                Spacer(Modifier.height(8.dp))
+            }
+
+            if (allDinner.isNotEmpty()) {
+                Text(
+                    " شام",
+                    fontWeight = FontWeight.SemiBold
+                )
+
+                Row(Modifier.fillParentMaxWidth()) {
+                    LazyRow {
+                        item {
+                            allDinner.groupBy { it }
+                                .forEach { (id, list) ->
+                                    Text(
+                                        modifier = Modifier
+                                            .padding(horizontal = 8.dp)
+                                            .border(
+                                                width = 2.dp,
+                                                color = MaterialTheme.colorScheme.primary,
+                                                shape = MaterialTheme.shapes.medium
+                                            )
+                                            .padding(all = 8.dp),
+                                        text = foodMap[id]?.name + " (${list.size} پرس )",
+                                        style = MaterialTheme.typography.bodyMedium
+                                    )
+                                }
+                        }
+                    }
+                    Spacer(modifier = Modifier.weight(1F))
+
+                    Text(
+                        modifier = Modifier
+                            .padding(horizontal = 8.dp)
+                            .border(
+                                width = 2.dp,
+                                color = MaterialTheme.colorScheme.primary,
+                                shape = MaterialTheme.shapes.medium
+                            )
+                            .padding(all = 8.dp),
+                        text = "مجموع شام : ${allLunch.size} پرس",
+                        fontWeight = FontWeight.SemiBold
+                    )
+                }
+            }
+
+            if (allLunch.isEmpty() && allDinner.isEmpty()) {
+                Text("هیچ رزروی برای امروز ثبت نشده است.")
+            }
+        }
+    }
+}
+
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable

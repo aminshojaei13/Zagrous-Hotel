@@ -4,6 +4,7 @@ import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.material3.*
 import androidx.compose.runtime.*
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.platform.LocalLayoutDirection
 import androidx.compose.ui.text.font.FontFamily
 import androidx.compose.ui.unit.LayoutDirection
@@ -22,7 +23,9 @@ fun App(isAdmin: Boolean = false) {
     val scope = rememberCoroutineScope()
     
     val farsiFontFamily = FontFamily(Font(Res.font.BHoma))
-    
+
+    Color(0x00AD1414)
+
     val defaultTypography = Typography()
     val typography = Typography(
         displayLarge = defaultTypography.displayLarge.copy(fontFamily = farsiFontFamily),
