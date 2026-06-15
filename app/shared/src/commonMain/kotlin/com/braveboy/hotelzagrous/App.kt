@@ -13,7 +13,7 @@ import com.braveboy.hotelzagrous.app.shared.features.admin.AdminViewModel
 import com.braveboy.hotelzagrous.app.shared.features.reservation.ReservationScreen
 import com.braveboy.hotelzagrous.app.shared.features.reservation.ReservationViewModel
 import hotelzagrous.app.shared.generated.resources.Res
-import hotelzagrous.app.shared.generated.resources.BBadr
+import hotelzagrous.app.shared.generated.resources.BHoma
 import org.jetbrains.compose.resources.Font
 
 @Composable
@@ -21,7 +21,7 @@ fun App(isAdmin: Boolean = false) {
     val repository = remember { HotelRepository() }
     val scope = rememberCoroutineScope()
     
-    val farsiFontFamily = FontFamily(Font(Res.font.BBadr))
+    val farsiFontFamily = FontFamily(Font(Res.font.BHoma))
     
     val defaultTypography = Typography()
     val typography = Typography(

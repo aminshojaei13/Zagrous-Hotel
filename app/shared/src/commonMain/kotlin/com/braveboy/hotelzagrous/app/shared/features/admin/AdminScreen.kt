@@ -8,13 +8,14 @@ import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
+import androidx.compose.foundation.layout.fillMaxHeight
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
+import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
-import androidx.compose.foundation.text.KeyboardOptions
 import androidx.compose.material3.AlertDialog
 import androidx.compose.material3.Button
 import androidx.compose.material3.ButtonDefaults
@@ -22,6 +23,8 @@ import androidx.compose.material3.Card
 import androidx.compose.material3.CircularProgressIndicator
 import androidx.compose.material3.DatePicker
 import androidx.compose.material3.DatePickerDialog
+import androidx.compose.material3.DropdownMenu
+import androidx.compose.material3.DropdownMenuItem
 import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.HorizontalDivider
 import androidx.compose.material3.MaterialTheme
@@ -30,6 +33,7 @@ import androidx.compose.material3.Scaffold
 import androidx.compose.material3.Text
 import androidx.compose.material3.TextButton
 import androidx.compose.material3.TopAppBar
+import androidx.compose.material3.TopAppBarDefaults
 import androidx.compose.material3.rememberDatePickerState
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.collectAsState
@@ -39,9 +43,9 @@ import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.text.font.FontWeight
-import androidx.compose.ui.text.input.KeyboardType
 import androidx.compose.ui.unit.dp
 import com.braveboy.hotelzagrous.core.DateUtils
 import com.braveboy.hotelzagrous.core.FoodItem
@@ -55,18 +59,22 @@ fun AdminScreen(viewModel: AdminViewModel) {
     val state by viewModel.state.collectAsState()
     var showAddRoomDialog by remember { mutableStateOf(false) }
     var showClearDataDialog by remember { mutableStateOf(false) }
+    var showReservationSummary by remember { mutableStateOf(false) }
 
     Scaffold(
-        modifier = Modifier.padding(horizontal = 24.dp),
         topBar = {
             TopAppBar(
+                colors = TopAppBarDefaults.topAppBarColors().copy(
+                    containerColor = Color.Black
+                ),
                 title = {
                     Text(
-                        modifier = Modifier.basicMarquee(),
-                        text = "پنل مدیریت هتل زاگرس",
+                        modifier = Modifier.basicMarquee().padding(horizontal = 16.dp),
+                        text = "هتل زاگرس",
                         maxLines = 1,
                         style = MaterialTheme.typography.titleLarge,
-                        fontWeight = FontWeight.Bold
+                        fontWeight = FontWeight.Bold,
+                        color = Color.White
                     )
                 },
                 actions = {
@@ -86,70 +94,125 @@ fun AdminScreen(viewModel: AdminViewModel) {
             )
         }
     ) { paddingValues ->
-        LazyColumn(
-            modifier = Modifier.fillMaxSize().padding(paddingValues).padding(horizontal = 16.dp),
-            verticalArrangement = Arrangement.spacedBy(16.dp)
-        ) {
-            if (state.reservations.isNotEmpty()){
-                item {
+        Row(modifier = Modifier.fillMaxSize().padding(paddingValues)) {
+            Column(
+                modifier = Modifier
+                    .fillMaxHeight()
+                    .weight(1F)
+                    .background(Color.Gray.copy(alpha = 0.5F))
+                    .padding(all = 16.dp)
+            ) {
+                Spacer(Modifier.height(16.dp))
+
+                TextButton(
+                    onClick = {
+                        showReservationSummary = false
+                    }
+                ) {
+                    Text(
+                        "مشاهده و مدیریت اتاق‌ها",
+                        style = MaterialTheme.typography.labelLarge,
+                        color = Color.Black
+                    )
+                }
+
+                Spacer(Modifier.height(16.dp))
+
+                TextButton(
+                    onClick = {
+                        showReservationSummary = true
+                    }
+                ) {
                     Text(
                         "گزارش روزانه رستوران",
-                        style = MaterialTheme.typography.titleLarge,
-                        fontWeight = FontWeight.Bold
+                        style = MaterialTheme.typography.labelLarge,
+                        color = Color.Black
                     )
-                    ReservationSummary(state.reservations, state.rooms, state.foods)
                 }
 
-                item {
-                    Spacer(Modifier.height(8.dp))
-                    Button(
-                        onClick = { viewModel.onIntent(AdminIntent.ExportPdf) },
-                        modifier = Modifier
-                    ) {
-                        Text("خروجی PDF گزارشات")
+                Spacer(Modifier.height(16.dp))
+
+                TextButton(
+                    onClick = {
+                        //showReservationSummary = false
                     }
-                }
-            }
-
-            item {
-                Text(
-                    "مدیریت اتاق‌ها",
-                    style = MaterialTheme.typography.titleLarge,
-                    fontWeight = FontWeight.Bold
-                )
-            }
-
-            println("xavi is ${state.reservations}")
-            items(state.rooms, key = { it.roomNumber }) { room ->
-
-                RoomAdminCard(room) { checkIn, checkOut, checkInMillis, checkOutMillis, guestCount ->
-                    viewModel.onIntent(
-                        AdminIntent.UpdateRoomStay(
-                            room.roomNumber,
-                            checkIn,
-                            checkOut,
-                            checkInMillis,
-                            checkOutMillis,
-                            guestCount
-                        )
-                    )
-                }
-            }
-
-            item {
-                if (state.error != null) {
+                ) {
                     Text(
-                        state.error!!,
-                        color = MaterialTheme.colorScheme.error,
-                        modifier = Modifier.padding(vertical = 8.dp)
+                        "خروجی گزارش رستوران",
+                        style = MaterialTheme.typography.labelLarge,
+                        color = Color.Black
                     )
                 }
-                if (state.isLoading) {
-                    Box(modifier = Modifier.fillMaxWidth(), contentAlignment = Alignment.Center) {
-                        CircularProgressIndicator()
+            }
+
+            Box(
+                modifier = Modifier
+                    .fillMaxHeight()
+                    .weight(4F)
+                    .background(Color.Gray.copy(alpha = 0.3F))
+                    .padding(horizontal = 24.dp),
+            ) {
+                when {
+                    state.error != null -> {
+                        Text(
+                            state.error!!,
+                            color = MaterialTheme.colorScheme.error,
+                            modifier = Modifier.padding(vertical = 8.dp)
+                        )
+                    }
+
+                    state.isLoading -> {
+                        Box(
+                            modifier = Modifier.fillMaxWidth(),
+                            contentAlignment = Alignment.Center
+                        ) {
+                            CircularProgressIndicator()
+                        }
+                    }
+
+                    showReservationSummary && state.reservations.isNotEmpty() -> {
+                        Text(
+                            modifier = Modifier.padding(all = 24.dp),
+                            text = "گزارش روزانه رستوران",
+                            style = MaterialTheme.typography.titleLarge,
+                            fontWeight = FontWeight.Bold
+                        )
+
+                        ReservationSummary(state.reservations, state.rooms, state.foods)
+                    }
+
+                    else -> {
+                        LazyColumn(
+                            modifier = Modifier.padding(horizontal = 24.dp),
+                            verticalArrangement = Arrangement.spacedBy(16.dp)
+                        ) {
+
+                            item {
+                                Text(
+                                    modifier = Modifier.padding(all = 24.dp),
+                                    text = "مدیریت اتاق‌ها",
+                                    style = MaterialTheme.typography.titleLarge,
+                                    fontWeight = FontWeight.Bold
+                                )
+                            }
+
+                            items(state.rooms, key = { it.roomNumber }) { room ->
+                                RoomAdminCard(room) { checkIn, checkOut, checkInMillis, checkOutMillis, guestCount ->
+                                    viewModel.onIntent(
+                                        AdminIntent.UpdateRoomStay(
+                                            room.roomNumber,
+                                            checkIn,
+                                            checkOut,
+                                            checkInMillis,
+                                            checkOutMillis,
+                                            guestCount
+                                        )
+                                    )
+                                }
+                            }
+                        }
                     }
                 }
-                Spacer(Modifier.height(32.dp))
             }
         }
     }
@@ -288,14 +351,14 @@ fun DatePickerField(
     var showDatePicker by remember { mutableStateOf(false) }
     val datePickerState = rememberDatePickerState()
 
-    Box(modifier = modifier) {
-        OutlinedTextField(
-            value = value,
-            onValueChange = { },
-            label = { Text(label) },
-            readOnly = true,
-            modifier = Modifier.fillMaxWidth()
+    Box(
+        modifier = modifier.clip(MaterialTheme.shapes.large)
+    ) {
+        Text(
+            modifier = Modifier.padding(all = 8.dp),
+            text = "$label: $value"
         )
+
         Box(
             modifier = Modifier
                 .matchParentSize()
@@ -332,11 +395,12 @@ fun DatePickerField(
 fun AddRoomDialog(onDismiss: () -> Unit, onConfirm: (Room) -> Unit) {
     var roomNumber by remember { mutableStateOf("") }
     var guestName by remember { mutableStateOf("") }
-    var guestCount by remember { mutableStateOf("1") }
+    var guestCount by remember { mutableStateOf(1) }
     var checkIn by remember { mutableStateOf("") }
     var checkOut by remember { mutableStateOf("") }
     var checkInMillis by remember { mutableStateOf(0L) }
     var checkOutMillis by remember { mutableStateOf(0L) }
+    var expanded by remember { mutableStateOf(false) }
 
     AlertDialog(
         onDismissRequest = onDismiss,
@@ -355,13 +419,32 @@ fun AddRoomDialog(onDismiss: () -> Unit, onConfirm: (Room) -> Unit) {
                     label = { Text("نام مهمان") },
                     modifier = Modifier.fillMaxWidth()
                 )
-                OutlinedTextField(
-                    value = guestCount,
-                    onValueChange = { guestCount = it },
-                    label = { Text("تعداد نفرات") },
-                    keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Number),
-                    modifier = Modifier.fillMaxWidth()
-                )
+
+                Box(modifier = Modifier.fillMaxWidth()) {
+                    Text(
+                        text = "تعداد نفرات: $guestCount",
+                        modifier = Modifier
+                            .fillMaxWidth()
+                            .clickable { expanded = true }
+                            .padding(vertical = 12.dp, horizontal = 4.dp),
+                        style = MaterialTheme.typography.bodyLarge
+                    )
+                    DropdownMenu(
+                        expanded = expanded,
+                        onDismissRequest = { expanded = false }
+                    ) {
+                        (1..7).forEach { number ->
+                            DropdownMenuItem(
+                                text = { Text(number.toString()) },
+                                onClick = {
+                                    guestCount = number
+                                    expanded = false
+                                }
+                            )
+                        }
+                    }
+                }
+
                 DatePickerField(
                     label = "تاریخ ورود",
                     value = checkIn,
@@ -369,8 +452,8 @@ fun AddRoomDialog(onDismiss: () -> Unit, onConfirm: (Room) -> Unit) {
                         checkIn = date
                         checkInMillis = millis
                     },
-                    modifier = Modifier.fillMaxWidth()
                 )
+
                 DatePickerField(
                     label = "تاریخ خروج",
                     value = checkOut,
@@ -378,21 +461,17 @@ fun AddRoomDialog(onDismiss: () -> Unit, onConfirm: (Room) -> Unit) {
                         checkOut = date
                         checkOutMillis = millis
                     },
-                    modifier = Modifier.fillMaxWidth()
                 )
             }
         },
         confirmButton = {
             Button(onClick = {
                 if (roomNumber.isNotBlank() && guestName.isNotBlank()) {
-                    val count =
-                        guestCount.trim().normalizeDigits().filter { it.isDigit() }.toIntOrNull()
-                            ?: 1
                     onConfirm(
                         Room(
                             roomNumber.normalizeDigits(),
                             guestName,
-                            count,
+                            guestCount,
                             checkIn,
                             checkOut,
                             checkInMillis,
@@ -418,50 +497,81 @@ fun RoomAdminCard(room: Room, onUpdate: (String, String, Long, Long, Int) -> Uni
     var checkOut by remember(room) { mutableStateOf(room.checkOutDate) }
     var checkInMillis by remember(room) { mutableStateOf(room.checkInEpochMillis) }
     var checkOutMillis by remember(room) { mutableStateOf(room.checkOutEpochMillis) }
-    var guestCount by remember(room) { mutableStateOf(room.guestCount.toString()) }
+    var guestCount by remember(room) { mutableStateOf(room.guestCount) }
+    var expanded by remember { mutableStateOf(false) }
 
     Card(modifier = Modifier.fillMaxWidth()) {
-        Column(modifier = Modifier.padding(12.dp)) {
-            Text("اتاق ${room.roomNumber} - ${room.guestName}", fontWeight = FontWeight.Bold)
-            Spacer(Modifier.height(8.dp))
-            OutlinedTextField(
-                value = guestCount,
-                onValueChange = { guestCount = it },
-                label = { Text("تعداد نفرات") },
-                keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Number),
-                modifier = Modifier.fillMaxWidth()
+        Row(
+            modifier = Modifier.padding(12.dp),
+            verticalAlignment = Alignment.CenterVertically,
+            horizontalArrangement = Arrangement.Center
+        ) {
+            Text(
+                text = room.roomNumber + " . ",
+                fontWeight = FontWeight.Bold
             )
-            Row(
-                modifier = Modifier.fillMaxWidth(),
-                horizontalArrangement = Arrangement.spacedBy(8.dp)
-            ) {
-                DatePickerField(
-                    label = "ورود",
-                    value = checkIn,
-                    onDateSelected = { date, millis ->
-                        checkIn = date
-                        checkInMillis = millis
-                    },
-                    modifier = Modifier.weight(1f)
+
+            Spacer(Modifier.weight(1f))
+
+            Text(text = room.guestName, fontWeight = FontWeight.Bold)
+
+            Spacer(Modifier.weight(1f))
+
+            Box {
+                Text(
+                    text = "تعداد نفرات: $guestCount",
+                    modifier = Modifier
+                        .clip(MaterialTheme.shapes.large)
+                        .clickable { expanded = true }
+                        .padding(8.dp),
+                    style = MaterialTheme.typography.bodyMedium
                 )
-                DatePickerField(
-                    label = "خروج",
-                    value = checkOut,
-                    onDateSelected = { date, millis ->
-                        checkOut = date
-                        checkOutMillis = millis
-                    },
-                    modifier = Modifier.weight(1f)
-                )
+                DropdownMenu(
+                    modifier = Modifier.clip(MaterialTheme.shapes.large),
+                    expanded = expanded,
+                    onDismissRequest = { expanded = false }
+                ) {
+                    (1..7).forEach { number ->
+                        DropdownMenuItem(
+                            text = { Text(number.toString()) },
+                            onClick = {
+                                guestCount = number
+                                expanded = false
+                            }
+                        )
+                    }
+                }
             }
+
+            Spacer(Modifier.weight(1f))
+
+            DatePickerField(
+                label = "ورود",
+                value = checkIn,
+                onDateSelected = { date, millis ->
+                    checkIn = date
+                    checkInMillis = millis
+                }
+            )
+
+            Spacer(Modifier.weight(1f))
+
+            DatePickerField(
+                label = "خروج",
+                value = checkOut,
+                onDateSelected = { date, millis ->
+                    checkOut = date
+                    checkOutMillis = millis
+                }
+            )
+
+            Spacer(Modifier.weight(1f))
+
             Button(
+                modifier = Modifier.padding(top = 8.dp),
                 onClick = {
-                    val count =
-                        guestCount.trim().normalizeDigits().filter { it.isDigit() }.toIntOrNull()
-                            ?: 1
-                    onUpdate(checkIn, checkOut, checkInMillis, checkOutMillis, count)
-                },
-                modifier = Modifier.align(Alignment.End).padding(top = 8.dp)
+                    onUpdate(checkIn, checkOut, checkInMillis, checkOutMillis, guestCount)
+                }
             ) {
                 Text("به‌روزرسانی")
             }
