@@ -1,12 +1,12 @@
 package com.braveboy.hotelzagrous.app.shared.features.admin
 
+import androidx.compose.animation.animateColorAsState
+import androidx.compose.foundation.BorderStroke
 import androidx.compose.foundation.background
-import androidx.compose.foundation.basicMarquee
-import androidx.compose.foundation.border
-import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
+import androidx.compose.foundation.layout.PaddingValues
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxHeight
@@ -14,15 +14,28 @@ import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
+import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.lazy.LazyColumn
-import androidx.compose.foundation.lazy.LazyItemScope
-import androidx.compose.foundation.lazy.LazyRow
 import androidx.compose.foundation.lazy.items
+import androidx.compose.foundation.shape.CircleShape
+import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.filled.Add
+import androidx.compose.material.icons.filled.ArrowDropDown
+import androidx.compose.material.icons.filled.Bed
+import androidx.compose.material.icons.filled.CalendarToday
+import androidx.compose.material.icons.filled.DeleteForever
+import androidx.compose.material.icons.filled.ErrorOutline
+import androidx.compose.material.icons.filled.Event
+import androidx.compose.material.icons.filled.Hotel
+import androidx.compose.material.icons.filled.Numbers
+import androidx.compose.material.icons.filled.People
+import androidx.compose.material.icons.filled.Person
+import androidx.compose.material.icons.filled.Restaurant
+import androidx.compose.material.icons.filled.Today
 import androidx.compose.material3.AlertDialog
 import androidx.compose.material3.Button
 import androidx.compose.material3.ButtonDefaults
-import androidx.compose.material3.Card
 import androidx.compose.material3.CircularProgressIndicator
 import androidx.compose.material3.DatePicker
 import androidx.compose.material3.DatePickerDialog
@@ -30,13 +43,12 @@ import androidx.compose.material3.DropdownMenu
 import androidx.compose.material3.DropdownMenuItem
 import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.HorizontalDivider
+import androidx.compose.material3.Icon
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.OutlinedTextField
-import androidx.compose.material3.Scaffold
+import androidx.compose.material3.Surface
 import androidx.compose.material3.Text
 import androidx.compose.material3.TextButton
-import androidx.compose.material3.TopAppBar
-import androidx.compose.material3.TopAppBarDefaults
 import androidx.compose.material3.rememberDatePickerState
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.collectAsState
@@ -46,8 +58,8 @@ import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
-import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.graphics.vector.ImageVector
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import com.braveboy.hotelzagrous.core.DateUtils
@@ -55,7 +67,6 @@ import com.braveboy.hotelzagrous.core.FoodItem
 import com.braveboy.hotelzagrous.core.FoodReservation
 import com.braveboy.hotelzagrous.core.Room
 import com.braveboy.hotelzagrous.core.normalizeDigits
-import kotlin.time.Clock
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
@@ -65,169 +76,238 @@ fun AdminScreen(viewModel: AdminViewModel) {
     var showClearDataDialog by remember { mutableStateOf(false) }
     var showReservationSummary by remember { mutableStateOf(false) }
 
-    Scaffold(
-        topBar = {
-            TopAppBar(
-                colors = TopAppBarDefaults.topAppBarColors().copy(
-                    containerColor = Color.Black
-                ),
-                title = {
-                    Text(
-                        modifier = Modifier.basicMarquee().padding(horizontal = 16.dp),
-                        text = "هتل زاگرس",
-                        maxLines = 1,
-                        style = MaterialTheme.typography.titleLarge,
-                        fontWeight = FontWeight.Bold,
-                        color = Color.White
-                    )
-                },
-                actions = {
-                    TextButton(
-                        onClick = { showClearDataDialog = true },
-                        colors = ButtonDefaults.textButtonColors(contentColor = MaterialTheme.colorScheme.error)
+    Row(modifier = Modifier.fillMaxSize().background(MaterialTheme.colorScheme.background)) {
+        // --- Sidebar Navigation ---
+        Surface(
+            modifier = Modifier
+                .width(280.dp)
+                .fillMaxHeight(),
+            color = MaterialTheme.colorScheme.surface,
+            tonalElevation = 1.dp
+        ) {
+            Column(
+                modifier = Modifier.padding(24.dp)
+            ) {
+                // Brand Header
+                Row(
+                    verticalAlignment = Alignment.CenterVertically,
+                    modifier = Modifier.padding(bottom = 40.dp, start = 8.dp)
+                ) {
+                    Surface(
+                        modifier = Modifier.size(40.dp),
+                        color = MaterialTheme.colorScheme.primary,
+                        shape = CircleShape
                     ) {
-                        Text("حذف کل داده‌ها")
+                        Icon(
+                            Icons.Default.Hotel,
+                            contentDescription = null,
+                            tint = Color.White,
+                            modifier = Modifier.padding(8.dp)
+                        )
                     }
+                    Spacer(Modifier.width(16.dp))
+                    Text(
+                        text = "هتل زاگرس",
+                        style = MaterialTheme.typography.titleLarge,
+                        fontWeight = FontWeight.ExtraBold,
+                        color = MaterialTheme.colorScheme.onSurface
+                    )
+                }
+
+                Text(
+                    "منوی مدیریت",
+                    style = MaterialTheme.typography.labelMedium,
+                    color = MaterialTheme.colorScheme.outline,
+                    modifier = Modifier.padding(start = 12.dp, bottom = 12.dp)
+                )
+
+                NavigationItem(
+                    label = "مدیریت اتاق‌ها",
+                    icon = Icons.Default.Bed,
+                    selected = !showReservationSummary,
+                    onClick = { showReservationSummary = false }
+                )
+
+                Spacer(Modifier.height(8.dp))
+
+                NavigationItem(
+                    label = "گزارش رزرو غذا",
+                    icon = Icons.Default.Restaurant,
+                    selected = showReservationSummary,
+                    onClick = { showReservationSummary = true }
+                )
+
+                Spacer(Modifier.weight(1f))
+
+                HorizontalDivider(
+                    modifier = Modifier.padding(vertical = 16.dp),
+                    color = MaterialTheme.colorScheme.surfaceVariant
+                )
+
+                NavigationItem(
+                    label = "حذف کل داده‌ها",
+                    icon = Icons.Default.DeleteForever,
+                    selected = false,
+                    onClick = { showClearDataDialog = true },
+                    contentColor = MaterialTheme.colorScheme.error
+                )
+            }
+        }
+
+        // --- Main Content Area ---
+        Column(
+            modifier = Modifier
+                .weight(1f)
+                .fillMaxHeight()
+                .padding(32.dp)
+        ) {
+            // Page Header
+            Row(
+                modifier = Modifier.fillMaxWidth().padding(bottom = 32.dp),
+                verticalAlignment = Alignment.CenterVertically,
+                horizontalArrangement = Arrangement.SpaceBetween
+            ) {
+                Column {
+                    Text(
+                        text = if (showReservationSummary) "گزارش جامع رزروها" else "داشبورد مدیریت اتاق‌ها",
+                        style = MaterialTheme.typography.headlineMedium,
+                        fontWeight = FontWeight.Bold,
+                        color = MaterialTheme.colorScheme.onSurface
+                    )
+                    Text(
+                        text = if (showReservationSummary) "مشاهده و مدیریت برنامه غذایی مهمانان" else "لیست و وضعیت اقامت تمام اتاق‌ها",
+                        style = MaterialTheme.typography.bodyMedium,
+                        color = MaterialTheme.colorScheme.onSurfaceVariant
+                    )
+                }
+
+                if (!showReservationSummary) {
                     Button(
                         onClick = { showAddRoomDialog = true },
-                        modifier = Modifier.padding(horizontal = 8.dp)
+                        shape = MaterialTheme.shapes.medium,
+                        contentPadding = PaddingValues(horizontal = 24.dp, vertical = 14.dp),
+                        elevation = ButtonDefaults.buttonElevation(defaultElevation = 2.dp)
                     ) {
-                        Text("افزودن اتاق")
+                        Icon(
+                            Icons.Default.Add,
+                            contentDescription = null,
+                            modifier = Modifier.size(20.dp)
+                        )
+                        Spacer(Modifier.width(12.dp))
+                        Text("افزودن اتاق جدید", style = MaterialTheme.typography.labelLarge)
                     }
-                }
-            )
-        }
-    ) { paddingValues ->
-        Row(modifier = Modifier.fillMaxSize().padding(paddingValues)) {
-            Column(
-                modifier = Modifier
-                    .fillMaxHeight()
-                    .weight(1F)
-                    .background(Color.Gray.copy(alpha = 0.5F))
-                    .padding(all = 16.dp)
-            ) {
-                Spacer(Modifier.height(16.dp))
-
-                TextButton(
-                    onClick = {
-                        showReservationSummary = false
-                    }
-                ) {
-                    Text(
-                        "مشاهده و مدیریت اتاق‌ها",
-                        style = MaterialTheme.typography.labelLarge,
-                        color = Color.Black
-                    )
-                }
-
-                Spacer(Modifier.height(16.dp))
-
-                TextButton(
-                    onClick = {
-                        showReservationSummary = true
-                    }
-                ) {
-                    Text(
-                        "گزارش غذای مهمانان",
-                        style = MaterialTheme.typography.labelLarge,
-                        color = Color.Black
-                    )
-                }
-
-                Spacer(Modifier.height(16.dp))
-
-                TextButton(
-                    onClick = {
-                        //showReservationSummary = false
-                    }
-                ) {
-                    Text(
-                        "خروجی گزارش رستوران",
-                        style = MaterialTheme.typography.labelLarge,
-                        color = Color.Black
-                    )
                 }
             }
 
-            Box(
-                modifier = Modifier
-                    .fillMaxHeight()
-                    .weight(4F)
-                    .background(Color.Gray.copy(alpha = 0.3F))
-                    .padding(horizontal = 24.dp),
+            // Main Content Card
+            Surface(
+                modifier = Modifier.fillMaxSize(),
+                shape = MaterialTheme.shapes.large,
+                color = MaterialTheme.colorScheme.surface,
+                shadowElevation = 2.dp,
+                border = BorderStroke(1.dp, MaterialTheme.colorScheme.surfaceVariant)
             ) {
-                when {
-                    state.error != null -> {
-                        Text(
-                            state.error!!,
-                            color = MaterialTheme.colorScheme.error,
-                            modifier = Modifier.padding(vertical = 8.dp)
-                        )
-                    }
-
-                    state.isLoading -> {
-                        Box(
-                            modifier = Modifier.fillMaxWidth(),
-                            contentAlignment = Alignment.Center
-                        ) {
-                            CircularProgressIndicator()
-                        }
-                    }
-
-                    showReservationSummary && state.reservations.isNotEmpty() -> {
-                        LazyColumn(
-                            modifier = Modifier.padding(horizontal = 24.dp),
-                            verticalArrangement = Arrangement.spacedBy(16.dp)
-                        ) {
-
-                            item {
-                                TodayReservationDetail(state)
-                            }
-
-                            item {
-                                TodayReservationDetailByRoom(state)
-                            }
-
-                            item {
-                                Text(
-                                    modifier = Modifier.padding(all = 24.dp),
-                                    text = "گزارش آتی",
-                                    style = MaterialTheme.typography.titleLarge,
-                                    fontWeight = FontWeight.Bold
+                Box(modifier = Modifier.fillMaxSize()) {
+                    when {
+                        state.error != null -> {
+                            Column(
+                                modifier = Modifier.fillMaxSize(),
+                                verticalArrangement = Arrangement.Center,
+                                horizontalAlignment = Alignment.CenterHorizontally
+                            ) {
+                                Icon(
+                                    Icons.Default.ErrorOutline,
+                                    contentDescription = null,
+                                    modifier = Modifier.size(48.dp),
+                                    tint = MaterialTheme.colorScheme.error
                                 )
-
-                                ReservationSummary(state.reservations, state.rooms, state.foods)
-                            }
-                        }
-                    }
-
-                    else -> {
-                        LazyColumn(
-                            modifier = Modifier.padding(horizontal = 24.dp),
-                            verticalArrangement = Arrangement.spacedBy(16.dp)
-                        ) {
-
-                            item {
+                                Spacer(Modifier.height(16.dp))
                                 Text(
-                                    modifier = Modifier.padding(all = 24.dp),
-                                    text = "مدیریت اتاق‌ها",
-                                    style = MaterialTheme.typography.titleLarge,
-                                    fontWeight = FontWeight.Bold
+                                    state.error!!,
+                                    color = MaterialTheme.colorScheme.error,
+                                    style = MaterialTheme.typography.bodyLarge
                                 )
                             }
+                        }
 
-                            items(state.rooms, key = { it.roomNumber }) { room ->
-                                RoomAdminCard(room) { checkIn, checkOut, checkInMillis, checkOutMillis, guestCount ->
-                                    viewModel.onIntent(
-                                        AdminIntent.UpdateRoomStay(
-                                            room.roomNumber,
-                                            checkIn,
-                                            checkOut,
-                                            checkInMillis,
-                                            checkOutMillis,
-                                            guestCount
+                        state.isLoading -> {
+                            Box(Modifier.fillMaxSize(), contentAlignment = Alignment.Center) {
+                                CircularProgressIndicator(strokeWidth = 3.dp)
+                            }
+                        }
+
+                        showReservationSummary -> {
+                            LazyColumn(
+                                modifier = Modifier.fillMaxSize().padding(32.dp),
+                                verticalArrangement = Arrangement.spacedBy(32.dp)
+                            ) {
+                                item { TodayReservationDetail(state) }
+                                item { TodayReservationDetailByRoom(state) }
+                                item {
+                                    Column {
+                                        Text(
+                                            text = "گزارش روزهای آتی",
+                                            style = MaterialTheme.typography.titleLarge,
+                                            fontWeight = FontWeight.Bold,
+                                            modifier = Modifier.padding(bottom = 20.dp)
                                         )
+                                        ReservationSummary(
+                                            state.reservations,
+                                            state.rooms,
+                                            state.foods
+                                        )
+                                    }
+                                }
+                            }
+                        }
+
+                        else -> {
+                            Column(modifier = Modifier.fillMaxSize().padding(32.dp)) {
+                                Row(
+                                    modifier = Modifier.fillMaxWidth().padding(bottom = 24.dp),
+                                    horizontalArrangement = Arrangement.SpaceBetween,
+                                    verticalAlignment = Alignment.CenterVertically
+                                ) {
+                                    Text(
+                                        "لیست اتاق‌های ثبت شده",
+                                        style = MaterialTheme.typography.titleLarge,
+                                        fontWeight = FontWeight.Bold
                                     )
+                                    Surface(
+                                        color = MaterialTheme.colorScheme.primaryContainer,
+                                        shape = CircleShape
+                                    ) {
+                                        Text(
+                                            "${state.rooms.size} اتاق",
+                                            modifier = Modifier.padding(
+                                                horizontal = 12.dp,
+                                                vertical = 4.dp
+                                            ),
+                                            style = MaterialTheme.typography.labelMedium,
+                                            color = MaterialTheme.colorScheme.onPrimaryContainer,
+                                            fontWeight = FontWeight.Bold
+                                        )
+                                    }
+                                }
+
+                                LazyColumn(
+                                    modifier = Modifier.fillMaxSize(),
+                                    verticalArrangement = Arrangement.spacedBy(16.dp)
+                                ) {
+                                    items(state.rooms, key = { it.roomNumber }) { room ->
+                                        RoomAdminCard(room) { checkIn, checkOut, checkInMillis, checkOutMillis, guestCount ->
+                                            viewModel.onIntent(
+                                                AdminIntent.UpdateRoomStay(
+                                                    room.roomNumber,
+                                                    checkIn,
+                                                    checkOut,
+                                                    checkInMillis,
+                                                    checkOutMillis,
+                                                    guestCount
+                                                )
+                                            )
+                                        }
+                                    }
                                 }
                             }
                         }
@@ -250,8 +330,8 @@ fun AdminScreen(viewModel: AdminViewModel) {
     if (showClearDataDialog) {
         AlertDialog(
             onDismissRequest = { showClearDataDialog = false },
-            title = { Text("حذف تمام اطلاعات") },
-            text = { Text("آیا از حذف تمامی اطلاعات اتاق‌ها و رزروها اطمینان دارید؟ این عمل غیرقابل بازگشت است.") },
+            title = { Text("پاکسازی کامل پایگاه داده") },
+            text = { Text("با تایید این عملیات، تمامی اطلاعات مربوط به اتاق‌ها، مهمانان و تاریخچه‌ی رزروها برای همیشه حذف خواهد شد. آیا مطمئن هستید؟") },
             confirmButton = {
                 Button(
                     onClick = {
@@ -260,15 +340,249 @@ fun AdminScreen(viewModel: AdminViewModel) {
                     },
                     colors = ButtonDefaults.buttonColors(containerColor = MaterialTheme.colorScheme.error)
                 ) {
-                    Text("بله، حذف شود")
+                    Text("بله، کاملاً پاک شود")
                 }
             },
             dismissButton = {
                 TextButton(onClick = { showClearDataDialog = false }) {
                     Text("انصراف")
                 }
-            }
+            },
+            shape = MaterialTheme.shapes.large
         )
+    }
+}
+
+@Composable
+fun NavigationItem(
+    label: String,
+    icon: ImageVector,
+    selected: Boolean,
+    onClick: () -> Unit,
+    contentColor: Color = if (selected) MaterialTheme.colorScheme.primary else MaterialTheme.colorScheme.onSurfaceVariant
+) {
+    val backgroundColor by animateColorAsState(
+        if (selected) MaterialTheme.colorScheme.primaryContainer.copy(alpha = 0.8f) else Color.Transparent
+    )
+
+    Surface(
+        onClick = onClick,
+        modifier = Modifier
+            .fillMaxWidth()
+            .height(52.dp),
+        color = backgroundColor,
+        shape = MaterialTheme.shapes.medium
+    ) {
+        Row(
+            modifier = Modifier.padding(horizontal = 16.dp),
+            verticalAlignment = Alignment.CenterVertically
+        ) {
+            Icon(
+                icon,
+                contentDescription = null,
+                tint = contentColor,
+                modifier = Modifier.size(20.dp)
+            )
+            Spacer(Modifier.width(16.dp))
+            Text(
+                text = label,
+                style = MaterialTheme.typography.labelLarge,
+                fontWeight = if (selected) FontWeight.Bold else FontWeight.Medium,
+                color = contentColor
+            )
+            if (selected) {
+                Spacer(Modifier.weight(1f))
+                Box(
+                    modifier = Modifier
+                        .size(6.dp)
+                        .background(contentColor, CircleShape)
+                )
+            }
+        }
+    }
+}
+
+@Composable
+fun RoomAdminCard(room: Room, onUpdate: (String, String, Long, Long, Int) -> Unit) {
+    var checkIn by remember(room) { mutableStateOf(room.checkInDate) }
+    var checkOut by remember(room) { mutableStateOf(room.checkOutDate) }
+    var checkInMillis by remember(room) { mutableStateOf(room.checkInEpochMillis) }
+    var checkOutMillis by remember(room) { mutableStateOf(room.checkOutEpochMillis) }
+    var guestCount by remember(room) { mutableStateOf(room.guestCount) }
+    var expanded by remember { mutableStateOf(false) }
+
+    Surface(
+        modifier = Modifier.fillMaxWidth(),
+        shape = MaterialTheme.shapes.medium,
+        color = MaterialTheme.colorScheme.surface,
+        border = BorderStroke(1.dp, MaterialTheme.colorScheme.surfaceVariant)
+    ) {
+        Row(
+            modifier = Modifier.padding(20.dp),
+            verticalAlignment = Alignment.CenterVertically
+        ) {
+            // Room Number
+            Column(modifier = Modifier.width(100.dp)) {
+                Text(
+                    "شماره اتاق",
+                    style = MaterialTheme.typography.labelSmall,
+                    color = MaterialTheme.colorScheme.outline
+                )
+                Text(
+                    room.roomNumber,
+                    style = MaterialTheme.typography.titleLarge,
+                    fontWeight = FontWeight.ExtraBold,
+                    color = MaterialTheme.colorScheme.primary
+                )
+            }
+
+            // Guest Name
+            Column(modifier = Modifier.weight(1.5f)) {
+                Text(
+                    "نام مهمان اصلی",
+                    style = MaterialTheme.typography.labelSmall,
+                    color = MaterialTheme.colorScheme.outline
+                )
+                Text(
+                    room.guestName,
+                    style = MaterialTheme.typography.titleMedium,
+                    fontWeight = FontWeight.Bold
+                )
+            }
+
+            // Guest Count
+            Column(modifier = Modifier.weight(1f)) {
+                Text(
+                    "ظرفیت (نفر)",
+                    style = MaterialTheme.typography.labelSmall,
+                    color = MaterialTheme.colorScheme.outline
+                )
+                Box {
+                    Surface(
+                        onClick = { expanded = true },
+                        color = MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.5f),
+                        shape = MaterialTheme.shapes.small
+                    ) {
+                        Row(
+                            modifier = Modifier.padding(horizontal = 12.dp, vertical = 6.dp),
+                            verticalAlignment = Alignment.CenterVertically
+                        ) {
+                            Text(
+                                text = "$guestCount نفر",
+                                style = MaterialTheme.typography.bodyMedium,
+                                fontWeight = FontWeight.Bold
+                            )
+                            Icon(
+                                Icons.Default.ArrowDropDown,
+                                contentDescription = null,
+                                modifier = Modifier.size(16.dp)
+                            )
+                        }
+                    }
+                    DropdownMenu(expanded = expanded, onDismissRequest = { expanded = false }) {
+                        (1..10).forEach { number ->
+                            DropdownMenuItem(
+                                text = { Text("$number نفر") },
+                                onClick = { guestCount = number; expanded = false }
+                            )
+                        }
+                    }
+                }
+            }
+
+            // Stay Period
+            Column(modifier = Modifier.weight(2f)) {
+                Text(
+                    "بازه اقامت",
+                    style = MaterialTheme.typography.labelSmall,
+                    color = MaterialTheme.colorScheme.outline
+                )
+                Row(verticalAlignment = Alignment.CenterVertically) {
+                    DatePickerFieldSmall(value = checkIn) { date, millis ->
+                        checkIn = date; checkInMillis = millis
+                    }
+                    Text(
+                        " تا ",
+                        style = MaterialTheme.typography.bodySmall,
+                        color = MaterialTheme.colorScheme.outline,
+                        modifier = Modifier.padding(horizontal = 4.dp)
+                    )
+                    DatePickerFieldSmall(value = checkOut) { date, millis ->
+                        checkOut = date; checkOutMillis = millis
+                    }
+                }
+            }
+
+            // Actions
+            Button(
+                onClick = {
+                    onUpdate(
+                        checkIn,
+                        checkOut,
+                        checkInMillis,
+                        checkOutMillis,
+                        guestCount
+                    )
+                },
+                shape = MaterialTheme.shapes.medium,
+                colors = ButtonDefaults.buttonColors(
+                    containerColor = MaterialTheme.colorScheme.primaryContainer,
+                    contentColor = MaterialTheme.colorScheme.onPrimaryContainer
+                ),
+                contentPadding = PaddingValues(horizontal = 20.dp)
+            ) {
+                Text(
+                    "به‌روزرسانی",
+                    style = MaterialTheme.typography.labelLarge,
+                    fontWeight = FontWeight.Bold
+                )
+            }
+        }
+    }
+}
+
+@OptIn(ExperimentalMaterial3Api::class)
+@Composable
+fun DatePickerFieldSmall(value: String, onDateSelected: (String, Long) -> Unit) {
+    var showDatePicker by remember { mutableStateOf(false) }
+    val datePickerState = rememberDatePickerState()
+
+    Surface(
+        onClick = { showDatePicker = true },
+        color = MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.5f),
+        shape = MaterialTheme.shapes.small
+    ) {
+        Text(
+            text = value.ifBlank { "انتخاب" },
+            modifier = Modifier.padding(horizontal = 10.dp, vertical = 6.dp),
+            style = MaterialTheme.typography.bodyMedium,
+            fontWeight = FontWeight.Bold,
+            color = MaterialTheme.colorScheme.onSurface
+        )
+    }
+
+    if (showDatePicker) {
+        DatePickerDialog(
+            onDismissRequest = { showDatePicker = false },
+            confirmButton = {
+                TextButton(onClick = {
+                    datePickerState.selectedDateMillis?.let {
+                        onDateSelected(
+                            DateUtils.convertMillisToJalaliString(
+                                it
+                            ), it
+                        )
+                    }
+                    showDatePicker = false
+                }) { Text("تایید", fontWeight = FontWeight.Bold) }
+            },
+            dismissButton = {
+                TextButton(onClick = { showDatePicker = false }) { Text("انصراف") }
+            },
+            shape = MaterialTheme.shapes.large
+        ) {
+            DatePicker(state = datePickerState)
+        }
     }
 }
 
@@ -280,159 +594,85 @@ fun ReservationSummary(
 ) {
     val roomMap = rooms.associateBy { it.roomNumber }
     val foodMap = foods.associateBy { it.id }
-
-    val today = DateUtils.convertMillisToJalaliString(Clock.System.now().toEpochMilliseconds())
+    val todayMillis = kotlin.time.Clock.System.now().toEpochMilliseconds()
+    val today = DateUtils.convertMillisToJalaliString(todayMillis)
 
     val summaryByDate = reservations
-        .filter { it.date > today } // Filter: only today and future
+        .filter { it.date > today }
         .groupBy { it.date }
         .toList()
         .sortedBy { it.first }
 
     if (summaryByDate.isEmpty()) {
-        Card(modifier = Modifier.fillMaxWidth()) {
-            Text("رزروی برای امروز یا آینده ثبت نشده است", modifier = Modifier.padding(16.dp))
+        Surface(
+            modifier = Modifier.fillMaxWidth(),
+            color = MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.3f),
+            shape = MaterialTheme.shapes.medium
+        ) {
+            Text(
+                "در حال حاضر هیچ رزروی برای تاریخ‌های آینده ثبت نشده است.",
+                modifier = Modifier.padding(24.dp),
+                style = MaterialTheme.typography.bodyMedium,
+                color = MaterialTheme.colorScheme.outline
+            )
         }
         return
     }
 
-    for ((date, dailyResList) in summaryByDate) {
-        val validRes = dailyResList.filter { res ->
-            res.guestMealSelections.any { it.lunchFoodId != null || it.dinnerFoodId != null }
-        }
+    summaryByDate.forEach { (date, dailyResList) ->
+        val validRes =
+            dailyResList.filter { res -> res.guestMealSelections.any { it.lunchFoodId != null || it.dinnerFoodId != null } }
+        if (validRes.isNotEmpty()) {
+            Surface(
+                modifier = Modifier.fillMaxWidth().padding(vertical = 8.dp),
+                shape = MaterialTheme.shapes.medium,
+                color = MaterialTheme.colorScheme.surface,
+                border = BorderStroke(1.dp, MaterialTheme.colorScheme.surfaceVariant)
+            ) {
+                Column(modifier = Modifier.padding(24.dp)) {
+                    Row(verticalAlignment = Alignment.CenterVertically) {
+                        Icon(
+                            Icons.Default.Event,
+                            contentDescription = null,
+                            tint = MaterialTheme.colorScheme.primary,
+                            modifier = Modifier.size(20.dp)
+                        )
+                        Spacer(Modifier.width(12.dp))
+                        Text(
+                            date,
+                            style = MaterialTheme.typography.titleMedium,
+                            fontWeight = FontWeight.Bold,
+                            color = MaterialTheme.colorScheme.primary
+                        )
+                    }
 
-        if (validRes.isEmpty()) continue
-
-        Card(modifier = Modifier.fillMaxWidth().padding(vertical = 4.dp)) {
-            Column(modifier = Modifier.padding(12.dp)) {
-                Text(
-                    "تاریخ: $date",
-                    style = MaterialTheme.typography.titleMedium,
-                    fontWeight = FontWeight.Bold,
-                    color = MaterialTheme.colorScheme.primary
-                )
-                HorizontalDivider(modifier = Modifier.padding(vertical = 8.dp))
-
-                validRes.forEach { res ->
-                    val room = roomMap[res.roomNumber]
-                    Text(
-                        "اتاق ${res.roomNumber} (${room?.guestName ?: "نامعلوم"}):",
-                        style = MaterialTheme.typography.labelLarge
+                    HorizontalDivider(
+                        modifier = Modifier.padding(vertical = 16.dp),
+                        thickness = 0.5.dp,
+                        color = MaterialTheme.colorScheme.surfaceVariant
                     )
 
-                    res.guestMealSelections.forEach { selection ->
-                        if (selection.lunchFoodId != null || selection.dinnerFoodId != null) {
-                            val lunch = foodMap[selection.lunchFoodId]?.name ?: "-"
-                            val dinner = foodMap[selection.dinnerFoodId]?.name ?: "-"
-                            Text(
-                                "  - مهمان ${selection.guestIndex + 1}: ناهار: $lunch، شام: $dinner",
-                                style = MaterialTheme.typography.bodySmall
-                            )
-                        }
-                    }
-                    Spacer(Modifier.height(4.dp))
-                }
-
-                HorizontalDivider(modifier = Modifier.padding(vertical = 8.dp))
-
-                val allLunch =
-                    validRes.flatMap { it.guestMealSelections }.mapNotNull { it.lunchFoodId }
-                val allDinner =
-                    validRes.flatMap { it.guestMealSelections }.mapNotNull { it.dinnerFoodId }
-
-                if (allLunch.isNotEmpty()) {
-                    Text("مجموع ناهار: ${allLunch.size} پرس", fontWeight = FontWeight.SemiBold)
-                    allLunch.groupBy { it }.forEach { (id, list) ->
-                        Text(
-                            "  • ${foodMap[id]?.name ?: id}: ${list.size}",
-                            style = MaterialTheme.typography.bodyMedium
-                        )
-                    }
-                }
-
-                Spacer(Modifier.height(4.dp))
-
-                if (allDinner.isNotEmpty()) {
-                    Text("مجموع شام: ${allDinner.size} پرس", fontWeight = FontWeight.SemiBold)
-                    allDinner.groupBy { it }.forEach { (id, list) ->
-                        Text(
-                            "  • ${foodMap[id]?.name ?: id}: ${list.size}",
-                            style = MaterialTheme.typography.bodyMedium
-                        )
-                    }
-                }
-            }
-        }
-    }
-}
-
-@Composable
-fun LazyItemScope.TodayReservationDetailByRoom(state: AdminState) {
-    Text(
-        modifier = Modifier.padding(all = 24.dp),
-        text = "گزارش روزانه به تفکیک اتاق",
-        style = MaterialTheme.typography.titleLarge,
-        fontWeight = FontWeight.Bold
-    )
-
-    Card(modifier = Modifier.fillMaxWidth().padding(vertical = 4.dp)) {
-        val today = DateUtils.convertMillisToJalaliString(
-            Clock.System.now().toEpochMilliseconds()
-        )
-        val todayReservation =
-            state.reservations.groupBy { it.date == today }
-
-        Row(
-            modifier = Modifier
-                .fillParentMaxSize()
-                .padding(12.dp)
-        ) {
-            LazyColumn {
-                item {
-                    val validRes = todayReservation[true] ?: emptyList()
                     validRes.forEach { res ->
-                        val room = state.rooms.associateBy { it.roomNumber }[res.roomNumber]
-                        val foodMap = state.foods.associateBy { it.id }
-                        Text(
-                            "اتاق ${res.roomNumber} (${room?.guestName ?: "نامعلوم"}):",
-                            style = MaterialTheme.typography.labelLarge
-                        )
-
-                        res.guestMealSelections.forEach { selection ->
-                            if (selection.lunchFoodId != null || selection.dinnerFoodId != null) {
-                                val lunch = foodMap[selection.lunchFoodId]?.name ?: "-"
-                                val dinner = foodMap[selection.dinnerFoodId]?.name ?: "-"
-                                // Icon(imageVector = Icons)
-                                Row(
-                                    Modifier.border(
-                                        width = 2.dp,
-                                        color = MaterialTheme.colorScheme.primary,
-                                        shape = MaterialTheme.shapes.medium
-                                    )
-                                ) {
-                                    Text(
-                                        "  - مهمان ${selection.guestIndex + 1}  :",
-                                        style = MaterialTheme.typography.bodySmall
-                                    )
-
-                                    Spacer(Modifier.width(8.dp))
-
-                                    Text(
-                                        ": ناهار: $lunch ",
-                                        style = MaterialTheme.typography.bodySmall
-                                    )
-
-                                    Spacer(Modifier.width(8.dp))
-
-                                    Text(
-                                        ": شام: $dinner ",
-                                        style = MaterialTheme.typography.bodySmall
-                                    )
-
+                        val room = roomMap[res.roomNumber]
+                        Column(modifier = Modifier.padding(bottom = 12.dp)) {
+                            Text(
+                                "اتاق ${res.roomNumber} — ${room?.guestName ?: "نامعلوم"}",
+                                style = MaterialTheme.typography.bodyLarge,
+                                fontWeight = FontWeight.Bold
+                            )
+                            res.guestMealSelections.forEach { selection ->
+                                if (selection.lunchFoodId != null || selection.dinnerFoodId != null) {
+                                    Row(modifier = Modifier.padding(top = 4.dp, start = 16.dp)) {
+                                        Text("• ", color = MaterialTheme.colorScheme.primary)
+                                        Text(
+                                            "مهمان ${selection.guestIndex + 1}: ناهار [${foodMap[selection.lunchFoodId]?.name ?: "—"}] | شام [${foodMap[selection.dinnerFoodId]?.name ?: "—"}]",
+                                            style = MaterialTheme.typography.bodyMedium,
+                                            color = MaterialTheme.colorScheme.onSurfaceVariant
+                                        )
+                                    }
                                 }
                             }
                         }
-                        Spacer(Modifier.height(4.dp))
                     }
                 }
             }
@@ -440,191 +680,176 @@ fun LazyItemScope.TodayReservationDetailByRoom(state: AdminState) {
     }
 }
 
+@Composable
+fun TodayReservationDetail(state: AdminState) {
+    val todayMillis = kotlin.time.Clock.System.now().toEpochMilliseconds()
+    val today = DateUtils.convertMillisToJalaliString(todayMillis)
+    val todayResList = state.reservations.filter { it.date == today }
+    val foodMap = state.foods.associateBy { it.id }
+
+    val allLunch = todayResList.flatMap { it.guestMealSelections }.mapNotNull { it.lunchFoodId }
+    val allDinner = todayResList.flatMap { it.guestMealSelections }.mapNotNull { it.dinnerFoodId }
+
+    Surface(
+        modifier = Modifier.fillMaxWidth(),
+        shape = MaterialTheme.shapes.large,
+        color = MaterialTheme.colorScheme.primaryContainer.copy(alpha = 0.3f),
+        border = BorderStroke(1.dp, MaterialTheme.colorScheme.primary.copy(alpha = 0.1f))
+    ) {
+        Column(modifier = Modifier.padding(28.dp)) {
+            Row(verticalAlignment = Alignment.CenterVertically) {
+                Surface(
+                    color = MaterialTheme.colorScheme.primary,
+                    shape = CircleShape,
+                    modifier = Modifier.size(32.dp)
+                ) {
+                    Icon(
+                        Icons.Default.Today,
+                        contentDescription = null,
+                        tint = Color.White,
+                        modifier = Modifier.padding(6.dp)
+                    )
+                }
+                Spacer(Modifier.width(16.dp))
+                Text(
+                    "خلاصه کل سفارشات امروز ($today)",
+                    style = MaterialTheme.typography.titleLarge,
+                    fontWeight = FontWeight.Bold
+                )
+            }
+
+            Spacer(Modifier.height(24.dp))
+
+            Row(
+                modifier = Modifier.fillMaxWidth(),
+                horizontalArrangement = Arrangement.spacedBy(24.dp)
+            ) {
+                MealSummaryBox("وعده ناهار", allLunch, foodMap, Modifier.weight(1f))
+                MealSummaryBox("وعده شام", allDinner, foodMap, Modifier.weight(1f))
+            }
+        }
+    }
+}
 
 @Composable
-fun LazyItemScope.TodayReservationDetail(state: AdminState) {
-    Text(
-        modifier = Modifier.padding(all = 24.dp),
-        text = "گزارش روز",
-        style = MaterialTheme.typography.titleLarge,
-        fontWeight = FontWeight.Bold
-    )
-
-    Card(modifier = Modifier.fillMaxWidth().padding(vertical = 4.dp)) {
-        Column(modifier = Modifier.padding(12.dp)) {
-            val today = DateUtils.convertMillisToJalaliString(
-                Clock.System.now().toEpochMilliseconds()
-            )
-            val todayReservation =
-                state.reservations.groupBy { it.date == today }
+fun MealSummaryBox(
+    label: String,
+    foodIds: List<String>,
+    foodMap: Map<String, FoodItem>,
+    modifier: Modifier
+) {
+    Surface(
+        modifier = modifier,
+        color = MaterialTheme.colorScheme.surface,
+        shape = MaterialTheme.shapes.medium,
+        border = BorderStroke(1.dp, MaterialTheme.colorScheme.surfaceVariant)
+    ) {
+        Column(modifier = Modifier.padding(20.dp)) {
             Text(
-                modifier = Modifier.padding(all = 8.dp),
-                text = "گزارش مجموع غذای روز (تاریخ: $today)",
-                style = MaterialTheme.typography.bodyLarge,
+                label,
+                style = MaterialTheme.typography.titleMedium,
                 fontWeight = FontWeight.Bold,
                 color = MaterialTheme.colorScheme.primary
             )
-
-            HorizontalDivider(modifier = Modifier.padding(vertical = 8.dp))
-
-            val todayResList = todayReservation[true] ?: emptyList()
-            val foodMap = state.foods.associateBy { it.id }
-
-            val allLunch =
-                todayResList.flatMap { it.guestMealSelections }
-                    .mapNotNull { it.lunchFoodId }
-            val allDinner =
-                todayResList.flatMap { it.guestMealSelections }
-                    .mapNotNull { it.dinnerFoodId }
-
-            if (allLunch.isNotEmpty()) {
+            Spacer(Modifier.height(16.dp))
+            if (foodIds.isEmpty()) {
                 Text(
-                    text = "ناهار",
-                    fontWeight = FontWeight.Bold
+                    "سفارشی ثبت نشده است",
+                    style = MaterialTheme.typography.bodyMedium,
+                    color = MaterialTheme.colorScheme.outline
                 )
-
-                Spacer(Modifier.height(8.dp))
-
-                Row(Modifier.fillParentMaxWidth()) {
-                    LazyRow {
-                        item {
-                            allLunch.groupBy { it }
-                                .forEach { (id, list) ->
-                                    Text(
-                                        modifier = Modifier
-                                            .padding(horizontal = 8.dp)
-                                            .border(
-                                                width = 2.dp,
-                                                color = MaterialTheme.colorScheme.primary,
-                                                shape = MaterialTheme.shapes.medium
-                                            )
-                                            .padding(all = 8.dp),
-                                        text = foodMap[id]?.name + " (${list.size} پرس )",
-                                        style = MaterialTheme.typography.bodyMedium
-                                    )
-                                }
-                        }
+            } else {
+                foodIds.groupBy { it }.forEach { (id, list) ->
+                    Row(
+                        modifier = Modifier.fillMaxWidth(),
+                        horizontalArrangement = Arrangement.SpaceBetween
+                    ) {
+                        Text(foodMap[id]?.name ?: id, style = MaterialTheme.typography.bodyMedium)
+                        Text("${list.size} پرس", fontWeight = FontWeight.Bold)
                     }
-
-                    Spacer(modifier = Modifier.weight(1F))
-
+                    Spacer(Modifier.height(4.dp))
+                }
+                HorizontalDivider(
+                    Modifier.padding(vertical = 12.dp),
+                    thickness = 1.dp,
+                    color = MaterialTheme.colorScheme.surfaceVariant
+                )
+                Row(
+                    modifier = Modifier.fillMaxWidth(),
+                    horizontalArrangement = Arrangement.SpaceBetween
+                ) {
+                    Text("مجموع کل", fontWeight = FontWeight.Bold)
                     Text(
-                        modifier = Modifier
-                            .padding(horizontal = 8.dp)
-                            .border(
-                                width = 2.dp,
-                                color = MaterialTheme.colorScheme.primary,
-                                shape = MaterialTheme.shapes.medium
-                            )
-                            .padding(all = 8.dp),
-                        text = "مجموع ناهار: ${allLunch.size} پرس",
-                        fontWeight = FontWeight.SemiBold
+                        "${foodIds.size} پرس",
+                        fontWeight = FontWeight.ExtraBold,
+                        color = MaterialTheme.colorScheme.primary
                     )
                 }
-            }
-
-            if (allLunch.isNotEmpty() && allDinner.isNotEmpty()) {
-                Spacer(Modifier.height(8.dp))
-            }
-
-            if (allDinner.isNotEmpty()) {
-                Text(
-                    " شام",
-                    fontWeight = FontWeight.SemiBold
-                )
-
-                Row(Modifier.fillParentMaxWidth()) {
-                    LazyRow {
-                        item {
-                            allDinner.groupBy { it }
-                                .forEach { (id, list) ->
-                                    Text(
-                                        modifier = Modifier
-                                            .padding(horizontal = 8.dp)
-                                            .border(
-                                                width = 2.dp,
-                                                color = MaterialTheme.colorScheme.primary,
-                                                shape = MaterialTheme.shapes.medium
-                                            )
-                                            .padding(all = 8.dp),
-                                        text = foodMap[id]?.name + " (${list.size} پرس )",
-                                        style = MaterialTheme.typography.bodyMedium
-                                    )
-                                }
-                        }
-                    }
-                    Spacer(modifier = Modifier.weight(1F))
-
-                    Text(
-                        modifier = Modifier
-                            .padding(horizontal = 8.dp)
-                            .border(
-                                width = 2.dp,
-                                color = MaterialTheme.colorScheme.primary,
-                                shape = MaterialTheme.shapes.medium
-                            )
-                            .padding(all = 8.dp),
-                        text = "مجموع شام : ${allLunch.size} پرس",
-                        fontWeight = FontWeight.SemiBold
-                    )
-                }
-            }
-
-            if (allLunch.isEmpty() && allDinner.isEmpty()) {
-                Text("هیچ رزروی برای امروز ثبت نشده است.")
             }
         }
     }
 }
 
-
-@OptIn(ExperimentalMaterial3Api::class)
 @Composable
-fun DatePickerField(
-    label: String,
-    value: String,
-    onDateSelected: (String, Long) -> Unit,
-    modifier: Modifier = Modifier
-) {
-    var showDatePicker by remember { mutableStateOf(false) }
-    val datePickerState = rememberDatePickerState()
+fun TodayReservationDetailByRoom(state: AdminState) {
+    val todayMillis = kotlin.time.Clock.System.now().toEpochMilliseconds()
+    val today = DateUtils.convertMillisToJalaliString(todayMillis)
+    val todayResList = state.reservations.filter { it.date == today }
+    val foodMap = state.foods.associateBy { it.id }
 
-    Box(
-        modifier = modifier.clip(MaterialTheme.shapes.large)
-    ) {
+    Column(Modifier.padding(top = 16.dp)) {
         Text(
-            modifier = Modifier.padding(all = 8.dp),
-            text = "$label: $value"
+            "جزئیات سفارشات به تفکیک اتاق (امروز)",
+            style = MaterialTheme.typography.titleLarge,
+            fontWeight = FontWeight.Bold
         )
+        Spacer(Modifier.height(16.dp))
 
-        Box(
-            modifier = Modifier
-                .matchParentSize()
-                .clickable { showDatePicker = true }
-        )
-    }
+        if (todayResList.isEmpty()) {
+            Text(
+                "هیچ سفارشی برای امروز ثبت نشده است.",
+                style = MaterialTheme.typography.bodyMedium,
+                color = MaterialTheme.colorScheme.outline
+            )
+        }
 
-    if (showDatePicker) {
-        DatePickerDialog(
-            onDismissRequest = { showDatePicker = false },
-            confirmButton = {
-                TextButton(onClick = {
-                    datePickerState.selectedDateMillis?.let { millis ->
-                        val formattedDate = DateUtils.convertMillisToJalaliString(millis)
-                        onDateSelected(formattedDate, millis)
+        todayResList.forEach { res ->
+            Surface(
+                modifier = Modifier.fillMaxWidth().padding(vertical = 6.dp),
+                shape = MaterialTheme.shapes.medium,
+                color = MaterialTheme.colorScheme.surface,
+                border = BorderStroke(1.dp, MaterialTheme.colorScheme.surfaceVariant)
+            ) {
+                Row(
+                    modifier = Modifier.padding(16.dp),
+                    verticalAlignment = Alignment.CenterVertically
+                ) {
+                    Surface(
+                        color = MaterialTheme.colorScheme.primaryContainer,
+                        shape = MaterialTheme.shapes.small,
+                        modifier = Modifier.width(90.dp)
+                    ) {
+                        Text(
+                            "اتاق ${res.roomNumber}",
+                            fontWeight = FontWeight.ExtraBold,
+                            modifier = Modifier.padding(8.dp),
+                            textAlign = androidx.compose.ui.text.style.TextAlign.Center,
+                            color = MaterialTheme.colorScheme.onPrimaryContainer
+                        )
                     }
-                    showDatePicker = false
-                }) {
-                    Text("تایید")
-                }
-            },
-            dismissButton = {
-                TextButton(onClick = { showDatePicker = false }) {
-                    Text("انصراف")
+                    Spacer(Modifier.width(20.dp))
+                    Column {
+                        res.guestMealSelections.forEach { selection ->
+                            if (selection.lunchFoodId != null || selection.dinnerFoodId != null) {
+                                Text(
+                                    "مهمان ${selection.guestIndex + 1}: ناهار [${foodMap[selection.lunchFoodId]?.name ?: "—"}] | شام [${foodMap[selection.dinnerFoodId]?.name ?: "—"}]",
+                                    style = MaterialTheme.typography.bodyMedium
+                                )
+                            }
+                        }
+                    }
                 }
             }
-        ) {
-            DatePicker(state = datePickerState)
         }
     }
 }
@@ -642,177 +867,185 @@ fun AddRoomDialog(onDismiss: () -> Unit, onConfirm: (Room) -> Unit) {
 
     AlertDialog(
         onDismissRequest = onDismiss,
-        title = { Text("افزودن اتاق جدید") },
+        title = { Text("ثبت اتاق و مهمان جدید", fontWeight = FontWeight.Bold) },
         text = {
-            Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
+            Column(
+                verticalArrangement = Arrangement.spacedBy(20.dp),
+                modifier = Modifier.padding(top = 12.dp)
+            ) {
                 OutlinedTextField(
                     value = roomNumber,
                     onValueChange = { roomNumber = it },
                     label = { Text("شماره اتاق") },
-                    modifier = Modifier.fillMaxWidth()
+                    modifier = Modifier.fillMaxWidth(),
+                    shape = MaterialTheme.shapes.medium,
+                    leadingIcon = { Icon(Icons.Default.Numbers, null) }
                 )
                 OutlinedTextField(
                     value = guestName,
                     onValueChange = { guestName = it },
-                    label = { Text("نام مهمان") },
-                    modifier = Modifier.fillMaxWidth()
+                    label = { Text("نام و نام خانوادگی مهمان") },
+                    modifier = Modifier.fillMaxWidth(),
+                    shape = MaterialTheme.shapes.medium,
+                    leadingIcon = { Icon(Icons.Default.Person, null) }
                 )
 
-                Box(modifier = Modifier.fillMaxWidth()) {
+                Column {
                     Text(
-                        text = "تعداد نفرات: $guestCount",
-                        modifier = Modifier
-                            .fillMaxWidth()
-                            .clickable { expanded = true }
-                            .padding(vertical = 12.dp, horizontal = 4.dp),
-                        style = MaterialTheme.typography.bodyLarge
+                        "تعداد نفرات همراه",
+                        style = MaterialTheme.typography.labelMedium,
+                        color = MaterialTheme.colorScheme.outline,
+                        modifier = Modifier.padding(bottom = 8.dp)
                     )
-                    DropdownMenu(
-                        expanded = expanded,
-                        onDismissRequest = { expanded = false }
-                    ) {
-                        (1..7).forEach { number ->
-                            DropdownMenuItem(
-                                text = { Text(number.toString()) },
-                                onClick = {
-                                    guestCount = number
-                                    expanded = false
-                                }
-                            )
+                    Box(modifier = Modifier.fillMaxWidth()) {
+                        Surface(
+                            onClick = { expanded = true },
+                            modifier = Modifier.fillMaxWidth(),
+                            shape = MaterialTheme.shapes.medium,
+                            border = BorderStroke(1.dp, MaterialTheme.colorScheme.outline),
+                            color = Color.Transparent
+                        ) {
+                            Row(
+                                modifier = Modifier.padding(16.dp),
+                                verticalAlignment = Alignment.CenterVertically
+                            ) {
+                                Icon(
+                                    Icons.Default.People,
+                                    contentDescription = null,
+                                    tint = MaterialTheme.colorScheme.primary
+                                )
+                                Spacer(Modifier.width(16.dp))
+                                Text(
+                                    "تعداد: $guestCount نفر",
+                                    style = MaterialTheme.typography.bodyLarge,
+                                    fontWeight = FontWeight.Bold
+                                )
+                                Spacer(Modifier.weight(1f))
+                                Icon(Icons.Default.ArrowDropDown, contentDescription = null)
+                            }
+                        }
+                        DropdownMenu(expanded = expanded, onDismissRequest = { expanded = false }) {
+                            (1..10).forEach { number ->
+                                DropdownMenuItem(
+                                    text = { Text("$number نفر") },
+                                    onClick = { guestCount = number; expanded = false })
+                            }
                         }
                     }
                 }
 
-                DatePickerField(
-                    label = "تاریخ ورود",
-                    value = checkIn,
-                    onDateSelected = { date, millis ->
-                        checkIn = date
-                        checkInMillis = millis
-                    },
-                )
-
-                DatePickerField(
-                    label = "تاریخ خروج",
-                    value = checkOut,
-                    onDateSelected = { date, millis ->
-                        checkOut = date
-                        checkOutMillis = millis
-                    },
-                )
+                Row(
+                    modifier = Modifier.fillMaxWidth(),
+                    horizontalArrangement = Arrangement.spacedBy(16.dp)
+                ) {
+                    DatePickerField(
+                        label = "تاریخ ورود",
+                        value = checkIn,
+                        modifier = Modifier.weight(1f)
+                    ) { date, millis -> checkIn = date; checkInMillis = millis }
+                    DatePickerField(
+                        label = "تاریخ خروج",
+                        value = checkOut,
+                        modifier = Modifier.weight(1f)
+                    ) { date, millis -> checkOut = date; checkOutMillis = millis }
+                }
             }
         },
         confirmButton = {
-            Button(onClick = {
-                if (roomNumber.isNotBlank() && guestName.isNotBlank()) {
-                    onConfirm(
-                        Room(
-                            roomNumber.normalizeDigits(),
-                            guestName,
-                            guestCount,
-                            checkIn,
-                            checkOut,
-                            checkInMillis,
-                            checkOutMillis
+            Button(
+                onClick = {
+                    if (roomNumber.isNotBlank() && guestName.isNotBlank()) {
+                        onConfirm(
+                            Room(
+                                roomNumber.normalizeDigits(),
+                                guestName,
+                                guestCount,
+                                checkIn,
+                                checkOut,
+                                checkInMillis,
+                                checkOutMillis
+                            )
                         )
-                    )
-                }
-            }) {
-                Text("تایید")
+                    }
+                },
+                shape = MaterialTheme.shapes.medium,
+                contentPadding = PaddingValues(horizontal = 24.dp, vertical = 12.dp)
+            ) {
+                Text("تایید و ثبت در سیستم", fontWeight = FontWeight.Bold)
             }
         },
         dismissButton = {
-            TextButton(onClick = onDismiss) {
-                Text("انصراف")
-            }
-        }
+            TextButton(onClick = onDismiss) { Text("انصراف") }
+        },
+        shape = MaterialTheme.shapes.large
     )
 }
 
+@OptIn(ExperimentalMaterial3Api::class)
 @Composable
-fun RoomAdminCard(room: Room, onUpdate: (String, String, Long, Long, Int) -> Unit) {
-    var checkIn by remember(room) { mutableStateOf(room.checkInDate) }
-    var checkOut by remember(room) { mutableStateOf(room.checkOutDate) }
-    var checkInMillis by remember(room) { mutableStateOf(room.checkInEpochMillis) }
-    var checkOutMillis by remember(room) { mutableStateOf(room.checkOutEpochMillis) }
-    var guestCount by remember(room) { mutableStateOf(room.guestCount) }
-    var expanded by remember { mutableStateOf(false) }
+fun DatePickerField(
+    label: String,
+    value: String,
+    modifier: Modifier = Modifier,
+    onDateSelected: (String, Long) -> Unit
+) {
+    var showDatePicker by remember { mutableStateOf(false) }
+    val datePickerState = rememberDatePickerState()
 
-    Card(modifier = Modifier.fillMaxWidth()) {
-        Row(
-            modifier = Modifier.padding(12.dp),
-            verticalAlignment = Alignment.CenterVertically,
-            horizontalArrangement = Arrangement.Center
-        ) {
+    Surface(
+        onClick = { showDatePicker = true },
+        modifier = modifier,
+        shape = MaterialTheme.shapes.medium,
+        border = BorderStroke(1.dp, MaterialTheme.colorScheme.outline),
+        color = Color.Transparent
+    ) {
+        Column(modifier = Modifier.padding(12.dp)) {
             Text(
-                text = room.roomNumber + " . ",
-                fontWeight = FontWeight.Bold
+                label,
+                style = MaterialTheme.typography.labelSmall,
+                color = MaterialTheme.colorScheme.outline
             )
-
-            Spacer(Modifier.weight(1f))
-
-            Text(text = room.guestName, fontWeight = FontWeight.Bold)
-
-            Spacer(Modifier.weight(1f))
-
-            Box {
-                Text(
-                    text = "تعداد نفرات: $guestCount",
-                    modifier = Modifier
-                        .clip(MaterialTheme.shapes.large)
-                        .clickable { expanded = true }
-                        .padding(8.dp),
-                    style = MaterialTheme.typography.bodyMedium
+            Row(
+                verticalAlignment = Alignment.CenterVertically,
+                modifier = Modifier.padding(top = 4.dp)
+            ) {
+                Icon(
+                    Icons.Default.CalendarToday,
+                    null,
+                    modifier = Modifier.size(16.dp),
+                    tint = MaterialTheme.colorScheme.primary
                 )
-                DropdownMenu(
-                    modifier = Modifier.clip(MaterialTheme.shapes.large),
-                    expanded = expanded,
-                    onDismissRequest = { expanded = false }
-                ) {
-                    (1..7).forEach { number ->
-                        DropdownMenuItem(
-                            text = { Text(number.toString()) },
-                            onClick = {
-                                guestCount = number
-                                expanded = false
-                            }
+                Spacer(Modifier.width(8.dp))
+                Text(
+                    value.ifBlank { "انتخاب" },
+                    style = MaterialTheme.typography.bodyMedium,
+                    fontWeight = FontWeight.Bold
+                )
+            }
+        }
+    }
+
+    if (showDatePicker) {
+        DatePickerDialog(
+            onDismissRequest = { showDatePicker = false },
+            confirmButton = {
+                TextButton(onClick = {
+                    datePickerState.selectedDateMillis?.let {
+                        onDateSelected(
+                            DateUtils.convertMillisToJalaliString(
+                                it
+                            ), it
                         )
                     }
-                }
-            }
-
-            Spacer(Modifier.weight(1f))
-
-            DatePickerField(
-                label = "ورود",
-                value = checkIn,
-                onDateSelected = { date, millis ->
-                    checkIn = date
-                    checkInMillis = millis
-                }
-            )
-
-            Spacer(Modifier.weight(1f))
-
-            DatePickerField(
-                label = "خروج",
-                value = checkOut,
-                onDateSelected = { date, millis ->
-                    checkOut = date
-                    checkOutMillis = millis
-                }
-            )
-
-            Spacer(Modifier.weight(1f))
-
-            Button(
-                modifier = Modifier.padding(top = 8.dp),
-                onClick = {
-                    onUpdate(checkIn, checkOut, checkInMillis, checkOutMillis, guestCount)
-                }
-            ) {
-                Text("به‌روزرسانی")
-            }
+                    showDatePicker = false
+                }) { Text("تایید", fontWeight = FontWeight.Bold) }
+            },
+            dismissButton = {
+                TextButton(onClick = { showDatePicker = false }) { Text("انصراف") }
+            },
+            shape = MaterialTheme.shapes.large
+        ) {
+            DatePicker(state = datePickerState)
         }
     }
 }

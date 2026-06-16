@@ -4,7 +4,6 @@ import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.material3.*
 import androidx.compose.runtime.*
 import androidx.compose.ui.Modifier
-import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.platform.LocalLayoutDirection
 import androidx.compose.ui.text.font.FontFamily
 import androidx.compose.ui.unit.LayoutDirection
@@ -13,6 +12,7 @@ import com.braveboy.hotelzagrous.app.shared.features.admin.AdminScreen
 import com.braveboy.hotelzagrous.app.shared.features.admin.AdminViewModel
 import com.braveboy.hotelzagrous.app.shared.features.reservation.ReservationScreen
 import com.braveboy.hotelzagrous.app.shared.features.reservation.ReservationViewModel
+import com.braveboy.hotelzagrous.designsystem.HotelZagrousTheme
 import hotelzagrous.app.shared.generated.resources.Res
 import hotelzagrous.app.shared.generated.resources.BHoma
 import org.jetbrains.compose.resources.Font
@@ -23,8 +23,6 @@ fun App(isAdmin: Boolean = false) {
     val scope = rememberCoroutineScope()
     
     val farsiFontFamily = FontFamily(Font(Res.font.BHoma))
-
-    Color(0x00AD1414)
 
     val defaultTypography = Typography()
     val typography = Typography(
@@ -45,9 +43,12 @@ fun App(isAdmin: Boolean = false) {
         labelSmall = defaultTypography.labelSmall.copy(fontFamily = farsiFontFamily)
     )
 
-    MaterialTheme(typography = typography) {
+    HotelZagrousTheme(typography = typography) {
         CompositionLocalProvider(LocalLayoutDirection provides LayoutDirection.Rtl) {
-            Surface(modifier = Modifier.fillMaxSize()) {
+            Surface(
+                modifier = Modifier.fillMaxSize(),
+                color = MaterialTheme.colorScheme.background
+            ) {
                 if (isAdmin) {
                     val adminViewModel = remember { AdminViewModel(repository, scope) }
                     AdminScreen(adminViewModel)
