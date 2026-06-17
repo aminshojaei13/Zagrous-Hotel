@@ -36,7 +36,6 @@ class AdminViewModel(
                 val foods = repository.getAvailableFoods()
                 Triple(rooms, reservations, foods)
             }.onSuccess { (rooms, reservations, foods) ->
-                println("xavi is $reservations")
                 updateState { it.copy(
                     isLoading = false,
                     rooms = rooms,
@@ -45,6 +44,7 @@ class AdminViewModel(
                     error = null
                 ) }
             }.onFailure { e ->
+                println("xavi - loadData failure: ${e.message}")
                 updateState { it.copy(isLoading = false, error = "خطا در بارگذاری: ${e.message ?: "ارتباط با سرور برقرار نشد"}") }
             }
         }
@@ -99,14 +99,20 @@ class AdminViewModel(
             val reservation = state.value.reservations.find { it.roomNumber == intent.roomNumber && it.date == intent.date }
             if (reservation != null) {
                 val updatedSelections = reservation.guestMealSelections.map {
-                    if (it.guestIndex == intent.guestIndex) it.copy(lunchDelivered = true) else it
+                    if (it.guestIndex == intent.guestIndex) {
+                        it.copy(lunchDelivered = true)
+                    } else it
                 }
                 val updatedRes = reservation.copy(guestMealSelections = updatedSelections)
                 runCatching {
                     repository.saveReservation(updatedRes)
                 }.onSuccess {
                     loadData()
+                }.onFailure { e ->
+                    println("xavi - saveReservation failure: ${e.message}")
                 }
+            } else {
+                println("xavi - reservation NOT found for room ${intent.roomNumber} on ${intent.date}")
             }
         }
     }
@@ -116,14 +122,21 @@ class AdminViewModel(
             val reservation = state.value.reservations.find { it.roomNumber == intent.roomNumber && it.date == intent.date }
             if (reservation != null) {
                 val updatedSelections = reservation.guestMealSelections.map {
-                    if (it.guestIndex == intent.guestIndex) it.copy(dinnerDelivered = true) else it
+                    if (it.guestIndex == intent.guestIndex) {
+                        it.copy(dinnerDelivered = true)
+                    } else it
                 }
                 val updatedRes = reservation.copy(guestMealSelections = updatedSelections)
                 runCatching {
                     repository.saveReservation(updatedRes)
                 }.onSuccess {
+                    println("xavi - saveReservation success")
                     loadData()
+                }.onFailure { e ->
+                    println("xavi - saveReservation failure: ${e.message}")
                 }
+            } else {
+                println("xavi - reservation NOT found for room ${intent.roomNumber} on ${intent.date}")
             }
         }
     }

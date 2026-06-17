@@ -3,6 +3,7 @@ package com.braveboy.hotelzagrous.app.shared.features.admin
 import androidx.compose.animation.animateColorAsState
 import androidx.compose.foundation.BorderStroke
 import androidx.compose.foundation.background
+import androidx.compose.foundation.border
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
@@ -51,7 +52,6 @@ import androidx.compose.material3.OutlinedTextField
 import androidx.compose.material3.Surface
 import androidx.compose.material3.Text
 import androidx.compose.material3.TextButton
-import androidx.compose.material3.VerticalDivider
 import androidx.compose.material3.rememberDatePickerState
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.collectAsState
@@ -236,7 +236,10 @@ fun AdminScreen(viewModel: AdminViewModel) {
 
                         state.isLoading -> {
                             Box(Modifier.fillMaxSize(), contentAlignment = Alignment.Center) {
-                                CircularProgressIndicator(strokeWidth = 3.dp, color = MaterialTheme.colorScheme.primary)
+                                CircularProgressIndicator(
+                                    strokeWidth = 3.dp,
+                                    color = MaterialTheme.colorScheme.primary
+                                )
                             }
                         }
 
@@ -666,13 +669,54 @@ fun ReservationSummary(
                             )
                             res.guestMealSelections.forEach { selection ->
                                 if (selection.lunchFoodId != null || selection.dinnerFoodId != null) {
-                                    Row(modifier = Modifier.padding(top = 4.dp, start = 16.dp)) {
-                                        Text("• ", color = MaterialTheme.colorScheme.primary)
+                                    Row(
+                                        modifier = Modifier.padding(top = 4.dp, start = 16.dp),
+                                        horizontalArrangement = Arrangement.Center,
+                                        verticalAlignment = Alignment.CenterVertically
+                                    ) {
+                                        Text(text = "• ", color = MaterialTheme.colorScheme.primary)
                                         Text(
-                                            "مهمان ${selection.guestIndex + 1}: ناهار [${foodMap[selection.lunchFoodId]?.name ?: "—"}] | شام [${foodMap[selection.dinnerFoodId]?.name ?: "—"}]",
+                                            text = "مهمان ${selection.guestIndex + 1} :",
                                             style = MaterialTheme.typography.bodyMedium,
                                             color = MaterialTheme.colorScheme.onSurfaceVariant
                                         )
+                                        Spacer(modifier = Modifier.weight(1f))
+                                        Text(
+                                           /* modifier = Modifier
+                                                .border(
+                                                    width = 1.dp,
+                                                    color = MaterialTheme.colorScheme.primary,
+                                                    shape = MaterialTheme.shapes.small
+                                                )
+                                                .padding(4.dp),*/
+                                            text = " ناهار [${foodMap[selection.lunchFoodId]?.name ?: "—"}]",
+                                            textAlign = TextAlign.Center,
+                                            style = MaterialTheme.typography.bodyMedium,
+                                            color = MaterialTheme.colorScheme.onSurfaceVariant,
+                                            fontWeight = FontWeight.Bold
+                                        )
+                                        Spacer(modifier = Modifier.weight(1f))
+                                        Text(
+                                            text = " | ",
+                                            color = MaterialTheme.colorScheme.primary,
+                                            style = MaterialTheme.typography.titleMedium,
+                                            fontWeight = FontWeight.Bold
+                                        )
+                                        Spacer(modifier = Modifier.weight(1f))
+                                        Text(
+                                            /*modifier = Modifier
+                                                .border(
+                                                    width = 1.dp,
+                                                    color = MaterialTheme.colorScheme.primary,
+                                                    shape = MaterialTheme.shapes.small
+                                                )
+                                                .padding(4.dp),*/
+                                            text = " شام [${foodMap[selection.dinnerFoodId]?.name ?: "—"}]",
+                                            style = MaterialTheme.typography.bodyMedium,
+                                            color = MaterialTheme.colorScheme.onSurfaceVariant,
+                                            fontWeight = FontWeight.Bold
+                                        )
+                                        Spacer(modifier = Modifier.weight(1f))
                                     }
                                 }
                             }
@@ -894,10 +938,22 @@ fun RoomDeliveryCard(
                     foodMap = foodMap,
                     isLast = index == res.guestMealSelections.size - 1,
                     onLunchDeliver = {
-                        onIntent(AdminIntent.MarkLunchDelivered(res.roomNumber, selection.guestIndex, today))
+                        onIntent(
+                            AdminIntent.MarkLunchDelivered(
+                                res.roomNumber,
+                                selection.guestIndex,
+                                today
+                            )
+                        )
                     },
                     onDinnerDeliver = {
-                        onIntent(AdminIntent.MarkDinnerDelivered(res.roomNumber, selection.guestIndex, today))
+                        onIntent(
+                            AdminIntent.MarkDinnerDelivered(
+                                res.roomNumber,
+                                selection.guestIndex,
+                                today
+                            )
+                        )
                     }
                 )
             }
@@ -976,12 +1032,13 @@ fun DeliveryChip(
 ) {
     Column(horizontalAlignment = Alignment.CenterHorizontally) {
         Text(
-            label,
-            style = MaterialTheme.typography.labelSmall,
-            color = MaterialTheme.colorScheme.outline,
-            modifier = Modifier.padding(bottom = 4.dp)
+            modifier = Modifier.padding(bottom = 4.dp),
+            text = label,
+            style = MaterialTheme.typography.labelMedium,
+            fontWeight = FontWeight.Bold,
+            color = MaterialTheme.colorScheme.outline
         )
-        
+
         Button(
             onClick = onClick,
             enabled = !isDelivered,

@@ -7,6 +7,7 @@ import com.braveboy.hotelzagrous.core.UpdateRoomStayRequest
 import com.braveboy.hotelzagrous.core.normalizeDigits
 import io.ktor.client.HttpClient
 import io.ktor.client.call.body
+import io.ktor.client.plugins.HttpTimeout
 import io.ktor.client.plugins.contentnegotiation.ContentNegotiation
 import io.ktor.client.request.delete
 import io.ktor.client.request.get
@@ -14,6 +15,7 @@ import io.ktor.client.request.post
 import io.ktor.client.request.put
 import io.ktor.client.request.setBody
 import io.ktor.client.statement.HttpResponse
+import io.ktor.client.statement.bodyAsText
 import io.ktor.http.ContentType
 import io.ktor.http.contentType
 import io.ktor.http.isSuccess
@@ -25,6 +27,7 @@ class HotelRepository(
     httpClient: HttpClient = createHotelHttpClient()
 ) {
     private val client = httpClient.config {
+        expectSuccess = true
         install(ContentNegotiation) {
             json(
                 Json {
@@ -32,6 +35,9 @@ class HotelRepository(
                     encodeDefaults = true
                 }
             )
+        }
+        install(HttpTimeout) {
+            requestTimeoutMillis = 15000
         }
     }
 
@@ -73,7 +79,8 @@ class HotelRepository(
     suspend fun getReservationsForRoom(roomNumber: String): List<FoodReservation> {
         val normalizedRoomNumber = roomNumber.normalizeDigits()
         return try {
-            val response: HttpResponse = client.get("$apiBaseUrl/rooms/$normalizedRoomNumber/reservations")
+            val response: HttpResponse =
+                client.get("$apiBaseUrl/rooms/$normalizedRoomNumber/reservations")
             if (response.status.isSuccess()) {
                 response.body()
             } else {
@@ -100,7 +107,14 @@ class HotelRepository(
         }
     }
 
-    suspend fun updateRoomStay(roomNumber: String, checkIn: String, checkOut: String, checkInMillis: Long, checkOutMillis: Long, guestCount: Int) {
+    suspend fun updateRoomStay(
+        roomNumber: String,
+        checkIn: String,
+        checkOut: String,
+        checkInMillis: Long,
+        checkOutMillis: Long,
+        guestCount: Int
+    ) {
         val normalizedRoomNumber = roomNumber.normalizeDigits()
         client.put("$apiBaseUrl/rooms/$normalizedRoomNumber/stay") {
             contentType(ContentType.Application.Json)

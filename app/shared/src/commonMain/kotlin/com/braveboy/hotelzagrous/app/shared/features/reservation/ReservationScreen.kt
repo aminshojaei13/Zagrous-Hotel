@@ -238,7 +238,6 @@ fun UserDashboard(state: ReservationState, viewModel: ReservationViewModel) {
                     color = MaterialTheme.colorScheme.primary,
                 ) {
                     Box {
-                        // Background pattern
                         Box(
                             modifier = Modifier
                                 .size(150.dp)
