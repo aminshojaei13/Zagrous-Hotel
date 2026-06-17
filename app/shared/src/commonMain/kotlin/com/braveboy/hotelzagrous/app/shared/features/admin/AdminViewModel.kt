@@ -22,6 +22,8 @@ class AdminViewModel(
             is AdminIntent.AddRoom -> addRoom(intent)
             is AdminIntent.ExportPdf -> exportToPdf()
             is AdminIntent.ClearAllData -> clearAllData()
+            is AdminIntent.MarkLunchDelivered -> markLunchDelivered(intent)
+            is AdminIntent.MarkDinnerDelivered -> markDinnerDelivered(intent)
         }
     }
 
@@ -34,7 +36,7 @@ class AdminViewModel(
                 val foods = repository.getAvailableFoods()
                 Triple(rooms, reservations, foods)
             }.onSuccess { (rooms, reservations, foods) ->
-                println("xavi load is success : ${rooms.last().guestCount}")
+                println("xavi is $reservations")
                 updateState { it.copy(
                     isLoading = false,
                     rooms = rooms,
@@ -43,8 +45,6 @@ class AdminViewModel(
                     error = null
                 ) }
             }.onFailure { e ->
-                println("AdminViewModel Error: ${e.message}")
-                e.printStackTrace()
                 updateState { it.copy(isLoading = false, error = "خطا در بارگذاری: ${e.message ?: "ارتباط با سرور برقرار نشد"}") }
             }
         }
@@ -62,10 +62,8 @@ class AdminViewModel(
                     intent.guestCount
                 )
             }.onSuccess {
-                println("xavi update is success")
                 loadData()
             }.onFailure { e ->
-                println("xavi load is faile : ${e.message}")
                 updateState { current -> current.copy(error = "به‌روزرسانی اتاق انجام نشد: ${e.message}") }
             }
         }
@@ -92,6 +90,40 @@ class AdminViewModel(
                 loadData()
             }.onFailure { e ->
                 updateState { it.copy(isLoading = false, error = "حذف اطلاعات با خطا مواجه شد: ${e.message}") }
+            }
+        }
+    }
+
+    private fun markLunchDelivered(intent: AdminIntent.MarkLunchDelivered) {
+        scope.launch(Dispatchers.Main) {
+            val reservation = state.value.reservations.find { it.roomNumber == intent.roomNumber && it.date == intent.date }
+            if (reservation != null) {
+                val updatedSelections = reservation.guestMealSelections.map {
+                    if (it.guestIndex == intent.guestIndex) it.copy(lunchDelivered = true) else it
+                }
+                val updatedRes = reservation.copy(guestMealSelections = updatedSelections)
+                runCatching {
+                    repository.saveReservation(updatedRes)
+                }.onSuccess {
+                    loadData()
+                }
+            }
+        }
+    }
+
+    private fun markDinnerDelivered(intent: AdminIntent.MarkDinnerDelivered) {
+        scope.launch(Dispatchers.Main) {
+            val reservation = state.value.reservations.find { it.roomNumber == intent.roomNumber && it.date == intent.date }
+            if (reservation != null) {
+                val updatedSelections = reservation.guestMealSelections.map {
+                    if (it.guestIndex == intent.guestIndex) it.copy(dinnerDelivered = true) else it
+                }
+                val updatedRes = reservation.copy(guestMealSelections = updatedSelections)
+                runCatching {
+                    repository.saveReservation(updatedRes)
+                }.onSuccess {
+                    loadData()
+                }
             }
         }
     }

@@ -26,4 +26,16 @@ sealed class AdminIntent {
     object ExportPdf : AdminIntent()
     object LoadData : AdminIntent()
     object ClearAllData : AdminIntent()
+    
+    data class MarkLunchDelivered(
+        val roomNumber: String,
+        val guestIndex: Int,
+        val date: String
+    ) : AdminIntent()
+
+    data class MarkDinnerDelivered(
+        val roomNumber: String,
+        val guestIndex: Int,
+        val date: String
+    ) : AdminIntent()
 }

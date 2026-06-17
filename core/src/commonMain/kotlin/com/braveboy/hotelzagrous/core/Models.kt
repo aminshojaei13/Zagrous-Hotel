@@ -34,7 +34,9 @@ data class FoodReservation(
 data class GuestMealSelection(
     val guestIndex: Int,
     val lunchFoodId: String? = null,
-    val dinnerFoodId: String? = null
+    val dinnerFoodId: String? = null,
+    val lunchDelivered: Boolean = false,
+    val dinnerDelivered: Boolean = false
 )
 
 @Serializable

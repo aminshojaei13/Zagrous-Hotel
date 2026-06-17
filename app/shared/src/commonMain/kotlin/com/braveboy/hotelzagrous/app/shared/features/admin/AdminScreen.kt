@@ -19,11 +19,13 @@ import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.shape.CircleShape
+import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.Add
 import androidx.compose.material.icons.filled.ArrowDropDown
 import androidx.compose.material.icons.filled.Bed
 import androidx.compose.material.icons.filled.CalendarToday
+import androidx.compose.material.icons.filled.Check
 import androidx.compose.material.icons.filled.DeleteForever
 import androidx.compose.material.icons.filled.ErrorOutline
 import androidx.compose.material.icons.filled.Event
@@ -49,6 +51,7 @@ import androidx.compose.material3.OutlinedTextField
 import androidx.compose.material3.Surface
 import androidx.compose.material3.Text
 import androidx.compose.material3.TextButton
+import androidx.compose.material3.VerticalDivider
 import androidx.compose.material3.rememberDatePickerState
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.collectAsState
@@ -61,12 +64,15 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.vector.ImageVector
 import androidx.compose.ui.text.font.FontWeight
+import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
 import com.braveboy.hotelzagrous.core.DateUtils
 import com.braveboy.hotelzagrous.core.FoodItem
 import com.braveboy.hotelzagrous.core.FoodReservation
+import com.braveboy.hotelzagrous.core.GuestMealSelection
 import com.braveboy.hotelzagrous.core.Room
 import com.braveboy.hotelzagrous.core.normalizeDigits
+import kotlin.time.Clock
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
@@ -77,7 +83,6 @@ fun AdminScreen(viewModel: AdminViewModel) {
     var showReservationSummary by remember { mutableStateOf(false) }
 
     Row(modifier = Modifier.fillMaxSize().background(MaterialTheme.colorScheme.background)) {
-        // --- Sidebar Navigation ---
         Surface(
             modifier = Modifier
                 .width(280.dp)
@@ -88,7 +93,6 @@ fun AdminScreen(viewModel: AdminViewModel) {
             Column(
                 modifier = Modifier.padding(24.dp)
             ) {
-                // Brand Header
                 Row(
                     verticalAlignment = Alignment.CenterVertically,
                     modifier = Modifier.padding(bottom = 40.dp, start = 8.dp)
@@ -154,7 +158,6 @@ fun AdminScreen(viewModel: AdminViewModel) {
             }
         }
 
-        // --- Main Content Area ---
         Column(
             modifier = Modifier
                 .weight(1f)
@@ -185,6 +188,7 @@ fun AdminScreen(viewModel: AdminViewModel) {
                     Button(
                         onClick = { showAddRoomDialog = true },
                         shape = MaterialTheme.shapes.medium,
+                        colors = ButtonDefaults.buttonColors(containerColor = MaterialTheme.colorScheme.primary),
                         contentPadding = PaddingValues(horizontal = 24.dp, vertical = 14.dp),
                         elevation = ButtonDefaults.buttonElevation(defaultElevation = 2.dp)
                     ) {
@@ -232,7 +236,7 @@ fun AdminScreen(viewModel: AdminViewModel) {
 
                         state.isLoading -> {
                             Box(Modifier.fillMaxSize(), contentAlignment = Alignment.Center) {
-                                CircularProgressIndicator(strokeWidth = 3.dp)
+                                CircularProgressIndicator(strokeWidth = 3.dp, color = MaterialTheme.colorScheme.primary)
                             }
                         }
 
@@ -242,7 +246,7 @@ fun AdminScreen(viewModel: AdminViewModel) {
                                 verticalArrangement = Arrangement.spacedBy(32.dp)
                             ) {
                                 item { TodayReservationDetail(state) }
-                                item { TodayReservationDetailByRoom(state) }
+                                item { TodayReservationDetailByRoom(state, viewModel::onIntent) }
                                 item {
                                     Column {
                                         Text(
@@ -274,7 +278,7 @@ fun AdminScreen(viewModel: AdminViewModel) {
                                         fontWeight = FontWeight.Bold
                                     )
                                     Surface(
-                                        color = MaterialTheme.colorScheme.primaryContainer,
+                                        color = MaterialTheme.colorScheme.primary.copy(alpha = 0.1f),
                                         shape = CircleShape
                                     ) {
                                         Text(
@@ -284,7 +288,7 @@ fun AdminScreen(viewModel: AdminViewModel) {
                                                 vertical = 4.dp
                                             ),
                                             style = MaterialTheme.typography.labelMedium,
-                                            color = MaterialTheme.colorScheme.onPrimaryContainer,
+                                            color = MaterialTheme.colorScheme.primary,
                                             fontWeight = FontWeight.Bold
                                         )
                                     }
@@ -362,7 +366,7 @@ fun NavigationItem(
     contentColor: Color = if (selected) MaterialTheme.colorScheme.primary else MaterialTheme.colorScheme.onSurfaceVariant
 ) {
     val backgroundColor by animateColorAsState(
-        if (selected) MaterialTheme.colorScheme.primaryContainer.copy(alpha = 0.8f) else Color.Transparent
+        if (selected) MaterialTheme.colorScheme.primary.copy(alpha = 0.1f) else Color.Transparent
     )
 
     Surface(
@@ -395,7 +399,7 @@ fun NavigationItem(
                 Box(
                     modifier = Modifier
                         .size(6.dp)
-                        .background(contentColor, CircleShape)
+                        .background(MaterialTheme.colorScheme.primary, CircleShape)
                 )
             }
         }
@@ -526,8 +530,8 @@ fun RoomAdminCard(room: Room, onUpdate: (String, String, Long, Long, Int) -> Uni
                 },
                 shape = MaterialTheme.shapes.medium,
                 colors = ButtonDefaults.buttonColors(
-                    containerColor = MaterialTheme.colorScheme.primaryContainer,
-                    contentColor = MaterialTheme.colorScheme.onPrimaryContainer
+                    containerColor = MaterialTheme.colorScheme.primary.copy(alpha = 0.1f),
+                    contentColor = MaterialTheme.colorScheme.primary
                 ),
                 contentPadding = PaddingValues(horizontal = 20.dp)
             ) {
@@ -594,7 +598,7 @@ fun ReservationSummary(
 ) {
     val roomMap = rooms.associateBy { it.roomNumber }
     val foodMap = foods.associateBy { it.id }
-    val todayMillis = kotlin.time.Clock.System.now().toEpochMilliseconds()
+    val todayMillis = Clock.System.now().toEpochMilliseconds()
     val today = DateUtils.convertMillisToJalaliString(todayMillis)
 
     val summaryByDate = reservations
@@ -682,7 +686,7 @@ fun ReservationSummary(
 
 @Composable
 fun TodayReservationDetail(state: AdminState) {
-    val todayMillis = kotlin.time.Clock.System.now().toEpochMilliseconds()
+    val todayMillis = Clock.System.now().toEpochMilliseconds()
     val today = DateUtils.convertMillisToJalaliString(todayMillis)
     val todayResList = state.reservations.filter { it.date == today }
     val foodMap = state.foods.associateBy { it.id }
@@ -693,7 +697,7 @@ fun TodayReservationDetail(state: AdminState) {
     Surface(
         modifier = Modifier.fillMaxWidth(),
         shape = MaterialTheme.shapes.large,
-        color = MaterialTheme.colorScheme.primaryContainer.copy(alpha = 0.3f),
+        color = MaterialTheme.colorScheme.primary.copy(alpha = 0.05f),
         border = BorderStroke(1.dp, MaterialTheme.colorScheme.primary.copy(alpha = 0.1f))
     ) {
         Column(modifier = Modifier.padding(28.dp)) {
@@ -791,65 +795,219 @@ fun MealSummaryBox(
 }
 
 @Composable
-fun TodayReservationDetailByRoom(state: AdminState) {
-    val todayMillis = kotlin.time.Clock.System.now().toEpochMilliseconds()
+fun TodayReservationDetailByRoom(
+    state: AdminState,
+    onIntent: (AdminIntent) -> Unit
+) {
+    val todayMillis = Clock.System.now().toEpochMilliseconds()
     val today = DateUtils.convertMillisToJalaliString(todayMillis)
     val todayResList = state.reservations.filter { it.date == today }
     val foodMap = state.foods.associateBy { it.id }
 
     Column(Modifier.padding(top = 16.dp)) {
         Text(
-            "جزئیات سفارشات به تفکیک اتاق (امروز)",
-            style = MaterialTheme.typography.titleLarge,
-            fontWeight = FontWeight.Bold
+            "مدیریت تحویل غذای امروز",
+            style = MaterialTheme.typography.headlineSmall,
+            fontWeight = FontWeight.Bold,
+            color = MaterialTheme.colorScheme.primary
         )
-        Spacer(Modifier.height(16.dp))
+        Text(
+            "لیست اتاق‌ها و وضعیت توزیع وعده‌های غذایی",
+            style = MaterialTheme.typography.bodyMedium,
+            color = MaterialTheme.colorScheme.onSurfaceVariant,
+            modifier = Modifier.padding(bottom = 24.dp)
+        )
 
         if (todayResList.isEmpty()) {
-            Text(
-                "هیچ سفارشی برای امروز ثبت نشده است.",
-                style = MaterialTheme.typography.bodyMedium,
-                color = MaterialTheme.colorScheme.outline
-            )
+            Surface(
+                modifier = Modifier.fillMaxWidth(),
+                color = MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.3f),
+                shape = MaterialTheme.shapes.medium
+            ) {
+                Text(
+                    "هیچ سفارشی برای امروز ثبت نشده است.",
+                    modifier = Modifier.padding(24.dp),
+                    style = MaterialTheme.typography.bodyMedium,
+                    color = MaterialTheme.colorScheme.outline,
+                    textAlign = TextAlign.Center
+                )
+            }
         }
 
         todayResList.forEach { res ->
+            RoomDeliveryCard(
+                res = res,
+                foodMap = foodMap,
+                onIntent = onIntent,
+                today = today
+            )
+            Spacer(Modifier.height(20.dp))
+        }
+    }
+}
+
+@Composable
+fun RoomDeliveryCard(
+    res: FoodReservation,
+    foodMap: Map<String, FoodItem>,
+    onIntent: (AdminIntent) -> Unit,
+    today: String
+) {
+    Surface(
+        modifier = Modifier.fillMaxWidth(),
+        shape = RoundedCornerShape(24.dp),
+        color = MaterialTheme.colorScheme.surface,
+        shadowElevation = 4.dp,
+        border = BorderStroke(1.dp, MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.5f))
+    ) {
+        Column {
+            // Room Header
             Surface(
-                modifier = Modifier.fillMaxWidth().padding(vertical = 6.dp),
-                shape = MaterialTheme.shapes.medium,
-                color = MaterialTheme.colorScheme.surface,
-                border = BorderStroke(1.dp, MaterialTheme.colorScheme.surfaceVariant)
+                modifier = Modifier.fillMaxWidth(),
+                color = MaterialTheme.colorScheme.primary.copy(alpha = 0.05f),
+                shape = RoundedCornerShape(topStart = 24.dp, topEnd = 24.dp)
             ) {
                 Row(
-                    modifier = Modifier.padding(16.dp),
+                    modifier = Modifier.padding(horizontal = 24.dp, vertical = 16.dp),
                     verticalAlignment = Alignment.CenterVertically
                 ) {
-                    Surface(
-                        color = MaterialTheme.colorScheme.primaryContainer,
-                        shape = MaterialTheme.shapes.small,
-                        modifier = Modifier.width(90.dp)
-                    ) {
-                        Text(
-                            "اتاق ${res.roomNumber}",
-                            fontWeight = FontWeight.ExtraBold,
-                            modifier = Modifier.padding(8.dp),
-                            textAlign = androidx.compose.ui.text.style.TextAlign.Center,
-                            color = MaterialTheme.colorScheme.onPrimaryContainer
-                        )
-                    }
-                    Spacer(Modifier.width(20.dp))
-                    Column {
-                        res.guestMealSelections.forEach { selection ->
-                            if (selection.lunchFoodId != null || selection.dinnerFoodId != null) {
-                                Text(
-                                    "مهمان ${selection.guestIndex + 1}: ناهار [${foodMap[selection.lunchFoodId]?.name ?: "—"}] | شام [${foodMap[selection.dinnerFoodId]?.name ?: "—"}]",
-                                    style = MaterialTheme.typography.bodyMedium
-                                )
-                            }
-                        }
-                    }
+                    Icon(
+                        Icons.Default.Hotel,
+                        contentDescription = null,
+                        tint = MaterialTheme.colorScheme.primary,
+                        modifier = Modifier.size(24.dp)
+                    )
+                    Spacer(Modifier.width(12.dp))
+                    Text(
+                        "اتاق ${res.roomNumber}",
+                        style = MaterialTheme.typography.titleLarge,
+                        fontWeight = FontWeight.ExtraBold,
+                        color = MaterialTheme.colorScheme.primary
+                    )
                 }
             }
+
+            // Guest Rows
+            res.guestMealSelections.forEachIndexed { index, selection ->
+                GuestDeliveryRow(
+                    selection = selection,
+                    foodMap = foodMap,
+                    isLast = index == res.guestMealSelections.size - 1,
+                    onLunchDeliver = {
+                        onIntent(AdminIntent.MarkLunchDelivered(res.roomNumber, selection.guestIndex, today))
+                    },
+                    onDinnerDeliver = {
+                        onIntent(AdminIntent.MarkDinnerDelivered(res.roomNumber, selection.guestIndex, today))
+                    }
+                )
+            }
+        }
+    }
+}
+
+@Composable
+fun GuestDeliveryRow(
+    selection: GuestMealSelection,
+    foodMap: Map<String, FoodItem>,
+    isLast: Boolean,
+    onLunchDeliver: () -> Unit,
+    onDinnerDeliver: () -> Unit
+) {
+    Column(modifier = Modifier.padding(horizontal = 24.dp)) {
+        Row(
+            modifier = Modifier.padding(vertical = 20.dp),
+            verticalAlignment = Alignment.CenterVertically
+        ) {
+            Column(modifier = Modifier.weight(1f)) {
+                Row(verticalAlignment = Alignment.CenterVertically) {
+                    Icon(
+                        Icons.Default.Person,
+                        contentDescription = null,
+                        tint = MaterialTheme.colorScheme.outline,
+                        modifier = Modifier.size(18.dp)
+                    )
+                    Spacer(Modifier.width(8.dp))
+                    Text(
+                        "مهمان ${selection.guestIndex + 1}",
+                        style = MaterialTheme.typography.titleMedium,
+                        fontWeight = FontWeight.Bold
+                    )
+                }
+            }
+
+            Row(
+                horizontalArrangement = Arrangement.spacedBy(12.dp),
+                verticalAlignment = Alignment.CenterVertically
+            ) {
+                if (selection.lunchFoodId != null) {
+                    DeliveryChip(
+                        label = "ناهار: ${foodMap[selection.lunchFoodId]?.name ?: "—"}",
+                        isDelivered = selection.lunchDelivered,
+                        onClick = onLunchDeliver,
+                        deliverLabel = "تحویل ناهار",
+                        deliveredLabel = "ناهار تحویل شد"
+                    )
+                }
+
+                if (selection.dinnerFoodId != null) {
+                    DeliveryChip(
+                        label = "شام: ${foodMap[selection.dinnerFoodId]?.name ?: "—"}",
+                        isDelivered = selection.dinnerDelivered,
+                        onClick = onDinnerDeliver,
+                        deliverLabel = "تحویل شام",
+                        deliveredLabel = "شام تحویل شد"
+                    )
+                }
+            }
+        }
+        if (!isLast) {
+            HorizontalDivider(color = MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.5f))
+        }
+    }
+}
+
+@Composable
+fun DeliveryChip(
+    label: String,
+    isDelivered: Boolean,
+    onClick: () -> Unit,
+    deliverLabel: String,
+    deliveredLabel: String
+) {
+    Column(horizontalAlignment = Alignment.CenterHorizontally) {
+        Text(
+            label,
+            style = MaterialTheme.typography.labelSmall,
+            color = MaterialTheme.colorScheme.outline,
+            modifier = Modifier.padding(bottom = 4.dp)
+        )
+        
+        Button(
+            onClick = onClick,
+            enabled = !isDelivered,
+            colors = ButtonDefaults.buttonColors(
+                containerColor = MaterialTheme.colorScheme.primary,
+                contentColor = Color.White,
+                disabledContainerColor = MaterialTheme.colorScheme.surfaceVariant,
+                disabledContentColor = MaterialTheme.colorScheme.outline
+            ),
+            shape = RoundedCornerShape(12.dp),
+            contentPadding = PaddingValues(horizontal = 16.dp, vertical = 8.dp),
+            modifier = Modifier.height(40.dp)
+        ) {
+            if (isDelivered) {
+                Icon(
+                    Icons.Default.Check,
+                    contentDescription = null,
+                    modifier = Modifier.size(16.dp)
+                )
+                Spacer(Modifier.width(8.dp))
+            }
+            Text(
+                if (isDelivered) deliveredLabel else deliverLabel,
+                style = MaterialTheme.typography.labelLarge,
+                fontWeight = FontWeight.Bold
+            )
         }
     }
 }
@@ -969,6 +1127,7 @@ fun AddRoomDialog(onDismiss: () -> Unit, onConfirm: (Room) -> Unit) {
                     }
                 },
                 shape = MaterialTheme.shapes.medium,
+                colors = ButtonDefaults.buttonColors(containerColor = MaterialTheme.colorScheme.primary),
                 contentPadding = PaddingValues(horizontal = 24.dp, vertical = 12.dp)
             ) {
                 Text("تایید و ثبت در سیستم", fontWeight = FontWeight.Bold)
