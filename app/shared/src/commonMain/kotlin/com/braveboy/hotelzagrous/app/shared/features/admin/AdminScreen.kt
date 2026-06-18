@@ -3,7 +3,6 @@ package com.braveboy.hotelzagrous.app.shared.features.admin
 import androidx.compose.animation.animateColorAsState
 import androidx.compose.foundation.BorderStroke
 import androidx.compose.foundation.background
-import androidx.compose.foundation.border
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
@@ -25,6 +24,7 @@ import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.Add
 import androidx.compose.material.icons.filled.ArrowDropDown
 import androidx.compose.material.icons.filled.Bed
+import androidx.compose.material.icons.filled.Block
 import androidx.compose.material.icons.filled.CalendarToday
 import androidx.compose.material.icons.filled.Check
 import androidx.compose.material.icons.filled.DeleteForever
@@ -69,6 +69,7 @@ import androidx.compose.ui.unit.dp
 import com.braveboy.hotelzagrous.core.DateUtils
 import com.braveboy.hotelzagrous.core.FoodItem
 import com.braveboy.hotelzagrous.core.FoodReservation
+import com.braveboy.hotelzagrous.core.FoodType
 import com.braveboy.hotelzagrous.core.GuestMealSelection
 import com.braveboy.hotelzagrous.core.Room
 import com.braveboy.hotelzagrous.core.normalizeDigits
@@ -261,7 +262,8 @@ fun AdminScreen(viewModel: AdminViewModel) {
                                         ReservationSummary(
                                             state.reservations,
                                             state.rooms,
-                                            state.foods
+                                            state.foods,
+                                            viewModel::onIntent
                                         )
                                     }
                                 }
@@ -302,18 +304,34 @@ fun AdminScreen(viewModel: AdminViewModel) {
                                     verticalArrangement = Arrangement.spacedBy(16.dp)
                                 ) {
                                     items(state.rooms, key = { it.roomNumber }) { room ->
-                                        RoomAdminCard(room) { checkIn, checkOut, checkInMillis, checkOutMillis, guestCount ->
-                                            viewModel.onIntent(
-                                                AdminIntent.UpdateRoomStay(
-                                                    room.roomNumber,
-                                                    checkIn,
-                                                    checkOut,
-                                                    checkInMillis,
-                                                    checkOutMillis,
-                                                    guestCount
+                                        RoomAdminCard(
+                                            room = room,
+                                            availableFoods = state.foods,
+                                            reservations = state.reservations,
+                                            onUpdate = { checkIn, checkOut, checkInMillis, checkOutMillis, guestCount ->
+                                                viewModel.onIntent(
+                                                    AdminIntent.UpdateRoomStay(
+                                                        room.roomNumber,
+                                                        checkIn,
+                                                        checkOut,
+                                                        checkInMillis,
+                                                        checkOutMillis,
+                                                        guestCount
+                                                    )
                                                 )
-                                            )
-                                        }
+                                            },
+                                            onFoodChange = { date, guestIndex, foodId, isLunch ->
+                                                viewModel.onIntent(
+                                                    AdminIntent.ChangeFood(
+                                                        room.roomNumber,
+                                                        date,
+                                                        guestIndex,
+                                                        foodId,
+                                                        isLunch
+                                                    )
+                                                )
+                                            }
+                                        )
                                     }
                                 }
                             }
@@ -410,13 +428,20 @@ fun NavigationItem(
 }
 
 @Composable
-fun RoomAdminCard(room: Room, onUpdate: (String, String, Long, Long, Int) -> Unit) {
+fun RoomAdminCard(
+    room: Room,
+    availableFoods: List<FoodItem>,
+    reservations: List<FoodReservation>,
+    onUpdate: (String, String, Long, Long, Int) -> Unit,
+    onFoodChange: (String, Int, String?, Boolean) -> Unit
+) {
     var checkIn by remember(room) { mutableStateOf(room.checkInDate) }
     var checkOut by remember(room) { mutableStateOf(room.checkOutDate) }
     var checkInMillis by remember(room) { mutableStateOf(room.checkInEpochMillis) }
     var checkOutMillis by remember(room) { mutableStateOf(room.checkOutEpochMillis) }
     var guestCount by remember(room) { mutableStateOf(room.guestCount) }
     var expanded by remember { mutableStateOf(false) }
+    var showFoodDialog by remember { mutableStateOf(false) }
 
     Surface(
         modifier = Modifier.fillMaxWidth(),
@@ -521,27 +546,217 @@ fun RoomAdminCard(room: Room, onUpdate: (String, String, Long, Long, Int) -> Uni
             }
 
             // Actions
-            Button(
-                onClick = {
-                    onUpdate(
-                        checkIn,
-                        checkOut,
-                        checkInMillis,
-                        checkOutMillis,
-                        guestCount
+            Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+                Button(
+                    onClick = { showFoodDialog = true },
+                    shape = MaterialTheme.shapes.medium,
+                    colors = ButtonDefaults.buttonColors(
+                        containerColor = MaterialTheme.colorScheme.secondary.copy(alpha = 0.1f),
+                        contentColor = MaterialTheme.colorScheme.secondary
+                    ),
+                    contentPadding = PaddingValues(horizontal = 16.dp)
+                ) {
+                    Icon(Icons.Default.Restaurant, null, modifier = Modifier.size(18.dp))
+                    Spacer(Modifier.width(8.dp))
+                    Text(
+                        "مدیریت غذا",
+                        style = MaterialTheme.typography.labelLarge,
+                        fontWeight = FontWeight.Bold
                     )
-                },
-                shape = MaterialTheme.shapes.medium,
-                colors = ButtonDefaults.buttonColors(
-                    containerColor = MaterialTheme.colorScheme.primary.copy(alpha = 0.1f),
-                    contentColor = MaterialTheme.colorScheme.primary
-                ),
-                contentPadding = PaddingValues(horizontal = 20.dp)
+                }
+
+                Button(
+                    onClick = {
+                        onUpdate(
+                            checkIn,
+                            checkOut,
+                            checkInMillis,
+                            checkOutMillis,
+                            guestCount
+                        )
+                    },
+                    shape = MaterialTheme.shapes.medium,
+                    colors = ButtonDefaults.buttonColors(
+                        containerColor = MaterialTheme.colorScheme.primary.copy(alpha = 0.1f),
+                        contentColor = MaterialTheme.colorScheme.primary
+                    ),
+                    contentPadding = PaddingValues(horizontal = 20.dp)
+                ) {
+                    Text(
+                        "به‌روزرسانی",
+                        style = MaterialTheme.typography.labelLarge,
+                        fontWeight = FontWeight.Bold
+                    )
+                }
+            }
+        }
+    }
+
+    if (showFoodDialog) {
+        RoomFoodReservationsDialog(
+            room = room,
+            availableFoods = availableFoods,
+            reservations = reservations.filter { it.roomNumber == room.roomNumber },
+            onDismiss = { showFoodDialog = false },
+            onFoodChange = onFoodChange
+        )
+    }
+}
+
+@Composable
+fun RoomFoodReservationsDialog(
+    room: Room,
+    availableFoods: List<FoodItem>,
+    reservations: List<FoodReservation>,
+    onDismiss: () -> Unit,
+    onFoodChange: (String, Int, String?, Boolean) -> Unit
+) {
+    val stayDays = remember(room) {
+        if (room.checkInEpochMillis != 0L && room.checkOutEpochMillis != 0L) {
+            val days = mutableListOf<String>()
+            var currentMillis = room.checkInEpochMillis
+            while (currentMillis <= room.checkOutEpochMillis) {
+                days.add(DateUtils.convertMillisToJalaliString(currentMillis))
+                currentMillis += 24 * 60 * 60 * 1000L
+            }
+            days
+        } else emptyList()
+    }
+
+    AlertDialog(
+        onDismissRequest = onDismiss,
+        title = {
+            Text(
+                "مدیریت غذای اتاق ${room.roomNumber} - ${room.guestName}",
+                fontWeight = FontWeight.Bold
+            )
+        },
+        text = {
+            Column(modifier = Modifier.width(600.dp).height(500.dp)) {
+                LazyColumn(verticalArrangement = Arrangement.spacedBy(16.dp)) {
+                    items(stayDays) { date ->
+                        val reservation = reservations.find { it.date == date }
+                        Surface(
+                            shape = MaterialTheme.shapes.medium,
+                            border = BorderStroke(1.dp, MaterialTheme.colorScheme.surfaceVariant),
+                            color = MaterialTheme.colorScheme.surface
+                        ) {
+                            Column(modifier = Modifier.padding(16.dp)) {
+                                Text(
+                                    date,
+                                    fontWeight = FontWeight.Bold,
+                                    color = MaterialTheme.colorScheme.primary
+                                )
+                                HorizontalDivider(modifier = Modifier.padding(vertical = 8.dp))
+
+                                repeat(room.guestCount) { index ->
+                                    val selection =
+                                        reservation?.guestMealSelections?.find { it.guestIndex == index }
+                                    Row(
+                                        modifier = Modifier.fillMaxWidth().padding(vertical = 4.dp),
+                                        verticalAlignment = Alignment.CenterVertically,
+                                        horizontalArrangement = Arrangement.spacedBy(12.dp)
+                                    ) {
+                                        Text(
+                                            "مهمان ${index + 1}:",
+                                            modifier = Modifier.width(80.dp),
+                                            style = MaterialTheme.typography.bodySmall
+                                        )
+
+                                        // Lunch
+                                        AdminFoodSelectionItem(
+                                            label = "ناهار",
+                                            foods = availableFoods.filter { it.type == FoodType.LUNCH },
+                                            selectedId = selection?.lunchFoodId,
+                                            modifier = Modifier.weight(1f),
+                                            onSelect = { onFoodChange(date, index, it, true) }
+                                        )
+
+                                        // Dinner
+                                        AdminFoodSelectionItem(
+                                            label = "شام",
+                                            foods = availableFoods.filter { it.type == FoodType.DINNER },
+                                            selectedId = selection?.dinnerFoodId,
+                                            modifier = Modifier.weight(1f),
+                                            onSelect = { onFoodChange(date, index, it, false) }
+                                        )
+                                    }
+                                }
+                            }
+                        }
+                    }
+                }
+            }
+        },
+        confirmButton = {
+            Button(onClick = onDismiss) { Text("بستن") }
+        },
+        shape = MaterialTheme.shapes.large
+    )
+}
+
+@Composable
+fun AdminFoodSelectionItem(
+    modifier: Modifier = Modifier,
+    label: String,
+    foods: List<FoodItem>,
+    selectedId: String?,
+    enabled: Boolean = true,
+    onSelect: (String?) -> Unit
+) {
+    var expanded by remember { mutableStateOf(false) }
+    val selectedFood = foods.find { it.id == selectedId }
+
+    Box(modifier = modifier) {
+        Surface(
+            onClick = { expanded = true },
+            modifier = Modifier.fillMaxWidth(),
+            shape = MaterialTheme.shapes.small,
+            color = if (selectedFood != null) MaterialTheme.colorScheme.onPrimary else MaterialTheme.colorScheme.surfaceVariant.copy(
+                alpha = 0.3f
+            ),
+            border = BorderStroke(
+                1.dp,
+                if (selectedFood != null) MaterialTheme.colorScheme.primary else MaterialTheme.colorScheme.outlineVariant
+            ),
+            enabled = enabled
+        ) {
+            Row(
+                modifier = Modifier.padding(horizontal = 8.dp, vertical = 6.dp),
+                verticalAlignment = Alignment.CenterVertically,
+                horizontalArrangement = Arrangement.SpaceBetween
             ) {
                 Text(
-                    "به‌روزرسانی",
-                    style = MaterialTheme.typography.labelLarge,
-                    fontWeight = FontWeight.Bold
+                    modifier = Modifier.weight(1f),
+                    text = selectedFood?.name ?: label,
+                    style = MaterialTheme.typography.bodySmall,
+                    maxLines = 1,
+                    fontWeight = if (selectedFood != null) FontWeight.Bold else FontWeight.Normal,
+                    textAlign = if (enabled) TextAlign.Start else TextAlign.Center
+                )
+                if (enabled){
+                    Icon(Icons.Default.ArrowDropDown, null, modifier = Modifier.size(16.dp))
+                }
+            }
+        }
+        DropdownMenu(expanded = expanded, onDismissRequest = { expanded = false }) {
+            DropdownMenuItem(
+                text = { Text("بدون انتخاب", style = MaterialTheme.typography.bodySmall) },
+                onClick = { onSelect(null); expanded = false },
+                leadingIcon = { Icon(Icons.Default.Block, null, modifier = Modifier.size(16.dp)) }
+            )
+            foods.forEach { food ->
+                DropdownMenuItem(
+                    text = { Text(food.name, style = MaterialTheme.typography.bodySmall) },
+                    onClick = { onSelect(food.id); expanded = false },
+                    trailingIcon = {
+                        if (food.id == selectedId) Icon(
+                            Icons.Default.Check,
+                            null,
+                            modifier = Modifier.size(16.dp),
+                            tint = MaterialTheme.colorScheme.primary
+                        )
+                    }
                 )
             }
         }
@@ -597,7 +812,8 @@ fun DatePickerFieldSmall(value: String, onDateSelected: (String, Long) -> Unit) 
 fun ReservationSummary(
     reservations: List<FoodReservation>,
     rooms: List<Room>,
-    foods: List<FoodItem>
+    foods: List<FoodItem>,
+    onIntent: (AdminIntent) -> Unit
 ) {
     val roomMap = rooms.associateBy { it.roomNumber }
     val foodMap = foods.associateBy { it.id }
@@ -668,56 +884,53 @@ fun ReservationSummary(
                                 fontWeight = FontWeight.Bold
                             )
                             res.guestMealSelections.forEach { selection ->
-                                if (selection.lunchFoodId != null || selection.dinnerFoodId != null) {
-                                    Row(
-                                        modifier = Modifier.padding(top = 4.dp, start = 16.dp),
-                                        horizontalArrangement = Arrangement.Center,
-                                        verticalAlignment = Alignment.CenterVertically
-                                    ) {
-                                        Text(text = "• ", color = MaterialTheme.colorScheme.primary)
-                                        Text(
-                                            text = "مهمان ${selection.guestIndex + 1} :",
-                                            style = MaterialTheme.typography.bodyMedium,
-                                            color = MaterialTheme.colorScheme.onSurfaceVariant
-                                        )
-                                        Spacer(modifier = Modifier.weight(1f))
-                                        Text(
-                                           /* modifier = Modifier
-                                                .border(
-                                                    width = 1.dp,
-                                                    color = MaterialTheme.colorScheme.primary,
-                                                    shape = MaterialTheme.shapes.small
+                                Row(
+                                    modifier = Modifier.padding(top = 4.dp, start = 16.dp),
+                                    verticalAlignment = Alignment.CenterVertically,
+                                    horizontalArrangement = Arrangement.spacedBy(16.dp)
+                                ) {
+                                    Text(
+                                        text = "مهمان ${selection.guestIndex + 1} :",
+                                        modifier = Modifier.width(80.dp),
+                                        style = MaterialTheme.typography.bodyMedium,
+                                        color = MaterialTheme.colorScheme.onSurfaceVariant
+                                    )
+
+                                    AdminFoodSelectionItem(
+                                        label = "ناهار",
+                                        foods = foods.filter { it.type == FoodType.LUNCH },
+                                        selectedId = selection.lunchFoodId,
+                                        modifier = Modifier.width(150.dp),
+                                        onSelect = {
+                                            onIntent(
+                                                AdminIntent.ChangeFood(
+                                                    res.roomNumber,
+                                                    date,
+                                                    selection.guestIndex,
+                                                    it,
+                                                    true
                                                 )
-                                                .padding(4.dp),*/
-                                            text = " ناهار [${foodMap[selection.lunchFoodId]?.name ?: "—"}]",
-                                            textAlign = TextAlign.Center,
-                                            style = MaterialTheme.typography.bodyMedium,
-                                            color = MaterialTheme.colorScheme.onSurfaceVariant,
-                                            fontWeight = FontWeight.Bold
-                                        )
-                                        Spacer(modifier = Modifier.weight(1f))
-                                        Text(
-                                            text = " | ",
-                                            color = MaterialTheme.colorScheme.primary,
-                                            style = MaterialTheme.typography.titleMedium,
-                                            fontWeight = FontWeight.Bold
-                                        )
-                                        Spacer(modifier = Modifier.weight(1f))
-                                        Text(
-                                            /*modifier = Modifier
-                                                .border(
-                                                    width = 1.dp,
-                                                    color = MaterialTheme.colorScheme.primary,
-                                                    shape = MaterialTheme.shapes.small
+                                            )
+                                        }
+                                    )
+
+                                    AdminFoodSelectionItem(
+                                        label = "شام",
+                                        foods = foods.filter { it.type == FoodType.DINNER },
+                                        selectedId = selection.dinnerFoodId,
+                                        modifier = Modifier.width(150.dp),
+                                        onSelect = {
+                                            onIntent(
+                                                AdminIntent.ChangeFood(
+                                                    res.roomNumber,
+                                                    date,
+                                                    selection.guestIndex,
+                                                    it,
+                                                    false
                                                 )
-                                                .padding(4.dp),*/
-                                            text = " شام [${foodMap[selection.dinnerFoodId]?.name ?: "—"}]",
-                                            style = MaterialTheme.typography.bodyMedium,
-                                            color = MaterialTheme.colorScheme.onSurfaceVariant,
-                                            fontWeight = FontWeight.Bold
-                                        )
-                                        Spacer(modifier = Modifier.weight(1f))
-                                    }
+                                            )
+                                        }
+                                    )
                                 }
                             }
                         }
@@ -881,6 +1094,7 @@ fun TodayReservationDetailByRoom(
         todayResList.forEach { res ->
             RoomDeliveryCard(
                 res = res,
+                availableFoods = state.foods,
                 foodMap = foodMap,
                 onIntent = onIntent,
                 today = today
@@ -893,6 +1107,7 @@ fun TodayReservationDetailByRoom(
 @Composable
 fun RoomDeliveryCard(
     res: FoodReservation,
+    availableFoods: List<FoodItem>,
     foodMap: Map<String, FoodItem>,
     onIntent: (AdminIntent) -> Unit,
     today: String
@@ -935,6 +1150,7 @@ fun RoomDeliveryCard(
             res.guestMealSelections.forEachIndexed { index, selection ->
                 GuestDeliveryRow(
                     selection = selection,
+                    availableFoods = availableFoods,
                     foodMap = foodMap,
                     isLast = index == res.guestMealSelections.size - 1,
                     onLunchDeliver = {
@@ -954,6 +1170,17 @@ fun RoomDeliveryCard(
                                 today
                             )
                         )
+                    },
+                    onFoodChange = { foodId, isLunch ->
+                        onIntent(
+                            AdminIntent.ChangeFood(
+                                res.roomNumber,
+                                today,
+                                selection.guestIndex,
+                                foodId,
+                                isLunch
+                            )
+                        )
                     }
                 )
             }
@@ -964,17 +1191,19 @@ fun RoomDeliveryCard(
 @Composable
 fun GuestDeliveryRow(
     selection: GuestMealSelection,
+    availableFoods: List<FoodItem>,
     foodMap: Map<String, FoodItem>,
     isLast: Boolean,
     onLunchDeliver: () -> Unit,
-    onDinnerDeliver: () -> Unit
+    onDinnerDeliver: () -> Unit,
+    onFoodChange: (String?, Boolean) -> Unit
 ) {
     Column(modifier = Modifier.padding(horizontal = 24.dp)) {
         Row(
             modifier = Modifier.padding(vertical = 20.dp),
             verticalAlignment = Alignment.CenterVertically
         ) {
-            Column(modifier = Modifier.weight(1f)) {
+            Column(modifier = Modifier.weight(0.5f)) {
                 Row(verticalAlignment = Alignment.CenterVertically) {
                     Icon(
                         Icons.Default.Person,
@@ -992,27 +1221,54 @@ fun GuestDeliveryRow(
             }
 
             Row(
-                horizontalArrangement = Arrangement.spacedBy(12.dp),
+                modifier = Modifier.weight(1.5f),
+                horizontalArrangement = Arrangement.spacedBy(24.dp),
                 verticalAlignment = Alignment.CenterVertically
             ) {
-                if (selection.lunchFoodId != null) {
-                    DeliveryChip(
-                        label = "ناهار: ${foodMap[selection.lunchFoodId]?.name ?: "—"}",
-                        isDelivered = selection.lunchDelivered,
-                        onClick = onLunchDeliver,
-                        deliverLabel = "تحویل ناهار",
-                        deliveredLabel = "ناهار تحویل شد"
+                // Lunch Section
+                Row(
+                    verticalAlignment = Alignment.CenterVertically,
+                    horizontalArrangement = Arrangement.spacedBy(8.dp)
+                ) {
+                    AdminFoodSelectionItem(
+                        label = "انتخاب ناهار",
+                        foods = availableFoods.filter { it.type == FoodType.LUNCH },
+                        selectedId = selection.lunchFoodId,
+                        modifier = Modifier.width(140.dp),
+                        enabled = false,
+                        onSelect = { onFoodChange(it, true) }
                     )
+                    if (selection.lunchFoodId != null) {
+                        DeliveryChip(
+                            isDelivered = selection.lunchDelivered,
+                            onClick = onLunchDeliver,
+                            deliverLabel = "تحویل",
+                            deliveredLabel = "تحویل شد"
+                        )
+                    }
                 }
 
-                if (selection.dinnerFoodId != null) {
-                    DeliveryChip(
-                        label = "شام: ${foodMap[selection.dinnerFoodId]?.name ?: "—"}",
-                        isDelivered = selection.dinnerDelivered,
-                        onClick = onDinnerDeliver,
-                        deliverLabel = "تحویل شام",
-                        deliveredLabel = "شام تحویل شد"
+                // Dinner Section
+                Row(
+                    verticalAlignment = Alignment.CenterVertically,
+                    horizontalArrangement = Arrangement.spacedBy(8.dp)
+                ) {
+                    AdminFoodSelectionItem(
+                        label = "انتخاب شام",
+                        foods = availableFoods.filter { it.type == FoodType.DINNER },
+                        selectedId = selection.dinnerFoodId,
+                        modifier = Modifier.width(140.dp),
+                        enabled = false,
+                        onSelect = { onFoodChange(it, false) }
                     )
+                    if (selection.dinnerFoodId != null) {
+                        DeliveryChip(
+                            isDelivered = selection.dinnerDelivered,
+                            onClick = onDinnerDeliver,
+                            deliverLabel = "تحویل",
+                            deliveredLabel = "تحویل شد"
+                        )
+                    }
                 }
             }
         }
@@ -1024,48 +1280,33 @@ fun GuestDeliveryRow(
 
 @Composable
 fun DeliveryChip(
-    label: String,
     isDelivered: Boolean,
     onClick: () -> Unit,
     deliverLabel: String,
     deliveredLabel: String
 ) {
-    Column(horizontalAlignment = Alignment.CenterHorizontally) {
-        Text(
-            modifier = Modifier.padding(bottom = 4.dp),
-            text = label,
-            style = MaterialTheme.typography.labelMedium,
-            fontWeight = FontWeight.Bold,
-            color = MaterialTheme.colorScheme.outline
-        )
-
-        Button(
-            onClick = onClick,
-            enabled = !isDelivered,
-            colors = ButtonDefaults.buttonColors(
-                containerColor = MaterialTheme.colorScheme.primary,
-                contentColor = Color.White,
-                disabledContainerColor = MaterialTheme.colorScheme.surfaceVariant,
-                disabledContentColor = MaterialTheme.colorScheme.outline
-            ),
-            shape = RoundedCornerShape(12.dp),
-            contentPadding = PaddingValues(horizontal = 16.dp, vertical = 8.dp),
-            modifier = Modifier.height(40.dp)
-        ) {
-            if (isDelivered) {
-                Icon(
-                    Icons.Default.Check,
-                    contentDescription = null,
-                    modifier = Modifier.size(16.dp)
-                )
-                Spacer(Modifier.width(8.dp))
-            }
-            Text(
-                if (isDelivered) deliveredLabel else deliverLabel,
-                style = MaterialTheme.typography.labelLarge,
-                fontWeight = FontWeight.Bold
-            )
+    Button(
+        onClick = onClick,
+        enabled = !isDelivered,
+        colors = ButtonDefaults.buttonColors(
+            containerColor = MaterialTheme.colorScheme.primary,
+            contentColor = Color.White,
+            disabledContainerColor = MaterialTheme.colorScheme.surfaceVariant,
+            disabledContentColor = MaterialTheme.colorScheme.outline
+        ),
+        shape = RoundedCornerShape(8.dp),
+        contentPadding = PaddingValues(horizontal = 12.dp),
+        modifier = Modifier.height(32.dp)
+    ) {
+        if (isDelivered) {
+            Icon(Icons.Default.Check, null, modifier = Modifier.size(14.dp))
+            Spacer(Modifier.width(4.dp))
         }
+        Text(
+            if (isDelivered) deliveredLabel else deliverLabel,
+            style = MaterialTheme.typography.labelMedium,
+            fontWeight = FontWeight.Bold
+        )
     }
 }
 

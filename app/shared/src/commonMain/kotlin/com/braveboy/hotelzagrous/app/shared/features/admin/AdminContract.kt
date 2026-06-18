@@ -38,4 +38,14 @@ sealed class AdminIntent {
         val guestIndex: Int,
         val date: String
     ) : AdminIntent()
+
+    data class ChangeFood(
+        val roomNumber: String,
+        val date: String,
+        val guestIndex: Int,
+        val foodId: String?,
+        val isLunch: Boolean
+    ) : AdminIntent()
+
+    data class SelectRoomForFood(val room: Room?) : AdminIntent()
 }

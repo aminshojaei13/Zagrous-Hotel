@@ -2,6 +2,8 @@ package com.braveboy.hotelzagrous.app.shared.features.admin
 
 import com.braveboy.hotelzagrous.app.shared.data.HotelRepository
 import com.braveboy.hotelzagrous.app.shared.mvi.BaseViewModel
+import com.braveboy.hotelzagrous.core.FoodReservation
+import com.braveboy.hotelzagrous.core.GuestMealSelection
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.launch
@@ -24,11 +26,16 @@ class AdminViewModel(
             is AdminIntent.ClearAllData -> clearAllData()
             is AdminIntent.MarkLunchDelivered -> markLunchDelivered(intent)
             is AdminIntent.MarkDinnerDelivered -> markDinnerDelivered(intent)
+            is AdminIntent.ChangeFood -> updateFoodSelection(intent)
+            is AdminIntent.SelectRoomForFood -> updateState { it.copy(selectedRoom = intent.room) }
         }
     }
 
     private fun loadData() {
-        updateState { it.copy(isLoading = true, error = null) }
+        // Only show full loading if we have no rooms yet
+        if (state.value.rooms.isEmpty()) {
+            updateState { it.copy(isLoading = true, error = null) }
+        }
         scope.launch(Dispatchers.Main) {
             runCatching {
                 val rooms = repository.getRooms()
@@ -36,15 +43,17 @@ class AdminViewModel(
                 val foods = repository.getAvailableFoods()
                 Triple(rooms, reservations, foods)
             }.onSuccess { (rooms, reservations, foods) ->
-                updateState { it.copy(
-                    isLoading = false,
-                    rooms = rooms,
-                    reservations = reservations,
-                    foods = foods,
-                    error = null
-                ) }
+                updateState { current -> 
+                    current.copy(
+                        isLoading = false,
+                        rooms = rooms,
+                        reservations = reservations,
+                        foods = foods,
+                        error = null,
+                        selectedRoom = rooms.find { it.roomNumber == current.selectedRoom?.roomNumber }
+                    ) 
+                }
             }.onFailure { e ->
-                println("xavi - loadData failure: ${e.message}")
                 updateState { it.copy(isLoading = false, error = "خطا در بارگذاری: ${e.message ?: "ارتباط با سرور برقرار نشد"}") }
             }
         }
@@ -111,8 +120,6 @@ class AdminViewModel(
                 }.onFailure { e ->
                     println("xavi - saveReservation failure: ${e.message}")
                 }
-            } else {
-                println("xavi - reservation NOT found for room ${intent.roomNumber} on ${intent.date}")
             }
         }
     }
@@ -130,13 +137,39 @@ class AdminViewModel(
                 runCatching {
                     repository.saveReservation(updatedRes)
                 }.onSuccess {
-                    println("xavi - saveReservation success")
                     loadData()
                 }.onFailure { e ->
                     println("xavi - saveReservation failure: ${e.message}")
                 }
+            }
+        }
+    }
+
+    private fun updateFoodSelection(intent: AdminIntent.ChangeFood) {
+        scope.launch(Dispatchers.Main) {
+            val reservation = state.value.reservations.find { it.roomNumber == intent.roomNumber && it.date == intent.date }
+                ?: FoodReservation(intent.roomNumber, intent.date)
+
+            val updatedSelections = reservation.guestMealSelections.toMutableList()
+            val existingSelection = updatedSelections.find { it.guestIndex == intent.guestIndex }
+                ?: GuestMealSelection(intent.guestIndex)
+
+            updatedSelections.removeAll { it.guestIndex == intent.guestIndex }
+            val newSelection = if (intent.isLunch) {
+                existingSelection.copy(lunchFoodId = intent.foodId)
             } else {
-                println("xavi - reservation NOT found for room ${intent.roomNumber} on ${intent.date}")
+                existingSelection.copy(dinnerFoodId = intent.foodId)
+            }
+            updatedSelections.add(newSelection)
+
+            val updatedRes = reservation.copy(guestMealSelections = updatedSelections.sortedBy { it.guestIndex })
+            
+            runCatching {
+                repository.saveReservation(updatedRes)
+            }.onSuccess {
+                loadData()
+            }.onFailure { e ->
+                updateState { it.copy(error = "تغییر غذا با خطا مواجه شد: ${e.message}") }
             }
         }
     }
