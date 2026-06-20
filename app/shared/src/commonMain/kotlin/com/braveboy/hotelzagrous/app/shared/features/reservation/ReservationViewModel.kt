@@ -2,8 +2,13 @@ package com.braveboy.hotelzagrous.app.shared.features.reservation
 
 import com.braveboy.hotelzagrous.app.shared.data.HotelRepository
 import com.braveboy.hotelzagrous.app.shared.mvi.BaseViewModel
+import com.braveboy.hotelzagrous.core.DateUtils
+import com.braveboy.hotelzagrous.core.DayType
+import com.braveboy.hotelzagrous.core.FoodItem
 import com.braveboy.hotelzagrous.core.FoodReservation
+import com.braveboy.hotelzagrous.core.FoodType
 import com.braveboy.hotelzagrous.core.GuestMealSelection
+import com.braveboy.hotelzagrous.core.MenuConfig
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.launch
 
@@ -12,11 +17,20 @@ class ReservationViewModel(
     private val scope: CoroutineScope
 ) : BaseViewModel<ReservationState, ReservationIntent>(ReservationState()) {
 
+    private var allMenuConfigs: List<MenuConfig> = emptyList()
+
     init {
+        loadInitialData()
+    }
+
+    private fun loadInitialData() {
         scope.launch {
             runCatching {
-                repository.getAvailableFoods()
-            }.onSuccess { foods ->
+                val foods = repository.getAvailableFoods()
+                val configs = repository.getMenuConfigs()
+                foods to configs
+            }.onSuccess { (foods, configs) ->
+                allMenuConfigs = configs
                 updateState { it.copy(availableFoods = foods, error = null) }
             }.onFailure {
                 updateState { it.copy(error = "ارتباط با سرور برقرار نشد") }
@@ -96,5 +110,32 @@ class ReservationViewModel(
                 updateState { it.copy(isLoading = false, error = "ثبت رزرو انجام نشد") }
             }
         }
+    }
+
+    /**
+     * منطق نمایش منو بر اساس تاریخ (بند ۳ نیازمندی‌ها)
+     */
+    fun getFoodsForDate(dateString: String, foodType: FoodType): List<FoodItem> {
+        val dayType = determineDayType(dateString)
+        
+        // بررسی فعال بودن کل منو (بند ۲.۵)
+        val isMenuEnabled = allMenuConfigs.find { it.dayType == dayType && it.foodType == foodType }?.isEnabled ?: true
+        if (!isMenuEnabled) return emptyList()
+
+        return state.value.availableFoods.filter { 
+            it.dayType == dayType && 
+            it.type == foodType && 
+            it.isActive &&           // بند ۳ - شرط فعال بودن
+            it.isVisibleToUsers      // بند ۳ - شرط نمایش به کاربر
+        }.sortedBy { it.displayOrder }
+    }
+
+    private fun determineDayType(dateString: String): DayType {
+        if (DateUtils.isFriday(dateString)) return DayType.FRIDAY
+        
+        val parts = dateString.split("/")
+        val dayOfMonth = if (parts.size == 3) parts[2].toIntOrNull() ?: 1 else 1
+        
+        return if (dayOfMonth % 2 == 0) DayType.EVEN else DayType.ODD
     }
 }

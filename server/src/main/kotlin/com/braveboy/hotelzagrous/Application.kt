@@ -1,7 +1,9 @@
 package com.braveboy.hotelzagrous
 
 import com.braveboy.hotelzagrous.core.ApiError
+import com.braveboy.hotelzagrous.core.FoodItem
 import com.braveboy.hotelzagrous.core.FoodReservation
+import com.braveboy.hotelzagrous.core.MenuConfig
 import com.braveboy.hotelzagrous.core.Room
 import com.braveboy.hotelzagrous.core.UpdateRoomStayRequest
 import com.braveboy.hotelzagrous.core.normalizeDigits
@@ -109,6 +111,28 @@ fun Application.module() {
 
             get("/foods") {
                 call.respond(database.getFoods())
+            }
+
+            post("/foods") {
+                val food = call.receive<FoodItem>()
+                database.upsertFood(food)
+                call.respond(HttpStatusCode.OK, food)
+            }
+
+            delete("/foods/{id}") {
+                val id = call.parameters["id"] ?: return@delete call.respond(HttpStatusCode.BadRequest)
+                database.deleteFood(id)
+                call.respond(HttpStatusCode.OK)
+            }
+
+            get("/menu-configs") {
+                call.respond(database.getMenuConfigs())
+            }
+
+            post("/menu-configs") {
+                val config = call.receive<MenuConfig>()
+                database.upsertMenuConfig(config)
+                call.respond(HttpStatusCode.OK, config)
             }
 
             get("/reservations") {

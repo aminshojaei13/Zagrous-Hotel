@@ -2,8 +2,10 @@ package com.braveboy.hotelzagrous.app.shared.features.admin
 
 import com.braveboy.hotelzagrous.app.shared.data.HotelRepository
 import com.braveboy.hotelzagrous.app.shared.mvi.BaseViewModel
+import com.braveboy.hotelzagrous.core.FoodItem
 import com.braveboy.hotelzagrous.core.FoodReservation
 import com.braveboy.hotelzagrous.core.GuestMealSelection
+import com.braveboy.hotelzagrous.core.MenuConfig
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.launch
@@ -28,12 +30,14 @@ class AdminViewModel(
             is AdminIntent.MarkDinnerDelivered -> markDinnerDelivered(intent)
             is AdminIntent.ChangeFood -> updateFoodSelection(intent)
             is AdminIntent.SelectRoomForFood -> updateState { it.copy(selectedRoom = intent.room) }
+            is AdminIntent.UpsertFood -> upsertFood(intent.food)
+            is AdminIntent.DeleteFood -> deleteFood(intent.id)
+            is AdminIntent.UpdateMenuConfig -> updateMenuConfig(intent.config)
         }
     }
 
     private fun loadData() {
-        // Only show full loading if we have no rooms yet
-        if (state.value.rooms.isEmpty()) {
+        if (state.value.rooms.isEmpty() && state.value.foods.isEmpty()) {
             updateState { it.copy(isLoading = true, error = null) }
         }
         scope.launch(Dispatchers.Main) {
@@ -41,20 +45,59 @@ class AdminViewModel(
                 val rooms = repository.getRooms()
                 val reservations = repository.getAllReservations()
                 val foods = repository.getAvailableFoods()
-                Triple(rooms, reservations, foods)
-            }.onSuccess { (rooms, reservations, foods) ->
+                val menuConfigs = repository.getMenuConfigs()
+                Triple(rooms, Triple(reservations, foods, menuConfigs), Unit)
+            }.onSuccess { (rooms, data, _) ->
+                val (reservations, foods, menuConfigs) = data
                 updateState { current -> 
                     current.copy(
                         isLoading = false,
                         rooms = rooms,
                         reservations = reservations,
                         foods = foods,
+                        menuConfigs = menuConfigs,
                         error = null,
                         selectedRoom = rooms.find { it.roomNumber == current.selectedRoom?.roomNumber }
                     ) 
                 }
             }.onFailure { e ->
                 updateState { it.copy(isLoading = false, error = "خطا در بارگذاری: ${e.message ?: "ارتباط با سرور برقرار نشد"}") }
+            }
+        }
+    }
+
+    private fun upsertFood(food: FoodItem) {
+        scope.launch(Dispatchers.Main) {
+            runCatching {
+                repository.upsertFood(food)
+            }.onSuccess {
+                loadData()
+            }.onFailure { e ->
+                updateState { it.copy(error = "خطا در ذخیره غذا: ${e.message}") }
+            }
+        }
+    }
+
+    private fun deleteFood(id: String) {
+        scope.launch(Dispatchers.Main) {
+            runCatching {
+                repository.deleteFood(id)
+            }.onSuccess {
+                loadData()
+            }.onFailure { e ->
+                updateState { it.copy(error = "خطا در حذف غذا: ${e.message}") }
+            }
+        }
+    }
+
+    private fun updateMenuConfig(config: MenuConfig) {
+        scope.launch(Dispatchers.Main) {
+            runCatching {
+                repository.upsertMenuConfig(config)
+            }.onSuccess {
+                loadData()
+            }.onFailure { e ->
+                updateState { it.copy(error = "خطا در تنظیمات منو: ${e.message}") }
             }
         }
     }
@@ -118,7 +161,7 @@ class AdminViewModel(
                 }.onSuccess {
                     loadData()
                 }.onFailure { e ->
-                    println("xavi - saveReservation failure: ${e.message}")
+                    println("saveReservation failure: ${e.message}")
                 }
             }
         }
@@ -139,7 +182,7 @@ class AdminViewModel(
                 }.onSuccess {
                     loadData()
                 }.onFailure { e ->
-                    println("xavi - saveReservation failure: ${e.message}")
+                    println("saveReservation failure: ${e.message}")
                 }
             }
         }
@@ -175,6 +218,5 @@ class AdminViewModel(
     }
 
     private fun exportToPdf() {
-        // In Web, we can use browser's print functionality
     }
 }

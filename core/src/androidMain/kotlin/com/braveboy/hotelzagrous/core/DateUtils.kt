@@ -1,10 +1,13 @@
 package com.braveboy.hotelzagrous.core
 
+import io.github.faridsolgi.persiandatetime.domain.PersianDateTime
+import io.github.faridsolgi.persiandatetime.domain.PersianWeekday
+import io.github.faridsolgi.persiandatetime.extensions.persianDayOfWeek
 import io.github.faridsolgi.persiandatetime.extensions.toDateString
 import io.github.faridsolgi.persiandatetime.extensions.toPersianDateTime
-import kotlin.time.Instant
 import kotlinx.datetime.LocalDate
 import kotlinx.datetime.TimeZone
+import kotlin.time.Instant
 
 actual object DateUtils {
     actual fun gregorianToJalali(gy: Int, gm: Int, gd: Int): String {
@@ -13,5 +16,16 @@ actual object DateUtils {
 
     actual fun convertMillisToJalaliString(millis: Long): String {
         return Instant.fromEpochMilliseconds(millis).toPersianDateTime(TimeZone.UTC).toDateString()
+    }
+
+    actual fun isFriday(dateString: String): Boolean {
+        val parts = dateString.split("/")
+        if (parts.size != 3) return false
+        return try {
+            val pd = PersianDateTime(parts[0].toInt(), parts[1].toInt(), parts[2].toInt())
+            pd.persianDayOfWeek() == PersianWeekday.JOMEH
+        } catch (e: Exception) {
+            false
+        }
     }
 }

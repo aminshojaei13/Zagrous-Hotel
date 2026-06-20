@@ -2,12 +2,14 @@ package com.braveboy.hotelzagrous.app.shared.features.admin
 
 import com.braveboy.hotelzagrous.core.FoodItem
 import com.braveboy.hotelzagrous.core.FoodReservation
+import com.braveboy.hotelzagrous.core.MenuConfig
 import com.braveboy.hotelzagrous.core.Room
 
 data class AdminState(
     val rooms: List<Room> = emptyList(),
     val reservations: List<FoodReservation> = emptyList(),
     val foods: List<FoodItem> = emptyList(),
+    val menuConfigs: List<MenuConfig> = emptyList(),
     val isLoading: Boolean = false,
     val selectedRoom: Room? = null,
     val error: String? = null
@@ -48,4 +50,9 @@ sealed class AdminIntent {
     ) : AdminIntent()
 
     data class SelectRoomForFood(val room: Room?) : AdminIntent()
+
+    // Menu Management Intents
+    data class UpsertFood(val food: FoodItem) : AdminIntent()
+    data class DeleteFood(val id: String) : AdminIntent()
+    data class UpdateMenuConfig(val config: MenuConfig) : AdminIntent()
 }

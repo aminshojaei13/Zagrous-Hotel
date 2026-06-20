@@ -1,13 +1,17 @@
 package com.braveboy.hotelzagrous
 
+import com.braveboy.hotelzagrous.core.DayType
 import com.braveboy.hotelzagrous.core.FoodItem
 import com.braveboy.hotelzagrous.core.FoodReservation
 import com.braveboy.hotelzagrous.core.FoodType
 import com.braveboy.hotelzagrous.core.Room
 import com.braveboy.hotelzagrous.core.GuestMealSelection
+import com.braveboy.hotelzagrous.core.MenuConfig
 import java.sql.Connection
 import java.sql.DriverManager
+import java.util.UUID
 import kotlinx.serialization.json.Json
+import kotlinx.serialization.encodeToString
 
 class HotelDatabase(
     databasePath: String = "hotel-zagrous.sqlite"
@@ -16,6 +20,7 @@ class HotelDatabase(
 
     init {
         createTables()
+        migrateIfNeeded()
         seedDefaults()
     }
 
@@ -23,8 +28,6 @@ class HotelDatabase(
         connection.createStatement().use { statement ->
             statement.executeUpdate("DELETE FROM food_reservations")
             statement.executeUpdate("DELETE FROM rooms")
-            // اگر می‌خواهید لیست غذاها هم پاک شود خط زیر را از کامنت خارج کنید:
-            // statement.executeUpdate("DELETE FROM food_items")
         }
     }
 
@@ -104,7 +107,14 @@ class HotelDatabase(
         }
     }
 
-    fun updateRoomStay(roomNumber: String, checkIn: String, checkOut: String, checkInMillis: Long, checkOutMillis: Long, guestCount: Int): Boolean {
+    fun updateRoomStay(
+        roomNumber: String,
+        checkIn: String,
+        checkOut: String,
+        checkInMillis: Long,
+        checkOutMillis: Long,
+        guestCount: Int
+    ): Boolean {
         return connection.prepareStatement(
             """
             UPDATE rooms
@@ -123,7 +133,7 @@ class HotelDatabase(
     }
 
     fun getFoods(): List<FoodItem> = connection.prepareStatement(
-        "SELECT id, name, type FROM food_items ORDER BY type, id"
+        "SELECT id, name, type, day_type, is_active, is_visible_to_users, display_order FROM food_items ORDER BY day_type, type, display_order"
     ).use { statement ->
         statement.executeQuery().use { rows ->
             buildList {
@@ -132,11 +142,82 @@ class HotelDatabase(
                         FoodItem(
                             id = rows.getString("id"),
                             name = rows.getString("name"),
-                            type = FoodType.valueOf(rows.getString("type"))
+                            type = FoodType.valueOf(rows.getString("type")),
+                            dayType = DayType.valueOf(rows.getString("day_type")),
+                            isActive = rows.getInt("is_active") == 1,
+                            isVisibleToUsers = rows.getInt("is_visible_to_users") == 1,
+                            displayOrder = rows.getInt("display_order")
                         )
                     )
                 }
             }
+        }
+    }
+
+    fun upsertFood(food: FoodItem) {
+        val id = if (food.id.isBlank()) UUID.randomUUID().toString() else food.id
+        connection.prepareStatement(
+            """
+            INSERT INTO food_items(id, name, type, day_type, is_active, is_visible_to_users, display_order)
+            VALUES(?, ?, ?, ?, ?, ?, ?)
+            ON CONFLICT(id) DO UPDATE SET
+                name = excluded.name,
+                type = excluded.type,
+                day_type = excluded.day_type,
+                is_active = excluded.is_active,
+                is_visible_to_users = excluded.is_visible_to_users,
+                display_order = excluded.display_order
+            """.trimIndent()
+        ).use { statement ->
+            statement.setString(1, id)
+            statement.setString(2, food.name)
+            statement.setString(3, food.type.name)
+            statement.setString(4, food.dayType.name)
+            statement.setInt(5, if (food.isActive) 1 else 0)
+            statement.setInt(6, if (food.isVisibleToUsers) 1 else 0)
+            statement.setInt(7, food.displayOrder)
+            statement.executeUpdate()
+        }
+    }
+
+    fun deleteFood(id: String) {
+        connection.prepareStatement("DELETE FROM food_items WHERE id = ?").use { statement ->
+            statement.setString(1, id)
+            statement.executeUpdate()
+        }
+    }
+
+    fun getMenuConfigs(): List<MenuConfig> = connection.prepareStatement(
+        "SELECT day_type, food_type, is_enabled FROM menu_configs"
+    ).use { statement ->
+        statement.executeQuery().use { rows ->
+            buildList {
+                while (rows.next()) {
+                    add(
+                        MenuConfig(
+                            dayType = DayType.valueOf(rows.getString("day_type")),
+                            foodType = FoodType.valueOf(rows.getString("food_type")),
+                            isEnabled = rows.getInt("is_enabled") == 1
+                        )
+                    )
+                }
+            }
+        }
+    }
+
+    fun upsertMenuConfig(config: MenuConfig) {
+        connection.prepareStatement(
+            """
+            INSERT INTO menu_configs(day_type, food_type, is_enabled)
+            VALUES(?, ?, ?)
+            ON CONFLICT(day_type, food_type) DO UPDATE SET
+                is_enabled = excluded.is_enabled
+            """.trimIndent()
+        ).use { statement ->
+            statement.setString(1, config.dayType.name)
+            statement.setString(2, config.foodType.name)
+            statement.setInt(3, if (config.isEnabled) 1 else 0)
+            statement.executeUpdate()
         }
     }
 
@@ -168,35 +249,36 @@ class HotelDatabase(
         }
     }
 
-    fun getReservationsForRoom(roomNumber: String): List<FoodReservation> = connection.prepareStatement(
-        """
+    fun getReservationsForRoom(roomNumber: String): List<FoodReservation> =
+        connection.prepareStatement(
+            """
         SELECT room_number, date, guest_meal_selections
         FROM food_reservations
         WHERE room_number = ?
         ORDER BY date
         """.trimIndent()
-    ).use { statement ->
-        statement.setString(1, roomNumber)
-        statement.executeQuery().use { rows ->
-            buildList {
-                while (rows.next()) {
-                    val selectionsJson = rows.getString("guest_meal_selections")
-                    val selections = try {
-                        Json.decodeFromString<List<GuestMealSelection>>(selectionsJson)
-                    } catch (e: Exception) {
-                        emptyList()
-                    }
-                    add(
-                        FoodReservation(
-                            roomNumber = rows.getString("room_number"),
-                            date = rows.getString("date"),
-                            guestMealSelections = selections
+        ).use { statement ->
+            statement.setString(1, roomNumber)
+            statement.executeQuery().use { rows ->
+                buildList {
+                    while (rows.next()) {
+                        val selectionsJson = rows.getString("guest_meal_selections")
+                        val selections = try {
+                            Json.decodeFromString<List<GuestMealSelection>>(selectionsJson)
+                        } catch (e: Exception) {
+                            emptyList()
+                        }
+                        add(
+                            FoodReservation(
+                                roomNumber = rows.getString("room_number"),
+                                date = rows.getString("date"),
+                                guestMealSelections = selections
+                            )
                         )
-                    )
+                    }
                 }
             }
         }
-    }
 
     fun saveReservation(reservation: FoodReservation) {
         connection.prepareStatement(
@@ -235,11 +317,26 @@ class HotelDatabase(
                 CREATE TABLE IF NOT EXISTS food_items(
                     id TEXT PRIMARY KEY,
                     name TEXT NOT NULL,
-                    type TEXT NOT NULL
+                    type TEXT NOT NULL,
+                    day_type TEXT NOT NULL DEFAULT 'EVEN',
+                    is_active INTEGER NOT NULL DEFAULT 1,
+                    is_visible_to_users INTEGER NOT NULL DEFAULT 1,
+                    display_order INTEGER NOT NULL DEFAULT 0
                 )
                 """.trimIndent()
             )
-            
+
+            statement.executeUpdate(
+                """
+                CREATE TABLE IF NOT EXISTS menu_configs(
+                    day_type TEXT NOT NULL,
+                    food_type TEXT NOT NULL,
+                    is_enabled INTEGER NOT NULL DEFAULT 1,
+                    PRIMARY KEY(day_type, food_type)
+                )
+                """.trimIndent()
+            )
+
             statement.executeUpdate(
                 """
                 CREATE TABLE IF NOT EXISTS food_reservations(
@@ -254,37 +351,261 @@ class HotelDatabase(
         }
     }
 
-    private fun seedDefaults() {
-        if (getFoods().isEmpty()) {
-            listOf(
-                FoodItem("1", "چلو کباب", FoodType.LUNCH),
-                FoodItem("2", "جوجه کباب", FoodType.LUNCH),
-                FoodItem("3", "خورشت قیمه", FoodType.LUNCH),
-                FoodItem("4", "پیتزا مخصوص", FoodType.DINNER),
-                FoodItem("5", "خوراک مرغ", FoodType.DINNER),
-                FoodItem("6", "سوپ جو", FoodType.DINNER)
-            ).forEach(::insertFood)
+    private fun migrateIfNeeded() {
+        // Simple migration to add new columns if they don't exist
+        val columns = mutableSetOf<String>()
+        connection.getMetaData().getColumns(null, null, "food_items", null).use { rs ->
+            while (rs.next()) {
+                columns.add(rs.getString("COLUMN_NAME"))
+            }
         }
 
-        // اگر لیست اتاق‌ها خالی باشد، مقادیر پیش‌فرض اضافه می‌شوند
-        // اگر می‌خواهید کاملاً خالی باشد، این بخش را کامنت کنید
-        if (getRooms().isEmpty()) {
-            listOf(
-                Room("101", "رضا احمدی", 2, "1402/08/01", "1402/08/05", 1698823800000L, 1699169400000L),
-                Room("102", "مریم علوی", 1, "1402/08/02", "1402/08/06", 1698910200000L, 1699255800000L),
-                Room("103", "محمد محمدی", 3, "1402/08/05", "1402/08/10", 1699169400000L, 1699601400000L)
-            ).forEach(::upsertRoom)
+        connection.createStatement().use { statement ->
+            if (!columns.contains("day_type")) {
+                statement.executeUpdate("ALTER TABLE food_items ADD COLUMN day_type TEXT NOT NULL DEFAULT 'EVEN'")
+            }
+            if (!columns.contains("is_active")) {
+                statement.executeUpdate("ALTER TABLE food_items ADD COLUMN is_active INTEGER NOT NULL DEFAULT 1")
+            }
+            if (!columns.contains("is_visible_to_users")) {
+                statement.executeUpdate("ALTER TABLE food_items ADD COLUMN is_visible_to_users INTEGER NOT NULL DEFAULT 1")
+            }
+            if (!columns.contains("display_order")) {
+                statement.executeUpdate("ALTER TABLE food_items ADD COLUMN display_order INTEGER NOT NULL DEFAULT 0")
+            }
         }
     }
 
-    private fun insertFood(food: FoodItem) {
-        connection.prepareStatement(
-            "INSERT INTO food_items(id, name, type) VALUES(?, ?, ?)"
-        ).use { statement ->
-            statement.setString(1, food.id)
-            statement.setString(2, food.name)
-            statement.setString(3, food.type.name)
-            statement.executeUpdate()
+    private fun seedDefaults() {
+        if (getFoods().isEmpty()) {
+            val defaultFoods = listOf(
+                // روزهای زوج - ناهار
+                FoodItem(
+                    name = "چلو جوجه",
+                    type = FoodType.LUNCH,
+                    dayType = DayType.EVEN,
+                    displayOrder = 0
+                ),
+                FoodItem(
+                    name = "خورشت قیمه",
+                    type = FoodType.LUNCH,
+                    dayType = DayType.EVEN,
+                    displayOrder = 1
+                ),
+                FoodItem(
+                    name = "چلو کباب نگینی",
+                    type = FoodType.LUNCH,
+                    dayType = DayType.EVEN,
+                    displayOrder = 2
+                ),
+                FoodItem(
+                    name = "مرغ ربی",
+                    type = FoodType.LUNCH,
+                    dayType = DayType.EVEN,
+                    displayOrder = 3
+                ),
+
+                // روزهای زوج - شام
+                FoodItem(
+                    name = "شنیسل مرغ",
+                    type = FoodType.DINNER,
+                    dayType = DayType.EVEN,
+                    displayOrder = 0
+                ),
+                FoodItem(
+                    name = "خوراک لقمه",
+                    type = FoodType.DINNER,
+                    dayType = DayType.EVEN,
+                    displayOrder = 1
+                ),
+                FoodItem(
+                    name = "رولت گوشت",
+                    type = FoodType.DINNER,
+                    dayType = DayType.EVEN,
+                    displayOrder = 2
+                ),
+                FoodItem(
+                    name = "میرزا قاسمی",
+                    type = FoodType.DINNER,
+                    dayType = DayType.EVEN,
+                    displayOrder = 3
+                ),
+                FoodItem(
+                    name = "عدس پلو",
+                    type = FoodType.DINNER,
+                    dayType = DayType.EVEN,
+                    displayOrder = 4
+                ),
+                FoodItem(
+                    name = "جوجه",
+                    type = FoodType.DINNER,
+                    dayType = DayType.EVEN,
+                    displayOrder = 5
+                ),
+
+                // روزهای فرد - ناهار
+                FoodItem(
+                    name = "چلو کباب کوبیده",
+                    type = FoodType.LUNCH,
+                    dayType = DayType.ODD,
+                    displayOrder = 0
+                ),
+                FoodItem(
+                    name = "چلو خورشت قرمه سبزی",
+                    type = FoodType.LUNCH,
+                    dayType = DayType.ODD,
+                    displayOrder = 1
+                ),
+                FoodItem(
+                    name = "چلو کباب نگینی",
+                    type = FoodType.LUNCH,
+                    dayType = DayType.ODD,
+                    displayOrder = 2
+                ),
+                FoodItem(
+                    name = "چلو مرغ ربی",
+                    type = FoodType.LUNCH,
+                    dayType = DayType.ODD,
+                    displayOrder = 3
+                ),
+                FoodItem(
+                    name = "چلو جوجه",
+                    type = FoodType.LUNCH,
+                    dayType = DayType.ODD,
+                    displayOrder = 4
+                ),
+
+                // روزهای فرد - شام
+                FoodItem(
+                    name = "شنیسل مرغ",
+                    type = FoodType.DINNER,
+                    dayType = DayType.ODD,
+                    displayOrder = 0
+                ),
+                FoodItem(
+                    name = "کوفته تبریزی",
+                    type = FoodType.DINNER,
+                    dayType = DayType.ODD,
+                    displayOrder = 1
+                ),
+                FoodItem(
+                    name = "ماکارانی",
+                    type = FoodType.DINNER,
+                    dayType = DayType.ODD,
+                    displayOrder = 2
+                ),
+                FoodItem(
+                    name = "خوراک لقمه",
+                    type = FoodType.DINNER,
+                    dayType = DayType.ODD,
+                    displayOrder = 3
+                ),
+                FoodItem(
+                    name = "جوجه",
+                    type = FoodType.DINNER,
+                    dayType = DayType.ODD,
+                    displayOrder = 4
+                ),
+
+                // جمعه - ناهار
+                FoodItem(
+                    name = "خورشت قیمه",
+                    type = FoodType.LUNCH,
+                    dayType = DayType.FRIDAY,
+                    displayOrder = 0
+                ),
+                FoodItem(
+                    name = "چلو کباب نگینی",
+                    type = FoodType.LUNCH,
+                    dayType = DayType.FRIDAY,
+                    displayOrder = 1
+                ),
+                FoodItem(
+                    name = "چلو جوجه",
+                    type = FoodType.LUNCH,
+                    dayType = DayType.FRIDAY,
+                    displayOrder = 2
+                ),
+                FoodItem(
+                    name = "چلو مرغ ربی",
+                    type = FoodType.LUNCH,
+                    dayType = DayType.FRIDAY,
+                    displayOrder = 3
+                ),
+
+                // جمعه - شام
+                FoodItem(
+                    name = "خوراک لقمه",
+                    type = FoodType.DINNER,
+                    dayType = DayType.FRIDAY,
+                    displayOrder = 0
+                ),
+                FoodItem(
+                    name = "شنیسل مرغ",
+                    type = FoodType.DINNER,
+                    dayType = DayType.FRIDAY,
+                    displayOrder = 1
+                ),
+                FoodItem(
+                    name = "رولت گوشت",
+                    type = FoodType.DINNER,
+                    dayType = DayType.FRIDAY,
+                    displayOrder = 2
+                ),
+                FoodItem(
+                    name = "ماکارانی",
+                    type = FoodType.DINNER,
+                    dayType = DayType.FRIDAY,
+                    displayOrder = 3
+                ),
+                FoodItem(
+                    name = "جوجه",
+                    type = FoodType.DINNER,
+                    dayType = DayType.FRIDAY,
+                    displayOrder = 4
+                )
+            )
+            defaultFoods.forEach(::upsertFood)
+        }
+
+        if (getMenuConfigs().isEmpty()) {
+            DayType.entries.forEach { dayType ->
+                FoodType.entries.forEach { foodType ->
+                    upsertMenuConfig(MenuConfig(dayType, foodType, true))
+                }
+            }
+        }
+
+        if (getRooms().isEmpty()) {
+            listOf(
+                Room(
+                    "101",
+                    "رضا احمدی",
+                    2,
+                    "1402/08/01",
+                    "1402/08/05",
+                    1698823800000L,
+                    1699169400000L
+                ),
+                Room(
+                    "102",
+                    "مریم علوی",
+                    1,
+                    "1402/08/02",
+                    "1402/08/06",
+                    1698910200000L,
+                    1699255800000L
+                ),
+                Room(
+                    "103",
+                    "محمد محمدی",
+                    3,
+                    "1402/08/05",
+                    "1402/08/10",
+                    1699169400000L,
+                    1699601400000L
+                )
+            ).forEach(::upsertRoom)
         }
     }
 }

@@ -1,6 +1,5 @@
 package com.braveboy.hotelzagrous.app.shared.features.admin
 
-import androidx.compose.animation.animateColorAsState
 import androidx.compose.foundation.BorderStroke
 import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.Arrangement
@@ -27,29 +26,35 @@ import androidx.compose.material.icons.filled.Bed
 import androidx.compose.material.icons.filled.Block
 import androidx.compose.material.icons.filled.CalendarToday
 import androidx.compose.material.icons.filled.Check
+import androidx.compose.material.icons.filled.Delete
 import androidx.compose.material.icons.filled.DeleteForever
-import androidx.compose.material.icons.filled.ErrorOutline
+import androidx.compose.material.icons.filled.Edit
 import androidx.compose.material.icons.filled.Event
 import androidx.compose.material.icons.filled.Hotel
 import androidx.compose.material.icons.filled.Numbers
 import androidx.compose.material.icons.filled.People
 import androidx.compose.material.icons.filled.Person
 import androidx.compose.material.icons.filled.Restaurant
+import androidx.compose.material.icons.filled.RestaurantMenu
 import androidx.compose.material.icons.filled.Today
 import androidx.compose.material3.AlertDialog
 import androidx.compose.material3.Button
 import androidx.compose.material3.ButtonDefaults
+import androidx.compose.material3.Checkbox
 import androidx.compose.material3.CircularProgressIndicator
 import androidx.compose.material3.DatePicker
 import androidx.compose.material3.DatePickerDialog
 import androidx.compose.material3.DropdownMenu
 import androidx.compose.material3.DropdownMenuItem
 import androidx.compose.material3.ExperimentalMaterial3Api
+import androidx.compose.material3.FilterChip
 import androidx.compose.material3.HorizontalDivider
 import androidx.compose.material3.Icon
+import androidx.compose.material3.IconButton
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.OutlinedTextField
 import androidx.compose.material3.Surface
+import androidx.compose.material3.Switch
 import androidx.compose.material3.Text
 import androidx.compose.material3.TextButton
 import androidx.compose.material3.rememberDatePickerState
@@ -61,16 +66,19 @@ import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.draw.scale
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.vector.ImageVector
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
 import com.braveboy.hotelzagrous.core.DateUtils
+import com.braveboy.hotelzagrous.core.DayType
 import com.braveboy.hotelzagrous.core.FoodItem
 import com.braveboy.hotelzagrous.core.FoodReservation
 import com.braveboy.hotelzagrous.core.FoodType
 import com.braveboy.hotelzagrous.core.GuestMealSelection
+import com.braveboy.hotelzagrous.core.MenuConfig
 import com.braveboy.hotelzagrous.core.Room
 import com.braveboy.hotelzagrous.core.normalizeDigits
 import kotlin.time.Clock
@@ -79,9 +87,9 @@ import kotlin.time.Clock
 @Composable
 fun AdminScreen(viewModel: AdminViewModel) {
     val state by viewModel.state.collectAsState()
+    var currentTab by remember { mutableStateOf("rooms") }
     var showAddRoomDialog by remember { mutableStateOf(false) }
     var showClearDataDialog by remember { mutableStateOf(false) }
-    var showReservationSummary by remember { mutableStateOf(false) }
 
     Row(modifier = Modifier.fillMaxSize().background(MaterialTheme.colorScheme.background)) {
         Surface(
@@ -129,8 +137,8 @@ fun AdminScreen(viewModel: AdminViewModel) {
                 NavigationItem(
                     label = "مدیریت اتاق‌ها",
                     icon = Icons.Default.Bed,
-                    selected = !showReservationSummary,
-                    onClick = { showReservationSummary = false }
+                    selected = currentTab == "rooms",
+                    onClick = { currentTab = "rooms" }
                 )
 
                 Spacer(Modifier.height(8.dp))
@@ -138,9 +146,19 @@ fun AdminScreen(viewModel: AdminViewModel) {
                 NavigationItem(
                     label = "گزارش رزرو غذا",
                     icon = Icons.Default.Restaurant,
-                    selected = showReservationSummary,
-                    onClick = { showReservationSummary = true }
+                    selected = currentTab == "reservations",
+                    onClick = { currentTab = "reservations" }
                 )
+
+                Spacer(Modifier.height(8.dp))
+
+                NavigationItem(
+                    "مدیریت منوی غذا",
+                    Icons.Default.RestaurantMenu,
+                    selected = currentTab == "menu",
+                    onClick = { currentTab = "menu" }
+                )
+
 
                 Spacer(Modifier.weight(1f))
 
@@ -165,46 +183,61 @@ fun AdminScreen(viewModel: AdminViewModel) {
                 .fillMaxHeight()
                 .padding(32.dp)
         ) {
-            // Page Header
             Row(
                 modifier = Modifier.fillMaxWidth().padding(bottom = 32.dp),
                 verticalAlignment = Alignment.CenterVertically,
                 horizontalArrangement = Arrangement.SpaceBetween
             ) {
-                Column {
-                    Text(
-                        text = if (showReservationSummary) "گزارش جامع رزروها" else "داشبورد مدیریت اتاق‌ها",
-                        style = MaterialTheme.typography.headlineMedium,
-                        fontWeight = FontWeight.Bold,
-                        color = MaterialTheme.colorScheme.onSurface
-                    )
-                    Text(
-                        text = if (showReservationSummary) "مشاهده و مدیریت برنامه غذایی مهمانان" else "لیست و وضعیت اقامت تمام اتاق‌ها",
-                        style = MaterialTheme.typography.bodyMedium,
-                        color = MaterialTheme.colorScheme.onSurfaceVariant
-                    )
-                }
-
-                if (!showReservationSummary) {
-                    Button(
-                        onClick = { showAddRoomDialog = true },
-                        shape = MaterialTheme.shapes.medium,
-                        colors = ButtonDefaults.buttonColors(containerColor = MaterialTheme.colorScheme.primary),
-                        contentPadding = PaddingValues(horizontal = 24.dp, vertical = 14.dp),
-                        elevation = ButtonDefaults.buttonElevation(defaultElevation = 2.dp)
+                Column(modifier = Modifier.weight(1f).fillMaxHeight().padding(32.dp)) {
+                    Row(
+                        modifier = Modifier.fillMaxWidth().padding(bottom = 32.dp),
+                        horizontalArrangement = Arrangement.SpaceBetween,
+                        verticalAlignment = Alignment.CenterVertically
                     ) {
-                        Icon(
-                            Icons.Default.Add,
-                            contentDescription = null,
-                            modifier = Modifier.size(20.dp)
-                        )
-                        Spacer(Modifier.width(12.dp))
-                        Text("افزودن اتاق جدید", style = MaterialTheme.typography.labelLarge)
+                        Column {
+                            val title = when (currentTab) {
+                                "rooms" -> "مدیریت اتاق‌ها"; "menu" -> "مدیریت منو غذا"; else -> "گزارش رزرو غذا"
+                            }
+                            Text(
+                                title,
+                                style = MaterialTheme.typography.headlineMedium,
+                                fontWeight = FontWeight.Bold
+                            )
+                        }
+                        if (currentTab == "rooms") {
+                            Button(onClick = { showAddRoomDialog = true }) {
+                                Icon(
+                                    Icons.Default.Add,
+                                    null
+                                ); Text("افزودن اتاق")
+                            }
+                        }
+                    }
+
+                    Surface(
+                        modifier = Modifier.fillMaxSize(),
+                        shape = MaterialTheme.shapes.large,
+                        color = MaterialTheme.colorScheme.surface,
+                        shadowElevation = 2.dp,
+                        border = BorderStroke(1.dp, MaterialTheme.colorScheme.surfaceVariant)
+                    ) {
+                        if (state.isLoading) {
+                            Box(
+                                Modifier.fillMaxSize(),
+                                contentAlignment = Alignment.Center
+                            ) { CircularProgressIndicator() }
+                        } else {
+                            when (currentTab) {
+                                "rooms" -> RoomManagementContent(state, viewModel)
+                                "menu" -> MenuManagementContent(state, viewModel)
+                                "reservations" -> ReservationSummaryContent(state, viewModel)
+                            }
+                        }
                     }
                 }
             }
 
-            // Main Content Card
+            /*// Main Content Card
             Surface(
                 modifier = Modifier.fillMaxSize(),
                 shape = MaterialTheme.shapes.large,
@@ -304,7 +337,9 @@ fun AdminScreen(viewModel: AdminViewModel) {
                                     verticalArrangement = Arrangement.spacedBy(16.dp)
                                 ) {
                                     items(state.rooms, key = { it.roomNumber }) { room ->
-                                        if (room.checkOutEpochMillis >= Clock.System.now().toEpochMilliseconds()){
+                                        if (room.checkOutEpochMillis >= Clock.System.now()
+                                                .toEpochMilliseconds()
+                                        ) {
                                             RoomAdminCard(
                                                 room = room,
                                                 availableFoods = state.foods,
@@ -340,7 +375,7 @@ fun AdminScreen(viewModel: AdminViewModel) {
                         }
                     }
                 }
-            }
+            }*/
         }
     }
 
@@ -385,37 +420,25 @@ fun NavigationItem(
     label: String,
     icon: ImageVector,
     selected: Boolean,
-    onClick: () -> Unit,
-    contentColor: Color = if (selected) MaterialTheme.colorScheme.primary else MaterialTheme.colorScheme.onSurfaceVariant
+    contentColor: Color = if (selected) MaterialTheme.colorScheme.primary else MaterialTheme.colorScheme.onSurfaceVariant,
+    onClick: () -> Unit
 ) {
-    val backgroundColor by animateColorAsState(
-        if (selected) MaterialTheme.colorScheme.primary.copy(alpha = 0.1f) else Color.Transparent
-    )
-
     Surface(
         onClick = onClick,
-        modifier = Modifier
-            .fillMaxWidth()
-            .height(52.dp),
-        color = backgroundColor,
-        shape = MaterialTheme.shapes.medium
+        modifier = Modifier.fillMaxWidth().height(48.dp),
+        shape = MaterialTheme.shapes.medium,
+        color = if (selected) MaterialTheme.colorScheme.primary.copy(0.1f) else Color.Transparent
     ) {
         Row(
             modifier = Modifier.padding(horizontal = 16.dp),
             verticalAlignment = Alignment.CenterVertically
         ) {
-            Icon(
-                icon,
-                contentDescription = null,
-                tint = contentColor,
-                modifier = Modifier.size(20.dp)
-            )
+            Icon(icon, null, tint = contentColor, modifier = Modifier.size(20.dp))
             Spacer(Modifier.width(16.dp))
             Text(
-                text = label,
-                style = MaterialTheme.typography.labelLarge,
-                fontWeight = if (selected) FontWeight.Bold else FontWeight.Medium,
-                color = contentColor
+                label,
+                color = contentColor,
+                fontWeight = if (selected) FontWeight.Bold else FontWeight.Normal
             )
             if (selected) {
                 Spacer(Modifier.weight(1f))
@@ -606,6 +629,290 @@ fun RoomAdminCard(
 }
 
 @Composable
+fun RoomManagementContent(state: AdminState, viewModel: AdminViewModel) {
+    Column(modifier = Modifier.fillMaxSize().padding(32.dp)) {
+        Row(
+            modifier = Modifier.fillMaxWidth().padding(bottom = 24.dp),
+            horizontalArrangement = Arrangement.SpaceBetween,
+            verticalAlignment = Alignment.CenterVertically
+        ) {
+            Text(
+                "لیست اتاق‌های ثبت شده",
+                style = MaterialTheme.typography.titleLarge,
+                fontWeight = FontWeight.Bold
+            )
+            Surface(
+                color = MaterialTheme.colorScheme.primary.copy(alpha = 0.1f),
+                shape = CircleShape
+            ) {
+                Text(
+                    "${state.rooms.size} اتاق",
+                    modifier = Modifier.padding(
+                        horizontal = 12.dp,
+                        vertical = 4.dp
+                    ),
+                    style = MaterialTheme.typography.labelMedium,
+                    color = MaterialTheme.colorScheme.primary,
+                    fontWeight = FontWeight.Bold
+                )
+            }
+        }
+
+        LazyColumn(
+            modifier = Modifier.fillMaxSize(),
+            verticalArrangement = Arrangement.spacedBy(16.dp)
+        ) {
+            items(
+                items = state.rooms.filter {
+                    it.checkOutEpochMillis >= Clock.System.now().toEpochMilliseconds()
+                },
+                key = { it.roomNumber }
+            ) { room ->
+                RoomAdminCard(
+                    room = room,
+                    availableFoods = state.foods,
+                    reservations = state.reservations,
+                    onUpdate = { checkIn, checkOut, checkInMillis, checkOutMillis, guestCount ->
+                        viewModel.onIntent(
+                            AdminIntent.UpdateRoomStay(
+                                room.roomNumber,
+                                checkIn,
+                                checkOut,
+                                checkInMillis,
+                                checkOutMillis,
+                                guestCount
+                            )
+                        )
+                    },
+                    onFoodChange = { date, guestIndex, foodId, isLunch ->
+                        viewModel.onIntent(
+                            AdminIntent.ChangeFood(
+                                room.roomNumber,
+                                date,
+                                guestIndex,
+                                foodId,
+                                isLunch
+                            )
+                        )
+                    }
+                )
+            }
+        }
+    }
+}
+
+@Composable
+fun ReservationSummaryContent(state: AdminState, viewModel: AdminViewModel) {
+    LazyColumn(
+        modifier = Modifier.fillMaxSize().padding(24.dp),
+        verticalArrangement = Arrangement.spacedBy(24.dp)
+    ) {
+        item { TodayReservationDetail(state) }
+        item { TodayReservationDetailByRoom(state, viewModel::onIntent) }
+        item {
+            ReservationSummary(
+                state.reservations,
+                state.rooms,
+                state.foods,
+                viewModel::onIntent
+            )
+        }
+    }
+}
+
+@OptIn(ExperimentalMaterial3Api::class)
+@Composable
+fun MenuManagementContent(state: AdminState, viewModel: AdminViewModel) {
+    var selectedDayType by remember { mutableStateOf(DayType.EVEN) }
+    var selectedFoodType by remember { mutableStateOf(FoodType.LUNCH) }
+    var editingFood by remember { mutableStateOf<FoodItem?>(null) }
+    var showAddDialog by remember { mutableStateOf(false) }
+
+    Column(modifier = Modifier.fillMaxSize().padding(24.dp)) {
+        Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+            DayType.entries.forEach {
+                FilterChip(
+                    selected = selectedDayType == it,
+                    onClick = { selectedDayType = it },
+                    label = {
+                        Text(
+                            when (it) {
+                                DayType.EVEN -> "زوج"; DayType.ODD -> "فرد"; else -> "جمعه"
+                            }
+                        )
+                    })
+            }
+        }
+        Row(
+            modifier = Modifier.padding(top = 8.dp),
+            verticalAlignment = Alignment.CenterVertically,
+            horizontalArrangement = Arrangement.spacedBy(8.dp)
+        ) {
+            FoodType.entries.forEach {
+                FilterChip(
+                    selected = selectedFoodType == it,
+                    onClick = { selectedFoodType = it },
+                    label = { Text(if (it == FoodType.LUNCH) "ناهار" else "شام") })
+            }
+            Spacer(Modifier.weight(1f))
+            val config =
+                state.menuConfigs.find { it.dayType == selectedDayType && it.foodType == selectedFoodType }
+            Text("فعال بودن منو", style = MaterialTheme.typography.labelMedium)
+            Switch(
+                checked = config?.isEnabled ?: true,
+                onCheckedChange = {
+                    viewModel.onIntent(
+                        AdminIntent.UpdateMenuConfig(
+                            MenuConfig(
+                                selectedDayType,
+                                selectedFoodType,
+                                it
+                            )
+                        )
+                    )
+                },
+                modifier = Modifier.scale(0.7f)
+            )
+        }
+
+        Row(
+            modifier = Modifier.fillMaxWidth().padding(top = 24.dp, bottom = 12.dp),
+            horizontalArrangement = Arrangement.SpaceBetween,
+            verticalAlignment = Alignment.CenterVertically
+        ) {
+            Text(
+                "لیست غذاها",
+                style = MaterialTheme.typography.titleLarge,
+                fontWeight = FontWeight.Bold
+            )
+            Button(onClick = { showAddDialog = true }) {
+                Icon(
+                    Icons.Default.Add,
+                    null
+                ); Text("افزودن غذا")
+            }
+        }
+
+        val foods =
+            state.foods.filter { it.dayType == selectedDayType && it.type == selectedFoodType }
+                .sortedBy { it.displayOrder }
+        LazyColumn(verticalArrangement = Arrangement.spacedBy(12.dp)) {
+            items(foods) { food ->
+                Surface(
+                    border = BorderStroke(1.dp, MaterialTheme.colorScheme.outlineVariant),
+                    shape = MaterialTheme.shapes.medium
+                ) {
+                    Row(
+                        modifier = Modifier.padding(16.dp),
+                        verticalAlignment = Alignment.CenterVertically
+                    ) {
+                        Column(modifier = Modifier.weight(1f)) {
+                            Text(food.name, fontWeight = FontWeight.Bold)
+                            Text(
+                                "ترتیب: ${food.displayOrder}",
+                                style = MaterialTheme.typography.bodySmall
+                            )
+                        }
+                        Checkbox(
+                            checked = food.isActive,
+                            onCheckedChange = {
+                                viewModel.onIntent(
+                                    AdminIntent.UpsertFood(
+                                        food.copy(isActive = it)
+                                    )
+                                )
+                            })
+                        Text("فعال", style = MaterialTheme.typography.labelSmall)
+                        Spacer(Modifier.width(8.dp))
+                        Checkbox(
+                            checked = food.isVisibleToUsers,
+                            onCheckedChange = {
+                                viewModel.onIntent(
+                                    AdminIntent.UpsertFood(
+                                        food.copy(isVisibleToUsers = it)
+                                    )
+                                )
+                            })
+                        Text("نمایش", style = MaterialTheme.typography.labelSmall)
+                        IconButton(onClick = { editingFood = food }) {
+                            Icon(
+                                Icons.Default.Edit,
+                                null
+                            )
+                        }
+                        IconButton(onClick = { viewModel.onIntent(AdminIntent.DeleteFood(food.id)) }) {
+                            Icon(
+                                Icons.Default.Delete,
+                                null,
+                                tint = MaterialTheme.colorScheme.error
+                            )
+                        }
+                    }
+                }
+            }
+        }
+    }
+
+    if (showAddDialog) AddEditFoodDialog(
+        null,
+        selectedDayType,
+        selectedFoodType,
+        { showAddDialog = false }) {
+        viewModel.onIntent(AdminIntent.UpsertFood(it)); showAddDialog = false
+    }
+    if (editingFood != null) AddEditFoodDialog(
+        editingFood,
+        selectedDayType,
+        selectedFoodType,
+        { editingFood = null }) {
+        viewModel.onIntent(AdminIntent.UpsertFood(it)); editingFood = null
+    }
+}
+
+@Composable
+fun AddEditFoodDialog(
+    food: FoodItem?,
+    dayType: DayType,
+    foodType: FoodType,
+    onDismiss: () -> Unit,
+    onConfirm: (FoodItem) -> Unit
+) {
+    var name by remember { mutableStateOf(food?.name ?: "") }
+    var order by remember { mutableStateOf(food?.displayOrder?.toString() ?: "0") }
+    AlertDialog(
+        onDismissRequest = onDismiss,
+        title = { Text(if (food == null) "افزودن" else "ویرایش") },
+        text = {
+            Column(verticalArrangement = Arrangement.spacedBy(12.dp)) {
+                OutlinedTextField(
+                    value = name,
+                    onValueChange = { name = it },
+                    label = { Text("نام غذا") })
+                OutlinedTextField(
+                    value = order,
+                    onValueChange = { order = it },
+                    label = { Text("ترتیب نمایش") })
+            }
+        },
+        confirmButton = {
+            Button(onClick = {
+                onConfirm(
+                    food?.copy(
+                        name = name,
+                        displayOrder = order.toIntOrNull() ?: 0
+                    ) ?: FoodItem(
+                        name = name,
+                        type = foodType,
+                        dayType = dayType,
+                        displayOrder = order.toIntOrNull() ?: 0
+                    )
+                )
+            }) { Text("تایید") }
+        }
+    )
+}
+
+@Composable
 fun RoomFoodReservationsDialog(
     room: Room,
     availableFoods: List<FoodItem>,
@@ -736,7 +1043,7 @@ fun AdminFoodSelectionItem(
                     fontWeight = if (selectedFood != null) FontWeight.Bold else FontWeight.Normal,
                     textAlign = if (enabled) TextAlign.Start else TextAlign.Center
                 )
-                if (enabled){
+                if (enabled) {
                     Icon(Icons.Default.ArrowDropDown, null, modifier = Modifier.size(16.dp))
                 }
             }

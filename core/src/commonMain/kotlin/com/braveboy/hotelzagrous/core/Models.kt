@@ -14,14 +14,28 @@ data class Room(
 )
 
 @Serializable
+enum class FoodType { LUNCH, DINNER }
+
+@Serializable
+enum class DayType { EVEN, ODD, FRIDAY }
+
+@Serializable
 data class FoodItem(
-    val id: String,
+    val id: String = "",
     val name: String,
-    val type: FoodType
+    val type: FoodType,
+    val dayType: DayType,
+    val isActive: Boolean = true,
+    val isVisibleToUsers: Boolean = true,
+    val displayOrder: Int = 0
 )
 
 @Serializable
-enum class FoodType { LUNCH, DINNER }
+data class MenuConfig(
+    val dayType: DayType,
+    val foodType: FoodType,
+    val isEnabled: Boolean = true
+)
 
 @Serializable
 data class FoodReservation(

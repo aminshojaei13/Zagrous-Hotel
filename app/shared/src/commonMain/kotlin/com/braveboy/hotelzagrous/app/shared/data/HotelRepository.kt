@@ -2,6 +2,7 @@ package com.braveboy.hotelzagrous.app.shared.data
 
 import com.braveboy.hotelzagrous.core.FoodItem
 import com.braveboy.hotelzagrous.core.FoodReservation
+import com.braveboy.hotelzagrous.core.MenuConfig
 import com.braveboy.hotelzagrous.core.Room
 import com.braveboy.hotelzagrous.core.UpdateRoomStayRequest
 import com.braveboy.hotelzagrous.core.normalizeDigits
@@ -15,7 +16,6 @@ import io.ktor.client.request.post
 import io.ktor.client.request.put
 import io.ktor.client.request.setBody
 import io.ktor.client.statement.HttpResponse
-import io.ktor.client.statement.bodyAsText
 import io.ktor.http.ContentType
 import io.ktor.http.contentType
 import io.ktor.http.isSuccess
@@ -67,6 +67,31 @@ class HotelRepository(
         if (response.status.isSuccess()) response.body() else emptyList()
     } catch (_: Throwable) {
         emptyList()
+    }
+
+    suspend fun upsertFood(food: FoodItem) {
+        client.post("$apiBaseUrl/foods") {
+            contentType(ContentType.Application.Json)
+            setBody(food)
+        }
+    }
+
+    suspend fun deleteFood(id: String) {
+        client.delete("$apiBaseUrl/foods/$id")
+    }
+
+    suspend fun getMenuConfigs(): List<MenuConfig> = try {
+        val response: HttpResponse = client.get("$apiBaseUrl/menu-configs")
+        if (response.status.isSuccess()) response.body() else emptyList()
+    } catch (_: Throwable) {
+        emptyList()
+    }
+
+    suspend fun upsertMenuConfig(config: MenuConfig) {
+        client.post("$apiBaseUrl/menu-configs") {
+            contentType(ContentType.Application.Json)
+            setBody(config)
+        }
     }
 
     suspend fun getAllReservations(): List<FoodReservation> = try {
