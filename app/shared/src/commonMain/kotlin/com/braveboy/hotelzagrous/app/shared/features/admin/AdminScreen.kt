@@ -304,34 +304,36 @@ fun AdminScreen(viewModel: AdminViewModel) {
                                     verticalArrangement = Arrangement.spacedBy(16.dp)
                                 ) {
                                     items(state.rooms, key = { it.roomNumber }) { room ->
-                                        RoomAdminCard(
-                                            room = room,
-                                            availableFoods = state.foods,
-                                            reservations = state.reservations,
-                                            onUpdate = { checkIn, checkOut, checkInMillis, checkOutMillis, guestCount ->
-                                                viewModel.onIntent(
-                                                    AdminIntent.UpdateRoomStay(
-                                                        room.roomNumber,
-                                                        checkIn,
-                                                        checkOut,
-                                                        checkInMillis,
-                                                        checkOutMillis,
-                                                        guestCount
+                                        if (room.checkOutEpochMillis >= Clock.System.now().toEpochMilliseconds()){
+                                            RoomAdminCard(
+                                                room = room,
+                                                availableFoods = state.foods,
+                                                reservations = state.reservations,
+                                                onUpdate = { checkIn, checkOut, checkInMillis, checkOutMillis, guestCount ->
+                                                    viewModel.onIntent(
+                                                        AdminIntent.UpdateRoomStay(
+                                                            room.roomNumber,
+                                                            checkIn,
+                                                            checkOut,
+                                                            checkInMillis,
+                                                            checkOutMillis,
+                                                            guestCount
+                                                        )
                                                     )
-                                                )
-                                            },
-                                            onFoodChange = { date, guestIndex, foodId, isLunch ->
-                                                viewModel.onIntent(
-                                                    AdminIntent.ChangeFood(
-                                                        room.roomNumber,
-                                                        date,
-                                                        guestIndex,
-                                                        foodId,
-                                                        isLunch
+                                                },
+                                                onFoodChange = { date, guestIndex, foodId, isLunch ->
+                                                    viewModel.onIntent(
+                                                        AdminIntent.ChangeFood(
+                                                            room.roomNumber,
+                                                            date,
+                                                            guestIndex,
+                                                            foodId,
+                                                            isLunch
+                                                        )
                                                     )
-                                                )
-                                            }
-                                        )
+                                                }
+                                            )
+                                        }
                                     }
                                 }
                             }
@@ -512,7 +514,7 @@ fun RoomAdminCard(
                         }
                     }
                     DropdownMenu(expanded = expanded, onDismissRequest = { expanded = false }) {
-                        (1..10).forEach { number ->
+                        (1..7).forEach { number ->
                             DropdownMenuItem(
                                 text = { Text("$number نفر") },
                                 onClick = { guestCount = number; expanded = false }

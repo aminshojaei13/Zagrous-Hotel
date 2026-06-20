@@ -450,7 +450,7 @@ fun FoodSelectionItem(
             onClick = { expanded = true },
             modifier = Modifier.fillMaxWidth(),
             shape = MaterialTheme.shapes.medium,
-            color = if (selectedFood != null) MaterialTheme.colorScheme.primaryContainer.copy(alpha = 0.4f) else MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.5f),
+            color = if (selectedFood != null) MaterialTheme.colorScheme.primaryContainer.copy(alpha = 0.1f) else MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.5f),
             border = if (selectedFood != null) androidx.compose.foundation.BorderStroke(1.dp, MaterialTheme.colorScheme.primary) else null
         ) {
             Column(modifier = Modifier.padding(12.dp)) {
@@ -463,6 +463,7 @@ fun FoodSelectionItem(
                         color = if (selectedFood != null) MaterialTheme.colorScheme.primary else MaterialTheme.colorScheme.outline
                     )
                 }
+
                 Spacer(Modifier.height(4.dp))
                 Row(
                     modifier = Modifier.fillMaxWidth(),
