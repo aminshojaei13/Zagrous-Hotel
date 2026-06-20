@@ -6,6 +6,7 @@ import com.braveboy.hotelzagrous.core.Room
 
 data class ReservationState(
     val roomNumber: String = "",
+    val phoneNumber: String = "",
     val room: Room? = null,
     val availableFoods: List<FoodItem> = emptyList(),
     val tempReservations: List<FoodReservation> = emptyList(),
@@ -16,6 +17,7 @@ data class ReservationState(
 
 sealed class ReservationIntent {
     data class UpdateRoomNumber(val roomNumber: String) : ReservationIntent()
+    data class UpdatePhoneNumber(val phoneNumber: String) : ReservationIntent()
     object Login : ReservationIntent()
     data class ChangeFood(
         val date: String,

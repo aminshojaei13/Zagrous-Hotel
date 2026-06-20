@@ -33,8 +33,10 @@ fun ReservationScreen(viewModel: ReservationViewModel) {
     ) {
         if (!state.isLoggedIn) {
             LoginSection(
-                number = state.roomNumber,
-                onNumberChange = { viewModel.onIntent(ReservationIntent.UpdateRoomNumber(it)) },
+                roomNumber = state.roomNumber,
+                onRoomNumberChange = { viewModel.onIntent(ReservationIntent.UpdateRoomNumber(it)) },
+                phoneNumber = state.phoneNumber,
+                onPhoneNumberChange = { viewModel.onIntent(ReservationIntent.UpdatePhoneNumber(it)) },
                 onLogin = { viewModel.onIntent(ReservationIntent.Login) },
                 error = state.error
             )
@@ -45,7 +47,14 @@ fun ReservationScreen(viewModel: ReservationViewModel) {
 }
 
 @Composable
-fun LoginSection(number: String, onNumberChange: (String) -> Unit, onLogin: () -> Unit, error: String?) {
+fun LoginSection(
+    roomNumber: String,
+    onRoomNumberChange: (String) -> Unit,
+    phoneNumber: String,
+    onPhoneNumberChange: (String) -> Unit,
+    onLogin: () -> Unit,
+    error: String?
+) {
     Box(
         modifier = Modifier.fillMaxSize(),
         contentAlignment = Alignment.Center
@@ -108,13 +117,29 @@ fun LoginSection(number: String, onNumberChange: (String) -> Unit, onLogin: () -
                     Spacer(Modifier.height(40.dp))
                     
                     OutlinedTextField(
-                        value = number,
-                        onValueChange = onNumberChange,
-                        label = { Text("شماره اتاق خود را وارد کنید") },
+                        value = roomNumber,
+                        onValueChange = onRoomNumberChange,
+                        label = { Text("شماره اتاق") },
                         modifier = Modifier.fillMaxWidth(),
                         shape = MaterialTheme.shapes.medium,
                         singleLine = true,
                         leadingIcon = { Icon(Icons.Default.MeetingRoom, null, tint = MaterialTheme.colorScheme.primary) },
+                        colors = OutlinedTextFieldDefaults.colors(
+                            focusedBorderColor = MaterialTheme.colorScheme.primary,
+                            unfocusedBorderColor = MaterialTheme.colorScheme.outlineVariant
+                        )
+                    )
+
+                    Spacer(Modifier.height(16.dp))
+
+                    OutlinedTextField(
+                        value = phoneNumber,
+                        onValueChange = onPhoneNumberChange,
+                        label = { Text("شماره موبایل") },
+                        modifier = Modifier.fillMaxWidth(),
+                        shape = MaterialTheme.shapes.medium,
+                        singleLine = true,
+                        leadingIcon = { Icon(Icons.Default.Phone, null, tint = MaterialTheme.colorScheme.primary) },
                         colors = OutlinedTextFieldDefaults.colors(
                             focusedBorderColor = MaterialTheme.colorScheme.primary,
                             unfocusedBorderColor = MaterialTheme.colorScheme.outlineVariant
@@ -145,7 +170,7 @@ fun LoginSection(number: String, onNumberChange: (String) -> Unit, onLogin: () -
                         elevation = ButtonDefaults.buttonElevation(defaultElevation = 4.dp)
                     ) {
                         Text(
-                            if (number.isBlank()) "ورود به سامانه" else "ورود به اتاق $number",
+                            "ورود به سامانه",
                             style = MaterialTheme.typography.titleMedium,
                             fontWeight = FontWeight.Bold
                         )

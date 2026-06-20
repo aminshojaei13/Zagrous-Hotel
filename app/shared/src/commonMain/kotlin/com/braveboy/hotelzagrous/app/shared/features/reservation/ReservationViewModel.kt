@@ -41,6 +41,7 @@ class ReservationViewModel(
     override fun onIntent(intent: ReservationIntent) {
         when (intent) {
             is ReservationIntent.UpdateRoomNumber -> updateState { it.copy(roomNumber = intent.roomNumber) }
+            is ReservationIntent.UpdatePhoneNumber -> updateState { it.copy(phoneNumber = intent.phoneNumber) }
             is ReservationIntent.Login -> login()
             is ReservationIntent.ChangeFood -> updateFoodSelection(intent)
             is ReservationIntent.ConfirmReservation -> submit()
@@ -48,21 +49,33 @@ class ReservationViewModel(
     }
 
     private fun login() {
+        val currentRoomNumber = state.value.roomNumber
+        val currentPhoneNumber = state.value.phoneNumber
+
+        if (currentRoomNumber.isBlank() || currentPhoneNumber.isBlank()) {
+            updateState { it.copy(error = "لطفاً شماره اتاق و شماره موبایل را وارد کنید") }
+            return
+        }
+
         scope.launch {
             updateState { it.copy(isLoading = true, error = null) }
             runCatching {
-                val room = repository.getRoom(state.value.roomNumber)
+                val room = repository.getRoom(currentRoomNumber)
                 val reservations = if (room != null) repository.getReservationsForRoom(room.roomNumber) else emptyList()
                 room to reservations
             }.onSuccess { (room, reservations) ->
                 if (room != null) {
-                    updateState { it.copy(
-                        room = room,
-                        tempReservations = reservations,
-                        isLoggedIn = true,
-                        isLoading = false,
-                        error = null
-                    ) }
+                    if (room.phoneNumber == currentPhoneNumber) {
+                        updateState { it.copy(
+                            room = room,
+                            tempReservations = reservations,
+                            isLoggedIn = true,
+                            isLoading = false,
+                            error = null
+                        ) }
+                    } else {
+                        updateState { it.copy(isLoading = false, error = "شماره موبایل با شماره اتاق مطابقت ندارد") }
+                    }
                 } else {
                     updateState { it.copy(isLoading = false, error = "شماره اتاق یافت نشد") }
                 }

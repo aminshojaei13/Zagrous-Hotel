@@ -96,6 +96,8 @@ fun Application.module() {
                 val request = call.receive<UpdateRoomStayRequest>()
                 val updated = database.updateRoomStay(
                     roomNumber = roomNumber,
+                    guestName = request.guestName,
+                    phoneNumber = request.phoneNumber,
                     checkIn = request.checkIn,
                     checkOut = request.checkOut,
                     checkInMillis = request.checkInMillis,

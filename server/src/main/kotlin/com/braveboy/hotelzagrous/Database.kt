@@ -33,7 +33,7 @@ class HotelDatabase(
 
     fun getRooms(): List<Room> = connection.prepareStatement(
         """
-        SELECT room_number, guest_name, guest_count, check_in_date, check_out_date, check_in_epoch_millis, check_out_epoch_millis
+        SELECT room_number, guest_name, phone_number, guest_count, check_in_date, check_out_date, check_in_epoch_millis, check_out_epoch_millis
         FROM rooms
         ORDER BY room_number
         """.trimIndent()
@@ -45,6 +45,7 @@ class HotelDatabase(
                         Room(
                             roomNumber = rows.getString("room_number"),
                             guestName = rows.getString("guest_name"),
+                            phoneNumber = rows.getString("phone_number") ?: "",
                             guestCount = rows.getInt("guest_count"),
                             checkInDate = rows.getString("check_in_date"),
                             checkOutDate = rows.getString("check_out_date"),
@@ -59,7 +60,7 @@ class HotelDatabase(
 
     fun getRoom(roomNumber: String): Room? = connection.prepareStatement(
         """
-        SELECT room_number, guest_name, guest_count, check_in_date, check_out_date, check_in_epoch_millis, check_out_epoch_millis
+        SELECT room_number, guest_name, phone_number, guest_count, check_in_date, check_out_date, check_in_epoch_millis, check_out_epoch_millis
         FROM rooms
         WHERE room_number = ?
         """.trimIndent()
@@ -72,6 +73,7 @@ class HotelDatabase(
                 Room(
                     roomNumber = rows.getString("room_number"),
                     guestName = rows.getString("guest_name"),
+                    phoneNumber = rows.getString("phone_number") ?: "",
                     guestCount = rows.getInt("guest_count"),
                     checkInDate = rows.getString("check_in_date"),
                     checkOutDate = rows.getString("check_out_date"),
@@ -85,10 +87,11 @@ class HotelDatabase(
     fun upsertRoom(room: Room) {
         connection.prepareStatement(
             """
-            INSERT INTO rooms(room_number, guest_name, guest_count, check_in_date, check_out_date, check_in_epoch_millis, check_out_epoch_millis)
-            VALUES(?, ?, ?, ?, ?, ?, ?)
+            INSERT INTO rooms(room_number, guest_name, phone_number, guest_count, check_in_date, check_out_date, check_in_epoch_millis, check_out_epoch_millis)
+            VALUES(?, ?, ?, ?, ?, ?, ?, ?)
             ON CONFLICT(room_number) DO UPDATE SET
                 guest_name = excluded.guest_name,
+                phone_number = excluded.phone_number,
                 guest_count = excluded.guest_count,
                 check_in_date = excluded.check_in_date,
                 check_out_date = excluded.check_out_date,
@@ -98,17 +101,20 @@ class HotelDatabase(
         ).use { statement ->
             statement.setString(1, room.roomNumber)
             statement.setString(2, room.guestName)
-            statement.setInt(3, room.guestCount)
-            statement.setString(4, room.checkInDate)
-            statement.setString(5, room.checkOutDate)
-            statement.setLong(6, room.checkInEpochMillis)
-            statement.setLong(7, room.checkOutEpochMillis)
+            statement.setString(3, room.phoneNumber)
+            statement.setInt(4, room.guestCount)
+            statement.setString(5, room.checkInDate)
+            statement.setString(6, room.checkOutDate)
+            statement.setLong(7, room.checkInEpochMillis)
+            statement.setLong(8, room.checkOutEpochMillis)
             statement.executeUpdate()
         }
     }
 
     fun updateRoomStay(
         roomNumber: String,
+        guestName: String,
+        phoneNumber: String,
         checkIn: String,
         checkOut: String,
         checkInMillis: Long,
@@ -118,16 +124,18 @@ class HotelDatabase(
         return connection.prepareStatement(
             """
             UPDATE rooms
-            SET check_in_date = ?, check_out_date = ?, check_in_epoch_millis = ?, check_out_epoch_millis = ?, guest_count = ?
+            SET guest_name = ?, phone_number = ?, check_in_date = ?, check_out_date = ?, check_in_epoch_millis = ?, check_out_epoch_millis = ?, guest_count = ?
             WHERE room_number = ?
             """.trimIndent()
         ).use { statement ->
-            statement.setString(1, checkIn)
-            statement.setString(2, checkOut)
-            statement.setLong(3, checkInMillis)
-            statement.setLong(4, checkOutMillis)
-            statement.setInt(5, guestCount)
-            statement.setString(6, roomNumber)
+            statement.setString(1, guestName)
+            statement.setString(2, phoneNumber)
+            statement.setString(3, checkIn)
+            statement.setString(4, checkOut)
+            statement.setLong(5, checkInMillis)
+            statement.setLong(6, checkOutMillis)
+            statement.setInt(7, guestCount)
+            statement.setString(8, roomNumber)
             statement.executeUpdate() > 0
         }
     }
@@ -303,6 +311,7 @@ class HotelDatabase(
                 CREATE TABLE IF NOT EXISTS rooms(
                     room_number TEXT PRIMARY KEY,
                     guest_name TEXT NOT NULL,
+                    phone_number TEXT,
                     guest_count INTEGER NOT NULL DEFAULT 1,
                     check_in_date TEXT NOT NULL,
                     check_out_date TEXT NOT NULL,
@@ -352,25 +361,37 @@ class HotelDatabase(
     }
 
     private fun migrateIfNeeded() {
-        // Simple migration to add new columns if they don't exist
-        val columns = mutableSetOf<String>()
-        connection.getMetaData().getColumns(null, null, "food_items", null).use { rs ->
+        val roomColumns = mutableSetOf<String>()
+        connection.getMetaData().getColumns(null, null, "rooms", null).use { rs ->
             while (rs.next()) {
-                columns.add(rs.getString("COLUMN_NAME"))
+                roomColumns.add(rs.getString("COLUMN_NAME"))
             }
         }
 
         connection.createStatement().use { statement ->
-            if (!columns.contains("day_type")) {
+            if (!roomColumns.contains("phone_number")) {
+                statement.executeUpdate("ALTER TABLE rooms ADD COLUMN phone_number TEXT")
+            }
+        }
+
+        val foodColumns = mutableSetOf<String>()
+        connection.getMetaData().getColumns(null, null, "food_items", null).use { rs ->
+            while (rs.next()) {
+                foodColumns.add(rs.getString("COLUMN_NAME"))
+            }
+        }
+
+        connection.createStatement().use { statement ->
+            if (!foodColumns.contains("day_type")) {
                 statement.executeUpdate("ALTER TABLE food_items ADD COLUMN day_type TEXT NOT NULL DEFAULT 'EVEN'")
             }
-            if (!columns.contains("is_active")) {
+            if (!foodColumns.contains("is_active")) {
                 statement.executeUpdate("ALTER TABLE food_items ADD COLUMN is_active INTEGER NOT NULL DEFAULT 1")
             }
-            if (!columns.contains("is_visible_to_users")) {
+            if (!foodColumns.contains("is_visible_to_users")) {
                 statement.executeUpdate("ALTER TABLE food_items ADD COLUMN is_visible_to_users INTEGER NOT NULL DEFAULT 1")
             }
-            if (!columns.contains("display_order")) {
+            if (!foodColumns.contains("display_order")) {
                 statement.executeUpdate("ALTER TABLE food_items ADD COLUMN display_order INTEGER NOT NULL DEFAULT 0")
             }
         }
@@ -581,6 +602,7 @@ class HotelDatabase(
                 Room(
                     "101",
                     "رضا احمدی",
+                    "09121112233",
                     2,
                     "1402/08/01",
                     "1402/08/05",
@@ -590,6 +612,7 @@ class HotelDatabase(
                 Room(
                     "102",
                     "مریم علوی",
+                    "09124445566",
                     1,
                     "1402/08/02",
                     "1402/08/06",
@@ -599,6 +622,7 @@ class HotelDatabase(
                 Room(
                     "103",
                     "محمد محمدی",
+                    "09127778899",
                     3,
                     "1402/08/05",
                     "1402/08/10",

@@ -107,6 +107,8 @@ class AdminViewModel(
             runCatching {
                 repository.updateRoomStay(
                     intent.roomNumber,
+                    intent.guestName,
+                    intent.phoneNumber,
                     intent.checkIn,
                     intent.checkOut,
                     intent.checkInMillis,
