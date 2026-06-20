@@ -27,4 +27,15 @@ actual object DateUtils {
             false
         }
     }
+
+    actual fun isEven(dateString: String): Boolean {
+        val parts = dateString.split("/")
+        if (parts.size != 3) return false
+        return try {
+            val pd = PersianDateTime(parts[0].toInt(), parts[1].toInt(), parts[2].toInt())
+            pd.day % 2 == 0
+        } catch (e: Exception) {
+            false
+        }
+    }
 }

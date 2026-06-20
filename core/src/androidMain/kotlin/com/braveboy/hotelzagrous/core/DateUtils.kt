@@ -4,6 +4,7 @@ import io.github.faridsolgi.persiandatetime.domain.PersianDateTime
 import io.github.faridsolgi.persiandatetime.domain.PersianWeekday
 import io.github.faridsolgi.persiandatetime.extensions.persianDayOfWeek
 import io.github.faridsolgi.persiandatetime.extensions.toDateString
+import io.github.faridsolgi.persiandatetime.extensions.toEpochMilliseconds
 import io.github.faridsolgi.persiandatetime.extensions.toPersianDateTime
 import kotlinx.datetime.LocalDate
 import kotlinx.datetime.TimeZone
@@ -26,6 +27,28 @@ actual object DateUtils {
             pd.persianDayOfWeek() == PersianWeekday.JOMEH
         } catch (e: Exception) {
             false
+        }
+    }
+
+    actual fun isEven(dateString: String): Boolean {
+        val parts = dateString.split("/")
+        if (parts.size != 3) return false
+        return try {
+            val pd = PersianDateTime(parts[0].toInt(), parts[1].toInt(), parts[2].toInt())
+            pd.day % 2 == 0
+        } catch (e: Exception) {
+            false
+        }
+    }
+
+    actual fun convertDateToTimeMillis(date: String): Long {
+        val parts = date.split("/")
+        if (parts.size != 3) return 0
+        return try {
+            val pd = PersianDateTime(parts[0].toInt(), parts[1].toInt(), parts[2].toInt())
+            pd.toEpochMilliseconds()
+        } catch (e: Exception) {
+            0
         }
     }
 }

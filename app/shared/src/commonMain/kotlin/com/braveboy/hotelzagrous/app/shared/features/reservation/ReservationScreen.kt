@@ -1,5 +1,6 @@
 package com.braveboy.hotelzagrous.app.shared.features.reservation
 
+import androidx.compose.foundation.BorderStroke
 import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.lazy.LazyColumn
@@ -16,8 +17,10 @@ import androidx.compose.ui.graphics.vector.ImageVector
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import com.braveboy.hotelzagrous.core.DateUtils
+import com.braveboy.hotelzagrous.core.DayType
 import com.braveboy.hotelzagrous.core.FoodItem
 import com.braveboy.hotelzagrous.core.FoodType
+import kotlin.time.Clock
 
 @Composable
 fun ReservationScreen(viewModel: ReservationViewModel) {
@@ -349,7 +352,7 @@ fun FoodCard(date: String, state: ReservationState, viewModel: ReservationViewMo
         shape = MaterialTheme.shapes.large,
         color = MaterialTheme.colorScheme.surface,
         shadowElevation = 2.dp,
-        border = androidx.compose.foundation.BorderStroke(1.dp, MaterialTheme.colorScheme.surfaceVariant)
+        border = BorderStroke(1.dp, MaterialTheme.colorScheme.surfaceVariant)
     ) {
         Column(modifier = Modifier.padding(20.dp)) {
             Row(
@@ -399,22 +402,35 @@ fun FoodCard(date: String, state: ReservationState, viewModel: ReservationViewMo
                         modifier = Modifier.fillMaxWidth(),
                         horizontalArrangement = Arrangement.spacedBy(12.dp)
                     ) {
+                        val foods = when {
+                            DateUtils.isFriday(date) -> state.availableFoods.filter { it.dayType == DayType.FRIDAY }
+                            DateUtils.isEven(date) -> state.availableFoods.filter { it.dayType == DayType.EVEN }
+                            else -> state.availableFoods.filter { it.dayType == DayType.ODD }
+                        }
+
+                        val twelveHours = 12 * 60 * 60 * 1000L
+
+                        val isMoreThan12Hours =
+                            (DateUtils.convertDateToTimeMillis(date) - Clock.System.now().toEpochMilliseconds()) > twelveHours
+
                         FoodSelectionItem(
+                            modifier = Modifier.weight(1f),
                             label = "وعده ناهار",
                             icon = Icons.Default.WbSunny,
-                            foods = state.availableFoods.filter { it.type == FoodType.LUNCH },
+                            foods = foods.filter { it.type == FoodType.LUNCH },
                             selectedId = guestSelection?.lunchFoodId,
-                            modifier = Modifier.weight(1f)
+                            enabled = isMoreThan12Hours
                         ) { foodId ->
                             viewModel.onIntent(ReservationIntent.ChangeFood(date, index, foodId, true))
                         }
                         
                         FoodSelectionItem(
+                            modifier = Modifier.weight(1f),
                             label = "وعده شام",
                             icon = Icons.Default.NightsStay,
-                            foods = state.availableFoods.filter { it.type == FoodType.DINNER },
+                            foods = foods.filter { it.type == FoodType.DINNER },
                             selectedId = guestSelection?.dinnerFoodId,
-                            modifier = Modifier.weight(1f)
+                            enabled = isMoreThan12Hours
                         ) { foodId ->
                             viewModel.onIntent(ReservationIntent.ChangeFood(date, index, foodId, false))
                         }
@@ -435,11 +451,12 @@ fun FoodCard(date: String, state: ReservationState, viewModel: ReservationViewMo
 
 @Composable
 fun FoodSelectionItem(
+    modifier: Modifier = Modifier,
     label: String,
     icon: ImageVector,
-    foods: List<FoodItem>, 
-    selectedId: String?, 
-    modifier: Modifier = Modifier,
+    foods: List<FoodItem>,
+    selectedId: String?,
+    enabled: Boolean,
     onSelect: (String?) -> Unit
 ) {
     var expanded by remember { mutableStateOf(false) }
@@ -447,11 +464,12 @@ fun FoodSelectionItem(
 
     Box(modifier = modifier) {
         Surface(
+            enabled = enabled,
             onClick = { expanded = true },
             modifier = Modifier.fillMaxWidth(),
             shape = MaterialTheme.shapes.medium,
-            color = if (selectedFood != null) MaterialTheme.colorScheme.primaryContainer.copy(alpha = 0.1f) else MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.5f),
-            border = if (selectedFood != null) androidx.compose.foundation.BorderStroke(1.dp, MaterialTheme.colorScheme.primary) else null
+            color = if (!enabled) MaterialTheme.colorScheme.outline.copy( alpha = 0.3F) else if (selectedFood != null) MaterialTheme.colorScheme.primaryContainer.copy(alpha = 0.1f) else MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.5f),
+            border = if (selectedFood != null) BorderStroke(1.dp, MaterialTheme.colorScheme.primary) else null
         ) {
             Column(modifier = Modifier.padding(12.dp)) {
                 Row(verticalAlignment = Alignment.CenterVertically) {

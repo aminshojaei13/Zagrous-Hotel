@@ -972,10 +972,16 @@ fun RoomFoodReservationsDialog(
                                             style = MaterialTheme.typography.bodySmall
                                         )
 
+                                        val menu = when {
+                                            DateUtils.isFriday(date) -> availableFoods.filter { it.dayType == DayType.FRIDAY }
+                                            DateUtils.isEven(date) -> availableFoods.filter { it.dayType == DayType.EVEN }
+                                            else -> availableFoods.filter { it.dayType == DayType.ODD }
+                                        }
+
                                         // Lunch
                                         AdminFoodSelectionItem(
                                             label = "ناهار",
-                                            foods = availableFoods.filter { it.type == FoodType.LUNCH },
+                                            foods = menu.filter { it.type == FoodType.LUNCH },
                                             selectedId = selection?.lunchFoodId,
                                             modifier = Modifier.weight(1f),
                                             onSelect = { onFoodChange(date, index, it, true) }
@@ -984,7 +990,7 @@ fun RoomFoodReservationsDialog(
                                         // Dinner
                                         AdminFoodSelectionItem(
                                             label = "شام",
-                                            foods = availableFoods.filter { it.type == FoodType.DINNER },
+                                            foods = menu.filter { it.type == FoodType.DINNER },
                                             selectedId = selection?.dinnerFoodId,
                                             modifier = Modifier.weight(1f),
                                             onSelect = { onFoodChange(date, index, it, false) }
