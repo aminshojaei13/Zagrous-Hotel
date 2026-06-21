@@ -3,6 +3,7 @@ package com.braveboy.hotelzagrous.core
 import io.github.faridsolgi.persiandatetime.domain.PersianDateTime
 import io.github.faridsolgi.persiandatetime.domain.PersianWeekday
 import io.github.faridsolgi.persiandatetime.extensions.toDateString
+import io.github.faridsolgi.persiandatetime.extensions.toEpochMilliseconds
 import io.github.faridsolgi.persiandatetime.extensions.toPersianDateTime
 import kotlin.time.Instant
 import kotlinx.datetime.LocalDate
@@ -36,6 +37,17 @@ actual object DateUtils {
             pd.day % 2 == 0
         } catch (e: Exception) {
             false
+        }
+    }
+
+    actual fun convertDateToTimeMillis(date: String): Long {
+        val parts = date.split("/")
+        if (parts.size != 3) return 0
+        return try {
+            val pd = PersianDateTime(parts[0].toInt(), parts[1].toInt(), parts[2].toInt())
+            pd.toEpochMilliseconds()
+        } catch (e: Exception) {
+            0
         }
     }
 }

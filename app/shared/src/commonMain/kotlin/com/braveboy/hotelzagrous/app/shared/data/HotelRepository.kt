@@ -135,7 +135,7 @@ class HotelRepository(
     suspend fun updateRoomStay(
         roomNumber: String,
         guestName: String,
-        phoneNumber: String,
+        identificationId: String,
         checkIn: String,
         checkOut: String,
         checkInMillis: Long,
@@ -148,7 +148,7 @@ class HotelRepository(
             setBody(
                 UpdateRoomStayRequest(
                     guestName = guestName,
-                    phoneNumber = phoneNumber,
+                    identificationId = identificationId,
                     checkIn = checkIn,
                     checkOut = checkOut,
                     checkInMillis = checkInMillis,

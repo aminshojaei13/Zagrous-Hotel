@@ -6,7 +6,7 @@ import kotlinx.serialization.Serializable
 data class Room(
     val roomNumber: String,
     val guestName: String = "",
-    val phoneNumber: String = "",
+    val identificationId: String = "",
     val guestCount: Int = 1,
     val checkInDate: String = "",
     val checkOutDate: String = "",
@@ -57,7 +57,7 @@ data class GuestMealSelection(
 @Serializable
 data class UpdateRoomStayRequest(
     val guestName: String,
-    val phoneNumber: String,
+    val identificationId: String,
     val checkIn: String,
     val checkOut: String,
     val checkInMillis: Long,

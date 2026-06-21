@@ -22,6 +22,7 @@ import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.Add
 import androidx.compose.material.icons.filled.ArrowDropDown
+import androidx.compose.material.icons.filled.Badge
 import androidx.compose.material.icons.filled.Bed
 import androidx.compose.material.icons.filled.Block
 import androidx.compose.material.icons.filled.CalendarToday
@@ -33,8 +34,8 @@ import androidx.compose.material.icons.filled.Event
 import androidx.compose.material.icons.filled.Hotel
 import androidx.compose.material.icons.filled.Numbers
 import androidx.compose.material.icons.filled.People
+import androidx.compose.material.icons.filled.PermIdentity
 import androidx.compose.material.icons.filled.Person
-import androidx.compose.material.icons.filled.Phone
 import androidx.compose.material.icons.filled.Restaurant
 import androidx.compose.material.icons.filled.RestaurantMenu
 import androidx.compose.material.icons.filled.Today
@@ -318,7 +319,7 @@ fun RoomAdminCard(
     onFoodChange: (String, Int, String?, Boolean) -> Unit
 ) {
     var guestName by remember(room) { mutableStateOf(room.guestName) }
-    var phoneNumber by remember(room) { mutableStateOf(room.phoneNumber) }
+    var identificationId by remember(room) { mutableStateOf(room.identificationId) }
     var checkIn by remember(room) { mutableStateOf(room.checkInDate) }
     var checkOut by remember(room) { mutableStateOf(room.checkOutDate) }
     var checkInMillis by remember(room) { mutableLongStateOf(room.checkInEpochMillis) }
@@ -326,7 +327,7 @@ fun RoomAdminCard(
     var guestCount by remember(room) { mutableIntStateOf(room.guestCount) }
     var expanded by remember { mutableStateOf(false) }
     var showFoodDialog by remember { mutableStateOf(false) }
-    var showPhoneDialog by remember { mutableStateOf(false) }
+    var showIdentificationIdDialog by remember { mutableStateOf(false) }
 
     Surface(
         modifier = Modifier.fillMaxWidth(),
@@ -353,21 +354,6 @@ fun RoomAdminCard(
                 )
             }
 
-            /* OutlinedTextField(
-                    value = guestName,
-                    onValueChange = { guestName = it },
-                    label = { Text("نام مهمان") },
-                    modifier = Modifier.fillMaxWidth().padding(bottom = 8.dp),
-                    textStyle = MaterialTheme.typography.bodyMedium
-                )
-                OutlinedTextField(
-                    value = phoneNumber,
-                    onValueChange = { phoneNumber = it },
-                    label = { Text("شماره موبایل") },
-                    modifier = Modifier.fillMaxWidth(),
-                    textStyle = MaterialTheme.typography.bodyMedium
-                )*/
-
             Column(modifier = Modifier.weight(1.5f)) {
                 Text(
                     "نام مهمان اصلی",
@@ -388,23 +374,23 @@ fun RoomAdminCard(
                     color = MaterialTheme.colorScheme.outline
                 )
                 Surface(
-                    onClick = { showPhoneDialog = true }
+                    onClick = { showIdentificationIdDialog = true }
                 ) {
                     Text(
-                        text = room.phoneNumber.ifBlank { "0" },
+                        text = room.identificationId.ifBlank { identificationId.ifBlank { "0" } },
                         style = MaterialTheme.typography.titleMedium,
                         fontWeight = FontWeight.Bold
                     )
-                    if (showPhoneDialog) {
+                    if (showIdentificationIdDialog) {
                         AlertDialog(
-                            onDismissRequest = { showPhoneDialog = false },
+                            onDismissRequest = { showIdentificationIdDialog = false },
                             title = {
                                 Text("ویرایش شماره شناسایی")
                             },
                             text = {
                                 OutlinedTextField(
-                                    value = phoneNumber,
-                                    onValueChange = { phoneNumber = it },
+                                    value = identificationId,
+                                    onValueChange = { identificationId = it },
                                     label = { Text("شماره شناسایی") },
                                     modifier = Modifier.fillMaxWidth(),
                                     textStyle = MaterialTheme.typography.bodyMedium
@@ -413,7 +399,7 @@ fun RoomAdminCard(
                             confirmButton = {
                                 Button(
                                     onClick = {
-                                        showPhoneDialog = false
+                                        showIdentificationIdDialog = false
                                     }
                                 ) {
                                     Text(
@@ -506,7 +492,7 @@ fun RoomAdminCard(
                     onClick = {
                         onUpdate(
                             guestName,
-                            phoneNumber,
+                            identificationId,
                             checkIn,
                             checkOut,
                             checkInMillis,
@@ -586,12 +572,12 @@ fun RoomManagementContent(state: AdminState, viewModel: AdminViewModel) {
                     room = room,
                     availableFoods = state.foods,
                     reservations = state.reservations,
-                    onUpdate = { name, phone, checkIn, checkOut, checkInMillis, checkOutMillis, guestCount ->
+                    onUpdate = { name, identificationId, checkIn, checkOut, checkInMillis, checkOutMillis, guestCount ->
                         viewModel.onIntent(
                             AdminIntent.UpdateRoomStay(
                                 room.roomNumber,
                                 name,
-                                phone,
+                                identificationId,
                                 checkIn,
                                 checkOut,
                                 checkInMillis,
@@ -1537,7 +1523,7 @@ fun DeliveryChip(
 fun AddRoomDialog(onDismiss: () -> Unit, onConfirm: (Room) -> Unit) {
     var roomNumber by remember { mutableStateOf("") }
     var guestName by remember { mutableStateOf("") }
-    var phoneNumber by remember { mutableStateOf("") }
+    var identificationId by remember { mutableStateOf("") }
     var guestCount by remember { mutableIntStateOf(1) }
     var checkIn by remember { mutableStateOf("") }
     var checkOut by remember { mutableStateOf("") }
@@ -1563,12 +1549,12 @@ fun AddRoomDialog(onDismiss: () -> Unit, onConfirm: (Room) -> Unit) {
                         leadingIcon = { Icon(Icons.Default.Numbers, null) }
                     )
                     OutlinedTextField(
-                        value = phoneNumber,
-                        onValueChange = { phoneNumber = it },
-                        label = { Text("شماره موبایل") },
+                        value = identificationId,
+                        onValueChange = { identificationId = it },
+                        label = { Text("شماره شناسایی") },
                         modifier = Modifier.weight(1.5f),
                         shape = MaterialTheme.shapes.medium,
-                        leadingIcon = { Icon(Icons.Default.Phone, null) }
+                        leadingIcon = { Icon(Icons.Default.Badge, null) }
                     )
                 }
 
@@ -1645,12 +1631,12 @@ fun AddRoomDialog(onDismiss: () -> Unit, onConfirm: (Room) -> Unit) {
         confirmButton = {
             Button(
                 onClick = {
-                    if (roomNumber.isNotBlank() && guestName.isNotBlank() && phoneNumber.isNotBlank()) {
+                    if (roomNumber.isNotBlank() && guestName.isNotBlank() && identificationId.isNotBlank()) {
                         onConfirm(
                             Room(
                                 roomNumber = roomNumber.normalizeDigits(),
                                 guestName = guestName,
-                                phoneNumber = phoneNumber.normalizeDigits(),
+                                identificationId = identificationId.normalizeDigits(),
                                 guestCount = guestCount,
                                 checkInDate = checkIn,
                                 checkOutDate = checkOut,

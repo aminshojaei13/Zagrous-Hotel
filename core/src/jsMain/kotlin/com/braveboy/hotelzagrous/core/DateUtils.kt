@@ -40,4 +40,16 @@ actual object DateUtils {
         val localDate = instant.toLocalDateTime(TimeZone.UTC).date
         return gregorianToJalali(localDate.year, localDate.month.ordinal + 1, localDate.day)
     }
+
+    actual fun convertDateToTimeMillis(date: String): Long {
+        TODO("Not yet implemented")
+    }
+
+    actual fun isFriday(dateString: String): Boolean {
+        TODO("Not yet implemented")
+    }
+
+    actual fun isEven(dateString: String): Boolean {
+        TODO("Not yet implemented")
+    }
 }

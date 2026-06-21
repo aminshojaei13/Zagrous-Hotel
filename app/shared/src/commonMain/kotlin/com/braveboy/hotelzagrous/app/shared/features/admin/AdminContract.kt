@@ -19,7 +19,7 @@ sealed class AdminIntent {
     data class UpdateRoomStay(
         val roomNumber: String, 
         val guestName: String,
-        val phoneNumber: String,
+        val identificationId: String,
         val checkIn: String, 
         val checkOut: String,
         val checkInMillis: Long,

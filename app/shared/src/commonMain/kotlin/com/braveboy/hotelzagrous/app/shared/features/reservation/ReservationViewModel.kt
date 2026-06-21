@@ -41,7 +41,7 @@ class ReservationViewModel(
     override fun onIntent(intent: ReservationIntent) {
         when (intent) {
             is ReservationIntent.UpdateRoomNumber -> updateState { it.copy(roomNumber = intent.roomNumber) }
-            is ReservationIntent.UpdatePhoneNumber -> updateState { it.copy(phoneNumber = intent.phoneNumber) }
+            is ReservationIntent.UpdateIdentificationId -> updateState { it.copy(identificationId = intent.identificationId) }
             is ReservationIntent.Login -> login()
             is ReservationIntent.ChangeFood -> updateFoodSelection(intent)
             is ReservationIntent.ConfirmReservation -> submit()
@@ -50,10 +50,10 @@ class ReservationViewModel(
 
     private fun login() {
         val currentRoomNumber = state.value.roomNumber
-        val currentPhoneNumber = state.value.phoneNumber
+        val currentIdentificationId = state.value.identificationId
 
-        if (currentRoomNumber.isBlank() || currentPhoneNumber.isBlank()) {
-            updateState { it.copy(error = "لطفاً شماره اتاق و شماره موبایل را وارد کنید") }
+        if (currentRoomNumber.isBlank() || currentIdentificationId.isBlank()) {
+            updateState { it.copy(error = "لطفاً شماره اتاق و شماره شناسایی را وارد کنید") }
             return
         }
 
@@ -65,7 +65,7 @@ class ReservationViewModel(
                 room to reservations
             }.onSuccess { (room, reservations) ->
                 if (room != null) {
-                    if (room.phoneNumber == currentPhoneNumber) {
+                    if (room.identificationId == currentIdentificationId) {
                         updateState { it.copy(
                             room = room,
                             tempReservations = reservations,
@@ -74,7 +74,7 @@ class ReservationViewModel(
                             error = null
                         ) }
                     } else {
-                        updateState { it.copy(isLoading = false, error = "شماره موبایل با شماره اتاق مطابقت ندارد") }
+                        updateState { it.copy(isLoading = false, error = "شماره شناسایی با شماره اتاق مطابقت ندارد") }
                     }
                 } else {
                     updateState { it.copy(isLoading = false, error = "شماره اتاق یافت نشد") }

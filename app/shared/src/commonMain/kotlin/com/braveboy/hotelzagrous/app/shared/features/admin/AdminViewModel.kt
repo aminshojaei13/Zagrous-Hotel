@@ -108,7 +108,7 @@ class AdminViewModel(
                 repository.updateRoomStay(
                     intent.roomNumber,
                     intent.guestName,
-                    intent.phoneNumber,
+                    intent.identificationId,
                     intent.checkIn,
                     intent.checkOut,
                     intent.checkInMillis,

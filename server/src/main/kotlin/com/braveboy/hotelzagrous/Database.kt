@@ -33,7 +33,7 @@ class HotelDatabase(
 
     fun getRooms(): List<Room> = connection.prepareStatement(
         """
-        SELECT room_number, guest_name, phone_number, guest_count, check_in_date, check_out_date, check_in_epoch_millis, check_out_epoch_millis
+        SELECT room_number, guest_name, identification_id, guest_count, check_in_date, check_out_date, check_in_epoch_millis, check_out_epoch_millis
         FROM rooms
         ORDER BY room_number
         """.trimIndent()
@@ -45,7 +45,7 @@ class HotelDatabase(
                         Room(
                             roomNumber = rows.getString("room_number"),
                             guestName = rows.getString("guest_name"),
-                            phoneNumber = rows.getString("phone_number") ?: "",
+                            identificationId = rows.getString("identification_id") ?: "",
                             guestCount = rows.getInt("guest_count"),
                             checkInDate = rows.getString("check_in_date"),
                             checkOutDate = rows.getString("check_out_date"),
@@ -60,7 +60,7 @@ class HotelDatabase(
 
     fun getRoom(roomNumber: String): Room? = connection.prepareStatement(
         """
-        SELECT room_number, guest_name, phone_number, guest_count, check_in_date, check_out_date, check_in_epoch_millis, check_out_epoch_millis
+        SELECT room_number, guest_name, identification_id, guest_count, check_in_date, check_out_date, check_in_epoch_millis, check_out_epoch_millis
         FROM rooms
         WHERE room_number = ?
         """.trimIndent()
@@ -73,7 +73,7 @@ class HotelDatabase(
                 Room(
                     roomNumber = rows.getString("room_number"),
                     guestName = rows.getString("guest_name"),
-                    phoneNumber = rows.getString("phone_number") ?: "",
+                    identificationId = rows.getString("identification_id") ?: "",
                     guestCount = rows.getInt("guest_count"),
                     checkInDate = rows.getString("check_in_date"),
                     checkOutDate = rows.getString("check_out_date"),
@@ -87,11 +87,11 @@ class HotelDatabase(
     fun upsertRoom(room: Room) {
         connection.prepareStatement(
             """
-            INSERT INTO rooms(room_number, guest_name, phone_number, guest_count, check_in_date, check_out_date, check_in_epoch_millis, check_out_epoch_millis)
+            INSERT INTO rooms(room_number, guest_name, identification_id, guest_count, check_in_date, check_out_date, check_in_epoch_millis, check_out_epoch_millis)
             VALUES(?, ?, ?, ?, ?, ?, ?, ?)
             ON CONFLICT(room_number) DO UPDATE SET
                 guest_name = excluded.guest_name,
-                phone_number = excluded.phone_number,
+                identification_id = excluded.identification_id,
                 guest_count = excluded.guest_count,
                 check_in_date = excluded.check_in_date,
                 check_out_date = excluded.check_out_date,
@@ -101,7 +101,7 @@ class HotelDatabase(
         ).use { statement ->
             statement.setString(1, room.roomNumber)
             statement.setString(2, room.guestName)
-            statement.setString(3, room.phoneNumber)
+            statement.setString(3, room.identificationId)
             statement.setInt(4, room.guestCount)
             statement.setString(5, room.checkInDate)
             statement.setString(6, room.checkOutDate)
@@ -114,7 +114,7 @@ class HotelDatabase(
     fun updateRoomStay(
         roomNumber: String,
         guestName: String,
-        phoneNumber: String,
+        identificationId: String,
         checkIn: String,
         checkOut: String,
         checkInMillis: Long,
@@ -124,12 +124,12 @@ class HotelDatabase(
         return connection.prepareStatement(
             """
             UPDATE rooms
-            SET guest_name = ?, phone_number = ?, check_in_date = ?, check_out_date = ?, check_in_epoch_millis = ?, check_out_epoch_millis = ?, guest_count = ?
+            SET guest_name = ?, identification_id = ?, check_in_date = ?, check_out_date = ?, check_in_epoch_millis = ?, check_out_epoch_millis = ?, guest_count = ?
             WHERE room_number = ?
             """.trimIndent()
         ).use { statement ->
             statement.setString(1, guestName)
-            statement.setString(2, phoneNumber)
+            statement.setString(2, identificationId)
             statement.setString(3, checkIn)
             statement.setString(4, checkOut)
             statement.setLong(5, checkInMillis)
@@ -311,7 +311,7 @@ class HotelDatabase(
                 CREATE TABLE IF NOT EXISTS rooms(
                     room_number TEXT PRIMARY KEY,
                     guest_name TEXT NOT NULL,
-                    phone_number TEXT,
+                    identification_id TEXT,
                     guest_count INTEGER NOT NULL DEFAULT 1,
                     check_in_date TEXT NOT NULL,
                     check_out_date TEXT NOT NULL,
@@ -369,8 +369,11 @@ class HotelDatabase(
         }
 
         connection.createStatement().use { statement ->
-            if (!roomColumns.contains("phone_number")) {
-                statement.executeUpdate("ALTER TABLE rooms ADD COLUMN phone_number TEXT")
+            if (!roomColumns.contains("identification_id")) {
+                statement.executeUpdate("ALTER TABLE rooms ADD COLUMN identification_id TEXT")
+                if (roomColumns.contains("phone_number")) {
+                    statement.executeUpdate("UPDATE rooms SET identification_id = phone_number")
+                }
             }
         }
 

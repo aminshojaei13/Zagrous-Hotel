@@ -2,14 +2,62 @@ package com.braveboy.hotelzagrous.app.shared.features.reservation
 
 import androidx.compose.foundation.BorderStroke
 import androidx.compose.foundation.background
-import androidx.compose.foundation.layout.*
+import androidx.compose.foundation.layout.Arrangement
+import androidx.compose.foundation.layout.Box
+import androidx.compose.foundation.layout.Column
+import androidx.compose.foundation.layout.IntrinsicSize
+import androidx.compose.foundation.layout.PaddingValues
+import androidx.compose.foundation.layout.Row
+import androidx.compose.foundation.layout.Spacer
+import androidx.compose.foundation.layout.fillMaxSize
+import androidx.compose.foundation.layout.fillMaxWidth
+import androidx.compose.foundation.layout.height
+import androidx.compose.foundation.layout.offset
+import androidx.compose.foundation.layout.padding
+import androidx.compose.foundation.layout.size
+import androidx.compose.foundation.layout.width
+import androidx.compose.foundation.layout.wrapContentHeight
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.material.icons.Icons
-import androidx.compose.material.icons.filled.*
-import androidx.compose.material3.*
-import androidx.compose.runtime.*
+import androidx.compose.material.icons.filled.ArrowDropDown
+import androidx.compose.material.icons.filled.Badge
+import androidx.compose.material.icons.filled.Block
+import androidx.compose.material.icons.filled.Check
+import androidx.compose.material.icons.filled.CheckCircle
+import androidx.compose.material.icons.filled.DateRange
+import androidx.compose.material.icons.filled.Error
+import androidx.compose.material.icons.filled.Event
+import androidx.compose.material.icons.filled.Hotel
+import androidx.compose.material.icons.filled.MeetingRoom
+import androidx.compose.material.icons.filled.NightsStay
+import androidx.compose.material.icons.filled.People
+import androidx.compose.material.icons.filled.Person
+import androidx.compose.material.icons.filled.RestaurantMenu
+import androidx.compose.material.icons.filled.WbSunny
+import androidx.compose.material3.Button
+import androidx.compose.material3.ButtonDefaults
+import androidx.compose.material3.CircularProgressIndicator
+import androidx.compose.material3.DropdownMenu
+import androidx.compose.material3.DropdownMenuItem
+import androidx.compose.material3.ExperimentalMaterial3Api
+import androidx.compose.material3.HorizontalDivider
+import androidx.compose.material3.Icon
+import androidx.compose.material3.MaterialTheme
+import androidx.compose.material3.OutlinedTextField
+import androidx.compose.material3.OutlinedTextFieldDefaults
+import androidx.compose.material3.Scaffold
+import androidx.compose.material3.Surface
+import androidx.compose.material3.Text
+import androidx.compose.material3.TopAppBar
+import androidx.compose.material3.TopAppBarDefaults
+import androidx.compose.runtime.Composable
+import androidx.compose.runtime.collectAsState
+import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableStateOf
+import androidx.compose.runtime.remember
+import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
@@ -35,8 +83,14 @@ fun ReservationScreen(viewModel: ReservationViewModel) {
             LoginSection(
                 roomNumber = state.roomNumber,
                 onRoomNumberChange = { viewModel.onIntent(ReservationIntent.UpdateRoomNumber(it)) },
-                phoneNumber = state.phoneNumber,
-                onPhoneNumberChange = { viewModel.onIntent(ReservationIntent.UpdatePhoneNumber(it)) },
+                identificationId = state.identificationId,
+                onIdentificationIdChange = {
+                    viewModel.onIntent(
+                        ReservationIntent.UpdateIdentificationId(
+                            it
+                        )
+                    )
+                },
                 onLogin = { viewModel.onIntent(ReservationIntent.Login) },
                 error = state.error
             )
@@ -50,8 +104,8 @@ fun ReservationScreen(viewModel: ReservationViewModel) {
 fun LoginSection(
     roomNumber: String,
     onRoomNumberChange: (String) -> Unit,
-    phoneNumber: String,
-    onPhoneNumberChange: (String) -> Unit,
+    identificationId: String,
+    onIdentificationIdChange: (String) -> Unit,
     onLogin: () -> Unit,
     error: String?
 ) {
@@ -98,24 +152,24 @@ fun LoginSection(
                             )
                         }
                     }
-                    
+
                     Spacer(Modifier.height(24.dp))
-                    
+
                     Text(
                         "خوش آمدید",
                         style = MaterialTheme.typography.headlineMedium,
                         fontWeight = FontWeight.ExtraBold,
                         color = MaterialTheme.colorScheme.onSurface
                     )
-                    
+
                     Text(
                         "سامانه رزرو غذای هتل زاگرس",
                         style = MaterialTheme.typography.bodyLarge,
                         color = MaterialTheme.colorScheme.onSurfaceVariant
                     )
-                    
+
                     Spacer(Modifier.height(40.dp))
-                    
+
                     OutlinedTextField(
                         value = roomNumber,
                         onValueChange = onRoomNumberChange,
@@ -123,7 +177,13 @@ fun LoginSection(
                         modifier = Modifier.fillMaxWidth(),
                         shape = MaterialTheme.shapes.medium,
                         singleLine = true,
-                        leadingIcon = { Icon(Icons.Default.MeetingRoom, null, tint = MaterialTheme.colorScheme.primary) },
+                        leadingIcon = {
+                            Icon(
+                                Icons.Default.MeetingRoom,
+                                null,
+                                tint = MaterialTheme.colorScheme.primary
+                            )
+                        },
                         colors = OutlinedTextFieldDefaults.colors(
                             focusedBorderColor = MaterialTheme.colorScheme.primary,
                             unfocusedBorderColor = MaterialTheme.colorScheme.outlineVariant
@@ -133,25 +193,36 @@ fun LoginSection(
                     Spacer(Modifier.height(16.dp))
 
                     OutlinedTextField(
-                        value = phoneNumber,
-                        onValueChange = onPhoneNumberChange,
-                        label = { Text("شماره موبایل") },
+                        value = identificationId,
+                        onValueChange = onIdentificationIdChange,
+                        label = { Text("شماره شناسایی") },
                         modifier = Modifier.fillMaxWidth(),
                         shape = MaterialTheme.shapes.medium,
                         singleLine = true,
-                        leadingIcon = { Icon(Icons.Default.Phone, null, tint = MaterialTheme.colorScheme.primary) },
+                        leadingIcon = {
+                            Icon(
+                                Icons.Default.Badge,
+                                null,
+                                tint = MaterialTheme.colorScheme.primary
+                            )
+                        },
                         colors = OutlinedTextFieldDefaults.colors(
                             focusedBorderColor = MaterialTheme.colorScheme.primary,
                             unfocusedBorderColor = MaterialTheme.colorScheme.outlineVariant
                         )
                     )
-                    
+
                     if (error != null) {
                         Row(
                             verticalAlignment = Alignment.CenterVertically,
                             modifier = Modifier.padding(top = 12.dp).fillMaxWidth()
                         ) {
-                            Icon(Icons.Default.Error, null, tint = MaterialTheme.colorScheme.error, modifier = Modifier.size(16.dp))
+                            Icon(
+                                Icons.Default.Error,
+                                null,
+                                tint = MaterialTheme.colorScheme.error,
+                                modifier = Modifier.size(16.dp)
+                            )
                             Spacer(Modifier.width(8.dp))
                             Text(
                                 error,
@@ -160,9 +231,9 @@ fun LoginSection(
                             )
                         }
                     }
-                    
+
                     Spacer(Modifier.height(32.dp))
-                    
+
                     Button(
                         onClick = onLogin,
                         modifier = Modifier.fillMaxWidth().height(56.dp),
@@ -177,7 +248,7 @@ fun LoginSection(
                     }
                 }
             }
-            
+
             Spacer(Modifier.height(24.dp))
             Text(
                 "در صورت بروز مشکل به پذیرش مراجعه فرمایید",
@@ -234,7 +305,12 @@ fun UserDashboard(state: ReservationState, viewModel: ReservationViewModel) {
                             verticalAlignment = Alignment.CenterVertically,
                             modifier = Modifier.padding(horizontal = 12.dp, vertical = 6.dp)
                         ) {
-                            Icon(Icons.Default.Person, null, modifier = Modifier.size(16.dp), tint = MaterialTheme.colorScheme.primary)
+                            Icon(
+                                Icons.Default.Person,
+                                null,
+                                modifier = Modifier.size(16.dp),
+                                tint = MaterialTheme.colorScheme.primary
+                            )
                             Spacer(Modifier.width(8.dp))
                             Text(
                                 "اتاق ${room?.roomNumber}",
@@ -273,7 +349,7 @@ fun UserDashboard(state: ReservationState, viewModel: ReservationViewModel) {
                                 .offset(x = 40.dp, y = 40.dp)
                                 .background(Color.White.copy(alpha = 0.1f), CircleShape)
                         )
-                        
+
                         Column(modifier = Modifier.padding(24.dp)) {
                             Text(
                                 "مهمان گرامی، جناب ${room?.guestName}",
@@ -283,7 +359,12 @@ fun UserDashboard(state: ReservationState, viewModel: ReservationViewModel) {
                             )
                             Spacer(Modifier.height(12.dp))
                             Row(verticalAlignment = Alignment.CenterVertically) {
-                                Icon(Icons.Default.People, null, modifier = Modifier.size(18.dp), tint = Color.White.copy(alpha = 0.8f))
+                                Icon(
+                                    Icons.Default.People,
+                                    null,
+                                    modifier = Modifier.size(18.dp),
+                                    tint = Color.White.copy(alpha = 0.8f)
+                                )
                                 Spacer(Modifier.width(8.dp))
                                 Text(
                                     "${room?.guestCount} نفر",
@@ -291,7 +372,12 @@ fun UserDashboard(state: ReservationState, viewModel: ReservationViewModel) {
                                     color = Color.White.copy(alpha = 0.9f)
                                 )
                                 Spacer(Modifier.width(24.dp))
-                                Icon(Icons.Default.DateRange, null, modifier = Modifier.size(18.dp), tint = Color.White.copy(alpha = 0.8f))
+                                Icon(
+                                    Icons.Default.DateRange,
+                                    null,
+                                    modifier = Modifier.size(18.dp),
+                                    tint = Color.White.copy(alpha = 0.8f)
+                                )
                                 Spacer(Modifier.width(8.dp))
                                 Text(
                                     "${room?.checkInDate} الی ${room?.checkOutDate}",
@@ -309,7 +395,11 @@ fun UserDashboard(state: ReservationState, viewModel: ReservationViewModel) {
                     modifier = Modifier.padding(top = 8.dp, bottom = 4.dp),
                     verticalAlignment = Alignment.CenterVertically
                 ) {
-                    Icon(Icons.Default.RestaurantMenu, null, tint = MaterialTheme.colorScheme.primary)
+                    Icon(
+                        Icons.Default.RestaurantMenu,
+                        null,
+                        tint = MaterialTheme.colorScheme.primary
+                    )
                     Spacer(Modifier.width(12.dp))
                     Text(
                         "انتخاب برنامه غذایی",
@@ -357,7 +447,11 @@ fun UserDashboard(state: ReservationState, viewModel: ReservationViewModel) {
                         Row(verticalAlignment = Alignment.CenterVertically) {
                             Icon(Icons.Default.CheckCircle, null)
                             Spacer(Modifier.width(12.dp))
-                            Text("ثبت نهایی و تایید رزروها", style = MaterialTheme.typography.titleMedium, fontWeight = FontWeight.ExtraBold)
+                            Text(
+                                "ثبت نهایی و تایید رزروها",
+                                style = MaterialTheme.typography.titleMedium,
+                                fontWeight = FontWeight.ExtraBold
+                            )
                         }
                     }
                 }
@@ -390,7 +484,12 @@ fun FoodCard(date: String, state: ReservationState, viewModel: ReservationViewMo
                     modifier = Modifier.size(36.dp)
                 ) {
                     Box(contentAlignment = Alignment.Center) {
-                        Icon(Icons.Default.Event, null, tint = MaterialTheme.colorScheme.primary, modifier = Modifier.size(18.dp))
+                        Icon(
+                            Icons.Default.Event,
+                            null,
+                            tint = MaterialTheme.colorScheme.primary,
+                            modifier = Modifier.size(18.dp)
+                        )
                     }
                 }
                 Spacer(Modifier.width(12.dp))
@@ -401,12 +500,13 @@ fun FoodCard(date: String, state: ReservationState, viewModel: ReservationViewMo
                     color = MaterialTheme.colorScheme.onSurface
                 )
             }
-            
+
             Spacer(Modifier.height(20.dp))
-            
+
             repeat(guestCount) { index ->
-                val guestSelection = reservation?.guestMealSelections?.find { it.guestIndex == index }
-                
+                val guestSelection =
+                    reservation?.guestMealSelections?.find { it.guestIndex == index }
+
                 Column(
                     modifier = Modifier
                         .fillMaxWidth()
@@ -420,9 +520,9 @@ fun FoodCard(date: String, state: ReservationState, viewModel: ReservationViewMo
                             color = MaterialTheme.colorScheme.primary
                         )
                     }
-                    
+
                     Spacer(Modifier.height(12.dp))
-                    
+
                     Row(
                         modifier = Modifier.fillMaxWidth(),
                         horizontalArrangement = Arrangement.spacedBy(12.dp)
@@ -436,7 +536,8 @@ fun FoodCard(date: String, state: ReservationState, viewModel: ReservationViewMo
                         val twelveHours = 12 * 60 * 60 * 1000L
 
                         val isMoreThan12Hours =
-                            (DateUtils.convertDateToTimeMillis(date) - Clock.System.now().toEpochMilliseconds()) > twelveHours
+                            (DateUtils.convertDateToTimeMillis(date) - Clock.System.now()
+                                .toEpochMilliseconds()) > twelveHours
 
                         FoodSelectionItem(
                             modifier = Modifier.weight(1f),
@@ -446,9 +547,16 @@ fun FoodCard(date: String, state: ReservationState, viewModel: ReservationViewMo
                             selectedId = guestSelection?.lunchFoodId,
                             enabled = isMoreThan12Hours
                         ) { foodId ->
-                            viewModel.onIntent(ReservationIntent.ChangeFood(date, index, foodId, true))
+                            viewModel.onIntent(
+                                ReservationIntent.ChangeFood(
+                                    date,
+                                    index,
+                                    foodId,
+                                    true
+                                )
+                            )
                         }
-                        
+
                         FoodSelectionItem(
                             modifier = Modifier.weight(1f),
                             label = "وعده شام",
@@ -457,11 +565,18 @@ fun FoodCard(date: String, state: ReservationState, viewModel: ReservationViewMo
                             selectedId = guestSelection?.dinnerFoodId,
                             enabled = isMoreThan12Hours
                         ) { foodId ->
-                            viewModel.onIntent(ReservationIntent.ChangeFood(date, index, foodId, false))
+                            viewModel.onIntent(
+                                ReservationIntent.ChangeFood(
+                                    date,
+                                    index,
+                                    foodId,
+                                    false
+                                )
+                            )
                         }
                     }
                 }
-                
+
                 if (index < guestCount - 1) {
                     HorizontalDivider(
                         modifier = Modifier.padding(vertical = 12.dp),
@@ -493,12 +608,22 @@ fun FoodSelectionItem(
             onClick = { expanded = true },
             modifier = Modifier.fillMaxWidth(),
             shape = MaterialTheme.shapes.medium,
-            color = if (!enabled) MaterialTheme.colorScheme.outline.copy( alpha = 0.3F) else if (selectedFood != null) MaterialTheme.colorScheme.primaryContainer.copy(alpha = 0.1f) else MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.5f),
-            border = if (selectedFood != null) BorderStroke(1.dp, MaterialTheme.colorScheme.primary) else null
+            color = if (!enabled) MaterialTheme.colorScheme.outline.copy(alpha = 0.3F) else if (selectedFood != null) MaterialTheme.colorScheme.primaryContainer.copy(
+                alpha = 0.1f
+            ) else MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.5f),
+            border = if (selectedFood != null) BorderStroke(
+                1.dp,
+                MaterialTheme.colorScheme.primary
+            ) else null
         ) {
             Column(modifier = Modifier.padding(12.dp)) {
                 Row(verticalAlignment = Alignment.CenterVertically) {
-                    Icon(icon, null, modifier = Modifier.size(14.dp), tint = if (selectedFood != null) MaterialTheme.colorScheme.primary else MaterialTheme.colorScheme.outline)
+                    Icon(
+                        icon,
+                        null,
+                        modifier = Modifier.size(14.dp),
+                        tint = if (selectedFood != null) MaterialTheme.colorScheme.primary else MaterialTheme.colorScheme.outline
+                    )
                     Spacer(Modifier.width(6.dp))
                     Text(
                         label,
@@ -529,14 +654,20 @@ fun FoodSelectionItem(
                 }
             }
         }
-        
+
         DropdownMenu(
             expanded = expanded,
             onDismissRequest = { expanded = false },
-            modifier = Modifier.background(MaterialTheme.colorScheme.surface).width(IntrinsicSize.Min)
+            modifier = Modifier.background(MaterialTheme.colorScheme.surface)
+                .width(IntrinsicSize.Min)
         ) {
             DropdownMenuItem(
-                text = { Text("عدم انتخاب (هیچکدام)", style = MaterialTheme.typography.bodyMedium) },
+                text = {
+                    Text(
+                        "عدم انتخاب (هیچکدام)",
+                        style = MaterialTheme.typography.bodyMedium
+                    )
+                },
                 onClick = {
                     onSelect(null)
                     expanded = false
@@ -546,14 +677,24 @@ fun FoodSelectionItem(
             HorizontalDivider(color = MaterialTheme.colorScheme.surfaceVariant)
             foods.forEach { food ->
                 DropdownMenuItem(
-                    text = { Text(food.name, style = MaterialTheme.typography.bodyMedium, fontWeight = FontWeight.Bold) },
+                    text = {
+                        Text(
+                            food.name,
+                            style = MaterialTheme.typography.bodyMedium,
+                            fontWeight = FontWeight.Bold
+                        )
+                    },
                     onClick = {
                         onSelect(food.id)
                         expanded = false
                     },
                     trailingIcon = {
                         if (food.id == selectedId) {
-                            Icon(Icons.Default.Check, null, tint = MaterialTheme.colorScheme.primary)
+                            Icon(
+                                Icons.Default.Check,
+                                null,
+                                tint = MaterialTheme.colorScheme.primary
+                            )
                         }
                     }
                 )
