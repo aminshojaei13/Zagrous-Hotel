@@ -216,7 +216,10 @@ fun AdminScreen(viewModel: AdminViewModel) {
                     )
                 }
                 if (currentTab == "rooms") {
-                    Button(onClick = { showAddRoomDialog = true }) {
+                    Button(
+                        shape = MaterialTheme.shapes.small,
+                        onClick = { showAddRoomDialog = true }
+                    ) {
                         Icon(Icons.Default.Add, null)
                         Spacer(Modifier.width(8.dp))
                         Text("افزودن اتاق")
@@ -512,7 +515,7 @@ fun RoomAdminCard(
                             guestCount
                         )
                     },
-                    shape = MaterialTheme.shapes.medium,
+                    shape = MaterialTheme.shapes.small,
                     colors = ButtonDefaults.buttonColors(
                         containerColor = MaterialTheme.colorScheme.primary.copy(alpha = 0.1f),
                         contentColor = MaterialTheme.colorScheme.primary
@@ -806,6 +809,7 @@ fun DailyDetailedReportContent(state: AdminState, viewModel: AdminViewModel) {
                 }
                 
                 Button(
+                    shape = MaterialTheme.shapes.small,
                     onClick = { viewModel.onIntent(AdminIntent.PrintDailyLaunchReport(reportDate)) },
                     colors = ButtonDefaults.buttonColors(containerColor = MaterialTheme.colorScheme.secondary)
                 ) {
@@ -815,6 +819,7 @@ fun DailyDetailedReportContent(state: AdminState, viewModel: AdminViewModel) {
                 }
 
                 Button(
+                    shape = MaterialTheme.shapes.small,
                     onClick = { viewModel.onIntent(AdminIntent.PrintDailyDinnerReport(reportDate)) },
                     colors = ButtonDefaults.buttonColors(containerColor = MaterialTheme.colorScheme.secondary)
                 ) {

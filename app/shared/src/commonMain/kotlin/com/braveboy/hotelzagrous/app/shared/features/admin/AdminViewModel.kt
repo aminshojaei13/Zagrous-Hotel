@@ -301,7 +301,7 @@ class AdminViewModel(
 
                 columnFoods.forEachIndexed { colIndex, food ->
                     val count = roomFoodIds.count { it == food.id }
-                    append("<td>${if (count > 0) count else ""}</td>")
+                    append("<td>${if (count > 0) count else " - "}</td>")
                     columnTotals[colIndex] += count
                 }
                 append("</tr>")
