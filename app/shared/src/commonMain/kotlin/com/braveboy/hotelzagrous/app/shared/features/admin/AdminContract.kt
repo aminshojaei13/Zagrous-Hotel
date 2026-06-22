@@ -12,6 +12,7 @@ data class AdminState(
     val menuConfigs: List<MenuConfig> = emptyList(),
     val isLoading: Boolean = false,
     val selectedRoom: Room? = null,
+    val selectedReportDate: String = "",
     val error: String? = null
 )
 
@@ -28,6 +29,8 @@ sealed class AdminIntent {
     ) : AdminIntent()
     data class AddRoom(val room: Room) : AdminIntent()
     object ExportPdf : AdminIntent()
+    data class PrintDailyLaunchReport(val date: String) : AdminIntent()
+    data class PrintDailyDinnerReport(val date: String) : AdminIntent()
     object LoadData : AdminIntent()
     object ClearAllData : AdminIntent()
     
@@ -52,6 +55,7 @@ sealed class AdminIntent {
     ) : AdminIntent()
 
     data class SelectRoomForFood(val room: Room?) : AdminIntent()
+    data class SelectReportDate(val date: String) : AdminIntent()
 
     // Menu Management Intents
     data class UpsertFood(val food: FoodItem) : AdminIntent()

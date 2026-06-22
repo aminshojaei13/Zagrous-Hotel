@@ -20,6 +20,7 @@ import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.automirrored.filled.Assignment
 import androidx.compose.material.icons.filled.Add
 import androidx.compose.material.icons.filled.ArrowDropDown
 import androidx.compose.material.icons.filled.Badge
@@ -34,8 +35,8 @@ import androidx.compose.material.icons.filled.Event
 import androidx.compose.material.icons.filled.Hotel
 import androidx.compose.material.icons.filled.Numbers
 import androidx.compose.material.icons.filled.People
-import androidx.compose.material.icons.filled.PermIdentity
 import androidx.compose.material.icons.filled.Person
+import androidx.compose.material.icons.filled.Print
 import androidx.compose.material.icons.filled.Restaurant
 import androidx.compose.material.icons.filled.RestaurantMenu
 import androidx.compose.material.icons.filled.Today
@@ -157,6 +158,15 @@ fun AdminScreen(viewModel: AdminViewModel) {
                 Spacer(Modifier.height(8.dp))
 
                 NavigationItem(
+                    label = "گزارش تفصیلی روزانه",
+                    icon = Icons.AutoMirrored.Filled.Assignment,
+                    selected = currentTab == "daily_report",
+                    onClick = { currentTab = "daily_report" }
+                )
+
+                Spacer(Modifier.height(8.dp))
+
+                NavigationItem(
                     "مدیریت منوی غذا",
                     Icons.Default.RestaurantMenu,
                     selected = currentTab == "menu",
@@ -196,6 +206,7 @@ fun AdminScreen(viewModel: AdminViewModel) {
                     val title = when (currentTab) {
                         "rooms" -> "مدیریت اتاق‌ها"
                         "menu" -> "مدیریت منو غذا"
+                        "daily_report" -> "مشاهده و چاپ غذا"
                         else -> "گزارش رزرو غذا"
                     }
                     Text(
@@ -230,6 +241,7 @@ fun AdminScreen(viewModel: AdminViewModel) {
                         "rooms" -> RoomManagementContent(state, viewModel)
                         "menu" -> MenuManagementContent(state, viewModel)
                         "reservations" -> ReservationSummaryContent(state, viewModel)
+                        "daily_report" -> DailyDetailedReportContent(state, viewModel)
                     }
                 }
             }
@@ -760,6 +772,143 @@ fun MenuManagementContent(state: AdminState, viewModel: AdminViewModel) {
         selectedFoodType,
         { editingFood = null }) {
         viewModel.onIntent(AdminIntent.UpsertFood(it)); editingFood = null
+    }
+}
+
+@Composable
+fun DailyDetailedReportContent(state: AdminState, viewModel: AdminViewModel) {
+    val reportDate = state.selectedReportDate.ifBlank {
+        remember { DateUtils.convertMillisToJalaliString(Clock.System.now().toEpochMilliseconds()) }
+    }
+
+    Column(modifier = Modifier.fillMaxSize().padding(32.dp)) {
+        Row(
+            modifier = Modifier.fillMaxWidth().padding(bottom = 24.dp),
+            horizontalArrangement = Arrangement.SpaceBetween,
+            verticalAlignment = Alignment.CenterVertically
+        ) {
+            Column {
+                Text(
+                    "گزارش تفصیلی روزانه",
+                    style = MaterialTheme.typography.headlineMedium,
+                    fontWeight = FontWeight.Bold
+                )
+                Text(
+                    "مشاهده جزئیات سفارشات به تفکیک اتاق",
+                    style = MaterialTheme.typography.bodyMedium,
+                    color = MaterialTheme.colorScheme.onSurfaceVariant
+                )
+            }
+
+            Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(16.dp)) {
+                DatePickerFieldSmall(value = reportDate) { date, _ ->
+                    viewModel.onIntent(AdminIntent.SelectReportDate(date))
+                }
+                
+                Button(
+                    onClick = { viewModel.onIntent(AdminIntent.PrintDailyLaunchReport(reportDate)) },
+                    colors = ButtonDefaults.buttonColors(containerColor = MaterialTheme.colorScheme.secondary)
+                ) {
+                    Icon(Icons.Default.Print, null)
+                    Spacer(Modifier.width(8.dp))
+                    Text("چاپ گزارش ناهار")
+                }
+
+                Button(
+                    onClick = { viewModel.onIntent(AdminIntent.PrintDailyDinnerReport(reportDate)) },
+                    colors = ButtonDefaults.buttonColors(containerColor = MaterialTheme.colorScheme.secondary)
+                ) {
+                    Icon(Icons.Default.Print, null)
+                    Spacer(Modifier.width(8.dp))
+                    Text("چاپ گزارش شام")
+                }
+            }
+        }
+
+        val reservations = state.reservations.filter { it.date == reportDate }
+        val foodMap = state.foods.associateBy { it.id }
+        val roomMap = state.rooms.associateBy { it.roomNumber }
+
+        if (reservations.isEmpty()) {
+            Box(Modifier.fillMaxSize(), contentAlignment = Alignment.Center) {
+                Text("هیچ سفارشی برای تاریخ $reportDate ثبت نشده است.", color = MaterialTheme.colorScheme.outline)
+            }
+        } else {
+            LazyColumn(verticalArrangement = Arrangement.spacedBy(16.dp)) {
+                items(reservations.sortedBy { it.roomNumber }) { res ->
+                    val room = roomMap[res.roomNumber]
+                    val lunchOrders = res.guestMealSelections.mapNotNull { it.lunchFoodId }
+                        .groupBy { it }
+                        .mapValues { it.value.size }
+                    val dinnerOrders = res.guestMealSelections.mapNotNull { it.dinnerFoodId }
+                        .groupBy { it }
+                        .mapValues { it.value.size }
+
+                    if (lunchOrders.isNotEmpty() || dinnerOrders.isNotEmpty()) {
+                        Surface(
+                            shape = MaterialTheme.shapes.medium,
+                            border = BorderStroke(1.dp, MaterialTheme.colorScheme.surfaceVariant),
+                            tonalElevation = 1.dp
+                        ) {
+                            Column(modifier = Modifier.padding(16.dp)) {
+                                Row(
+                                    modifier = Modifier.fillMaxWidth(),
+                                    horizontalArrangement = Arrangement.SpaceBetween,
+                                    verticalAlignment = Alignment.CenterVertically
+                                ) {
+                                    Text(
+                                        "اتاق ${res.roomNumber}",
+                                        style = MaterialTheme.typography.titleLarge,
+                                        fontWeight = FontWeight.Bold,
+                                        color = MaterialTheme.colorScheme.primary
+                                    )
+                                    Text(
+                                        room?.guestName ?: "---",
+                                        style = MaterialTheme.typography.bodyLarge
+                                    )
+                                }
+                                
+                                HorizontalDivider(modifier = Modifier.padding(vertical = 12.dp))
+                                
+                                Row(modifier = Modifier.fillMaxWidth()) {
+                                    // Lunch Section
+                                    Column(modifier = Modifier.weight(1f)) {
+                                        Text("ناهار", fontWeight = FontWeight.Bold, color = MaterialTheme.colorScheme.secondary)
+                                        if (lunchOrders.isEmpty()) {
+                                            Text("-", style = MaterialTheme.typography.bodySmall)
+                                        } else {
+                                            lunchOrders.forEach { (foodId, count) ->
+                                                Row(modifier = Modifier.fillMaxWidth().padding(top = 4.dp), horizontalArrangement = Arrangement.SpaceBetween) {
+                                                    Text(foodMap[foodId]?.name ?: "نامعلوم", style = MaterialTheme.typography.bodyMedium)
+                                                    Text("$count عدد", fontWeight = FontWeight.Bold)
+                                                }
+                                            }
+                                        }
+                                    }
+                                    
+                                    Spacer(Modifier.width(32.dp))
+                                    
+                                    // Dinner Section
+                                    Column(modifier = Modifier.weight(1f)) {
+                                        Text("شام", fontWeight = FontWeight.Bold, color = MaterialTheme.colorScheme.secondary)
+                                        if (dinnerOrders.isEmpty()) {
+                                            Text("-", style = MaterialTheme.typography.bodySmall)
+                                        } else {
+                                            dinnerOrders.forEach { (foodId, count) ->
+                                                Row(modifier = Modifier.fillMaxWidth().padding(top = 4.dp), horizontalArrangement = Arrangement.SpaceBetween) {
+                                                    Text(foodMap[foodId]?.name ?: "نامعلوم", style = MaterialTheme.typography.bodyMedium)
+                                                    Text("$count عدد", fontWeight = FontWeight.Bold)
+                                                }
+                                            }
+                                        }
+                                    }
+                                }
+                            }
+                        }
+                    }
+                }
+            }
+        }
     }
 }
 
