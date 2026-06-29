@@ -12,7 +12,8 @@ data class ReservationState(
     val tempReservations: List<FoodReservation> = emptyList(),
     val isLoading: Boolean = false,
     val error: String? = null,
-    val isLoggedIn: Boolean = false
+    val isLoggedIn: Boolean = false,
+    val isArabic: Boolean = false
 )
 
 sealed class ReservationIntent {
@@ -26,4 +27,5 @@ sealed class ReservationIntent {
         val isLunch: Boolean
     ) : ReservationIntent()
     object ConfirmReservation : ReservationIntent()
+    object ToggleLanguage : ReservationIntent()
 }

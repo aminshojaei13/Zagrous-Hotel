@@ -6,9 +6,15 @@ import kotlinx.browser.window
 
 @OptIn(ExperimentalComposeUiApi::class)
 fun main() {
-    // تشخیص پورت برای نمایش صفحه مربوطه
-    // اگر پورت 8081 بود صفحه رزرو، در غیر این صورت صفحه ادمین
-    val isAdmin = window.location.port == "8080"
+    // تنظیمات پورت درخواستی کاربر:
+    // 8091: پنل مدیریت (Admin)
+    // 8090: پنل رزرو (Reservation)
+    val urlParams = window.location.search
+    val currentPort = window.location.port
+    
+    val isAdmin = currentPort == "8091" ||
+                  urlParams.contains("mode=admin") || 
+                  window.location.pathname.contains("admin")
     
     ComposeViewport {
         App(isAdmin = isAdmin)

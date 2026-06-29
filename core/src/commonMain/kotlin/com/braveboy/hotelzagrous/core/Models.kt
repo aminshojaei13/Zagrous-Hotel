@@ -24,6 +24,7 @@ enum class DayType { EVEN, ODD, FRIDAY }
 data class FoodItem(
     val id: String = "",
     val name: String,
+    val nameAr: String? = null,
     val type: FoodType,
     val dayType: DayType,
     val isActive: Boolean = true,

@@ -1,0 +1,33 @@
+<resources>
+    <string name="welcome">خوش آمدید</string>
+    <string name="system_title">سامانه رزرو غذای هتل زاگرس</string>
+    <string name="room_number">شماره اتاق</string>
+    <string name="identification_id">شماره شناسایی</string>
+    <string name="login">ورود به سامانه</string>
+    <string name="support_text">در صورت بروز مشکل به پذیرش مراجعه فرمایید</string>
+    <string name="guest_panel">پنل مهمان</string>
+    <string name="hotel_name">هتل زاگرس</string>
+    <string name="room_label">اتاق %s</string>
+    <string name="dear_guest">مهمان گرامی، جناب %s</string>
+    <string name="persons_count">%d نفر</string>
+    <string name="to_label">الی</string>
+    <string name="select_food_program">انتخاب برنامه غذایی</string>
+    <string name="confirm_reservation">ثبت نهایی و تایید رزروها</string>
+    <string name="date_label">تاریخ: %s</string>
+    <string name="guest_selection">انتخاب مهمان %d:</string>
+    <string name="lunch">وعده ناهار</string>
+    <string name="dinner">وعده شام</string>
+    <string name="no_selection">عدم انتخاب (هیچکدام)</string>
+    <string name="not_selected">انتخاب نشده</string>
+    <string name="switch_language">تغییر زبان</string>
+    <string name="error_connection">ارتباط با سرور برقرار نشد</string>
+    <string name="error_fill_fields">لطفاً شماره اتاق و شماره شناسایی را وارد کنید</string>
+    <string name="error_id_mismatch">شماره شناسایی با شماره اتاق مطابقت ندارد</string>
+    <string name="error_room_not_found">شماره اتاق یافت نشد</string>
+    <string name="reservation_success">رزرو با موفقیت ثبت شد</string>
+    <string name="reservation_failed">ثبت رزرو انجام نشد</string>
+    <string name="persian">فارسی</string>
+    <string name="arabic">العربية</string>
+    <string name="food_name_fa">نام غذا (فارسی)</string>
+    <string name="food_name_ar">نام غذا (عربی)</string>
+</resources>

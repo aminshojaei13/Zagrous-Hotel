@@ -11,6 +11,8 @@ import com.braveboy.hotelzagrous.core.GuestMealSelection
 import com.braveboy.hotelzagrous.core.MenuConfig
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.launch
+import hotelzagrous.app.shared.generated.resources.Res
+import hotelzagrous.app.shared.generated.resources.*
 
 class ReservationViewModel(
     private val repository: HotelRepository,
@@ -33,7 +35,8 @@ class ReservationViewModel(
                 allMenuConfigs = configs
                 updateState { it.copy(availableFoods = foods, error = null) }
             }.onFailure {
-                updateState { it.copy(error = "ارتباط با سرور برقرار نشد") }
+                // خطا در لود اولیه
+                updateState { it.copy(error = "error_connection") }
             }
         }
     }
@@ -45,6 +48,7 @@ class ReservationViewModel(
             is ReservationIntent.Login -> login()
             is ReservationIntent.ChangeFood -> updateFoodSelection(intent)
             is ReservationIntent.ConfirmReservation -> submit()
+            is ReservationIntent.ToggleLanguage -> updateState { it.copy(isArabic = !it.isArabic) }
         }
     }
 
@@ -53,7 +57,7 @@ class ReservationViewModel(
         val currentIdentificationId = state.value.identificationId
 
         if (currentRoomNumber.isBlank() || currentIdentificationId.isBlank()) {
-            updateState { it.copy(error = "لطفاً شماره اتاق و شماره شناسایی را وارد کنید") }
+            updateState { it.copy(error = "error_fill_fields") }
             return
         }
 
@@ -74,13 +78,13 @@ class ReservationViewModel(
                             error = null
                         ) }
                     } else {
-                        updateState { it.copy(isLoading = false, error = "شماره شناسایی با شماره اتاق مطابقت ندارد") }
+                        updateState { it.copy(isLoading = false, error = "error_id_mismatch") }
                     }
                 } else {
-                    updateState { it.copy(isLoading = false, error = "شماره اتاق یافت نشد") }
+                    updateState { it.copy(isLoading = false, error = "error_room_not_found") }
                 }
             }.onFailure { e ->
-                updateState { it.copy(isLoading = false, error = "ارتباط با سرور برقرار نشد: ${e.message}") }
+                updateState { it.copy(isLoading = false, error = "error_connection") }
             }
         }
     }
@@ -118,37 +122,10 @@ class ReservationViewModel(
             runCatching {
                 state.value.tempReservations.forEach { repository.saveReservation(it) }
             }.onSuccess {
-                updateState { it.copy(isLoading = false, error = "رزرو با موفقیت ثبت شد") }
+                updateState { it.copy(isLoading = false, error = "reservation_success") }
             }.onFailure {
-                updateState { it.copy(isLoading = false, error = "ثبت رزرو انجام نشد") }
+                updateState { it.copy(isLoading = false, error = "reservation_failed") }
             }
         }
-    }
-
-    /**
-     * منطق نمایش منو بر اساس تاریخ (بند ۳ نیازمندی‌ها)
-     */
-    fun getFoodsForDate(dateString: String, foodType: FoodType): List<FoodItem> {
-        val dayType = determineDayType(dateString)
-        
-        // بررسی فعال بودن کل منو (بند ۲.۵)
-        val isMenuEnabled = allMenuConfigs.find { it.dayType == dayType && it.foodType == foodType }?.isEnabled ?: true
-        if (!isMenuEnabled) return emptyList()
-
-        return state.value.availableFoods.filter { 
-            it.dayType == dayType && 
-            it.type == foodType && 
-            it.isActive &&           // بند ۳ - شرط فعال بودن
-            it.isVisibleToUsers      // بند ۳ - شرط نمایش به کاربر
-        }.sortedBy { it.displayOrder }
-    }
-
-    private fun determineDayType(dateString: String): DayType {
-        if (DateUtils.isFriday(dateString)) return DayType.FRIDAY
-        
-        val parts = dateString.split("/")
-        val dayOfMonth = if (parts.size == 3) parts[2].toIntOrNull() ?: 1 else 1
-        
-        return if (dayOfMonth % 2 == 0) DayType.EVEN else DayType.ODD
     }
 }
