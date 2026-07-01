@@ -30,14 +30,14 @@ compose.desktop {
             packageName = "HotelZagrous"
             packageVersion = "1.0.0"
 
+            // اضافه کردن ماژول‌های مورد نیاز جاوا
+            modules("java.net.http", "jdk.crypto.ec")
+
             windows {
                 packageVersion = "1.0.0"
-                // UUID اختصاصی برای برنامه شما - برای آپدیت‌های بعدی این را تغییر ندهید
                 upgradeUuid = "d7c8053a-1234-4321-abcd-1234567890ab"
                 menu = true
                 shortcut = true
-                // در صورت داشتن آیکون، خط زیر را فعال کنید:
-                // iconFile.set(project.file("src/jvmMain/resources/icon.ico"))
             }
         }
     }
