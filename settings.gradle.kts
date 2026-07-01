@@ -14,6 +14,9 @@ pluginManagement {
         gradlePluginPortal()
     }
 }
+plugins {
+    id("org.gradle.toolchains.foojay-resolver-convention") version "1.0.0"
+}
 
 dependencyResolutionManagement {
     repositories {
@@ -31,5 +34,6 @@ dependencyResolutionManagement {
 include(":app:androidApp")
 include(":app:shared")
 include(":app:webApp")
+include(":app:desktopApp")
 include(":core")
 include(":server")

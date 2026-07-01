@@ -1,0 +1,33 @@
+<resources>
+    <string name="welcome">أهلاً بك</string>
+    <string name="system_title">نظام حجز طعام فندق زاكروس</string>
+    <string name="room_number">رقم الغرفة</string>
+    <string name="identification_id">رقم الهوية</string>
+    <string name="login">تسجيل الدخول</string>
+    <string name="support_text">في حال حدوث مشكلة، يرجى مراجعة الاستقبال</string>
+    <string name="guest_panel">لوحة الضيف</string>
+    <string name="hotel_name">فندق زاكروس</string>
+    <string name="room_label">غرفة %s</string>
+    <string name="dear_guest">ضيفنا العزيز، السيد %s</string>
+    <string name="persons_count">%d أشخاص</string>
+    <string name="to_label">إلى</string>
+    <string name="select_food_program">اختيار برنامج الغذاء</string>
+    <string name="confirm_reservation">التأكيد النهائي وحجز الوجبات</string>
+    <string name="date_label">التاريخ: %s</string>
+    <string name="guest_selection">اختيار الضيف %d:</string>
+    <string name="lunch">وجبة الغداء</string>
+    <string name="dinner">وجبة العشاء</string>
+    <string name="no_selection">عدم الاختيار (لا شيء)</string>
+    <string name="not_selected">لم يتم الاختيار</string>
+    <string name="switch_language">تغيير اللغة</string>
+    <string name="error_connection">تعذر الاتصال بالخادم</string>
+    <string name="error_fill_fields">يرجى إدخال رقم الغرفة ورقم الهوية</string>
+    <string name="error_id_mismatch">رقم الهوية لا يتطابق مع رقم الغرفة</string>
+    <string name="error_room_not_found">رقم الغرفة غير موجود</string>
+    <string name="reservation_success">تم تسجيل الحجز بنجاح</string>
+    <string name="reservation_failed">فشل تسجيل الحجز</string>
+    <string name="persian">فارسی</string>
+    <string name="arabic">العربية</string>
+    <string name="food_name_fa">اسم الطعام (الفارسية)</string>
+    <string name="food_name_ar">اسم الطعام (العربية)</string>
+</resources>
