@@ -1,3 +1,5 @@
+import org.jetbrains.kotlin.gradle.dsl.JvmTarget
+
 plugins {
     alias(libs.plugins.kotlinJvm)
     alias(libs.plugins.ktor)
@@ -6,6 +8,11 @@ plugins {
 
 group = "com.braveboy.hotelzagrous"
 version = "1.0.0"
+
+kotlin {
+    jvmToolchain(21)
+}
+
 application {
     mainClass = "com.braveboy.hotelzagrous.ApplicationKt"
 }
@@ -21,4 +28,10 @@ dependencies {
     implementation(libs.sqlite.jdbc)
     testImplementation(libs.ktor.serverTestHost)
     testImplementation(libs.kotlin.testJunit)
+}
+
+tasks.withType<org.jetbrains.kotlin.gradle.tasks.KotlinCompile>().configureEach {
+    compilerOptions {
+        jvmTarget.set(JvmTarget.JVM_21)
+    }
 }
