@@ -67,7 +67,7 @@ actual object DateUtils {
 
     actual fun getFirstDayOfMonth(year: Int, month: Int): Int {
         return try {
-            PersianDateTime(year, month, 1).persianDayOfWeek().ordinal
+            PersianDateTime(year, month, 1).persianDayOfWeek().number - 1
         } catch (e: Exception) {
             0
         }
