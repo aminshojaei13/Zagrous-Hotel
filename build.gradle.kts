@@ -10,3 +10,18 @@ plugins {
     alias(libs.plugins.kotlinSerialization) apply false
     alias(libs.plugins.ktor) apply false
 }
+
+tasks.register("releaseAllExceptDesktop") {
+    group = "release"
+    description = "Builds release artifacts for Android, Web, and Server (excludes Desktop)."
+
+    // Android release build
+    dependsOn(":app:androidApp:assembleRelease")
+
+    // Web distribution (both JS and WasmJs)
+    dependsOn(":app:webApp:jsBrowserDistribution")
+    dependsOn(":app:webApp:wasmJsBrowserDistribution")
+
+    // Server distribution
+    dependsOn(":server:installDist")
+}
