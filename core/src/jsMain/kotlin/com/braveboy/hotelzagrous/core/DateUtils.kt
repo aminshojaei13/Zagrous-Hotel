@@ -52,4 +52,16 @@ actual object DateUtils {
     actual fun isEven(dateString: String): Boolean {
         TODO("Not yet implemented")
     }
+
+    actual fun getJalaliMonthNames(): List<String> {
+        TODO("Not yet implemented")
+    }
+
+    actual fun getDaysInJalaliMonth(year: Int, month: Int): Int {
+        TODO("Not yet implemented")
+    }
+
+    actual fun getFirstDayOfMonth(year: Int, month: Int): Int {
+        TODO("Not yet implemented")
+    }
 }
