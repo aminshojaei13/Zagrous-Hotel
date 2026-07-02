@@ -11,7 +11,7 @@ plugins {
     alias(libs.plugins.ktor) apply false
 }
 
-tasks.register("releaseAllExceptDesktop") {
+/*tasks.register("releaseAllExceptDesktop") {
     group = "release"
     description = "Builds release artifacts for Android, Web, and Server (excludes Desktop)."
 
@@ -24,4 +24,4 @@ tasks.register("releaseAllExceptDesktop") {
 
     // Server distribution
     dependsOn(":server:installDist")
-}
+}*/

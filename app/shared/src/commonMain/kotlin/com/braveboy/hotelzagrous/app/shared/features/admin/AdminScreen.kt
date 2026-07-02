@@ -22,6 +22,7 @@ import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
+import com.braveboy.hotelzagrous.app.shared.features.PersianDatePickerDialog
 import com.braveboy.hotelzagrous.core.*
 import kotlin.time.Clock
 
@@ -543,16 +544,21 @@ fun AdminFoodSelectionItem(
     }
 }
 
-@OptIn(ExperimentalMaterial3Api::class)
 @Composable
 fun DatePickerFieldSmall(value: String, onDateSelected: (String, Long) -> Unit) {
     var showDatePicker by remember { mutableStateOf(false) }
-    val datePickerState = rememberDatePickerState()
     Surface(onClick = { showDatePicker = true }, color = MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.5f), shape = MaterialTheme.shapes.small) {
         Text(text = value.ifBlank { "انتخاب" }, modifier = Modifier.padding(horizontal = 6.dp, vertical = 2.dp), style = MaterialTheme.typography.labelSmall, fontWeight = FontWeight.Bold, color = MaterialTheme.colorScheme.onSurface, maxLines = 1, overflow = TextOverflow.Ellipsis)
     }
     if (showDatePicker) {
-        DatePickerDialog(onDismissRequest = { showDatePicker = false }, confirmButton = { TextButton(onClick = { datePickerState.selectedDateMillis?.let { onDateSelected(DateUtils.convertMillisToJalaliString(it), it) }; showDatePicker = false }) { Text("تایید", fontWeight = FontWeight.Bold) } }, dismissButton = { TextButton(onClick = { showDatePicker = false }) { Text("انصراف") } }, shape = MaterialTheme.shapes.large) { DatePicker(state = datePickerState) }
+        PersianDatePickerDialog(
+            initialDate = value,
+            onDateSelected = { date, millis -> 
+                onDateSelected(date, millis)
+                showDatePicker = false 
+            },
+            onDismiss = { showDatePicker = false }
+        )
     }
 }
 
@@ -750,11 +756,9 @@ fun AddRoomDialog(onDismiss: () -> Unit, onConfirm: (Room) -> Unit) {
     )
 }
 
-@OptIn(ExperimentalMaterial3Api::class)
 @Composable
 fun DatePickerField(label: String, value: String, modifier: Modifier = Modifier, onDateSelected: (String, Long) -> Unit) {
     var showDatePicker by remember { mutableStateOf(false) }
-    val datePickerState = rememberDatePickerState()
     Surface(onClick = { showDatePicker = true }, modifier = modifier, shape = MaterialTheme.shapes.medium, border = BorderStroke(1.dp, MaterialTheme.colorScheme.outline), color = Color.Transparent) {
         Column(modifier = Modifier.padding(8.dp)) {
             Text(label, style = MaterialTheme.typography.labelSmall, color = MaterialTheme.colorScheme.outline, maxLines = 1)
@@ -766,6 +770,13 @@ fun DatePickerField(label: String, value: String, modifier: Modifier = Modifier,
         }
     }
     if (showDatePicker) {
-        DatePickerDialog(onDismissRequest = { showDatePicker = false }, confirmButton = { TextButton(onClick = { datePickerState.selectedDateMillis?.let { onDateSelected(DateUtils.convertMillisToJalaliString(it), it) }; showDatePicker = false }) { Text("تایید", fontWeight = FontWeight.Bold) } }, dismissButton = { TextButton(onClick = { showDatePicker = false }) { Text("انصراف") } }, shape = MaterialTheme.shapes.large) { DatePicker(state = datePickerState) }
+        PersianDatePickerDialog(
+            initialDate = value,
+            onDateSelected = { date, millis -> 
+                onDateSelected(date, millis)
+                showDatePicker = false 
+            },
+            onDismiss = { showDatePicker = false }
+        )
     }
 }
