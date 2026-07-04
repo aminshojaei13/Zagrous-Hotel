@@ -113,7 +113,7 @@ fun PersianDatePicker(
 
             LazyVerticalGrid(
                 columns = GridCells.Fixed(7),
-                modifier = Modifier.height(240.dp),
+                modifier = Modifier.height(260.dp),
                 userScrollEnabled = false
             ) {
                 items(cells) { index ->
@@ -156,6 +156,8 @@ fun PersianDatePicker(
                     }
                 }
             }
+
+            Spacer(Modifier.height(8.dp))
 
             Row(
                 modifier = Modifier.fillMaxWidth(),

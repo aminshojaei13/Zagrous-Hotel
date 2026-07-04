@@ -320,6 +320,7 @@ class AdminViewModel(
             append("</body></html>")
         }
 
-        ReportPrinter.printHtml(html, "گزارش $mealTitle $date")
+        // Changed from printHtml to openInBrowser to bypass "print service not found" issues
+        ReportPrinter.openInBrowser(html)
     }
 }

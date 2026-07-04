@@ -4,4 +4,6 @@ package com.braveboy.hotelzagrous.app.shared.features.admin
 
 expect object ReportPrinter {
     fun printHtml(html: String, jobName: String)
+    fun savePdf(html: String, fileName: String)
+    fun openInBrowser(html: String)
 }
