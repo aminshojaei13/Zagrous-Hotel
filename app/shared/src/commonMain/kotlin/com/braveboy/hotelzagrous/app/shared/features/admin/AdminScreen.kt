@@ -495,7 +495,12 @@ fun RoomFoodReservationsDialog(
                                     val selection = reservation?.guestMealSelections?.find { it.guestIndex == index }
                                     Row(modifier = Modifier.fillMaxWidth().padding(vertical = 2.dp), verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(6.dp)) {
                                         Text("مهمان ${index + 1}:", modifier = Modifier.width(60.dp), style = MaterialTheme.typography.labelSmall, maxLines = 1, overflow = TextOverflow.Ellipsis)
-                                        val menu = when { DateUtils.isFriday(date) -> availableFoods.filter { it.dayType == DayType.FRIDAY }; DateUtils.isEven(date) -> availableFoods.filter { it.dayType == DayType.EVEN }; else -> availableFoods.filter { it.dayType == DayType.ODD } }
+                                        val menu = when { 
+                                            DateUtils.isFriday(date) -> availableFoods.filter { it.dayType == DayType.FRIDAY && it.isActive }
+                                            DateUtils.isEven(date) -> availableFoods.filter { it.dayType == DayType.EVEN && it.isActive }
+                                            else -> availableFoods.filter { it.dayType == DayType.ODD && it.isActive }
+                                        }.sortedBy { it.displayOrder }
+                                        
                                         AdminFoodSelectionItem(label = "ناهار", foods = menu.filter { it.type == FoodType.LUNCH }, selectedId = selection?.lunchFoodId, modifier = Modifier.weight(1f), onSelect = { onFoodChange(date, index, it, true) })
                                         AdminFoodSelectionItem(label = "شام", foods = menu.filter { it.type == FoodType.DINNER }, selectedId = selection?.dinnerFoodId, modifier = Modifier.weight(1f), onSelect = { onFoodChange(date, index, it, false) })
                                     }
@@ -599,8 +604,9 @@ fun ReservationSummary(
                             res.guestMealSelections.forEach { selection ->
                                 Row(modifier = Modifier.padding(top = 4.dp, start = 8.dp), verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(8.dp)) {
                                     Text(text = "مهمان ${selection.guestIndex + 1} :", modifier = Modifier.width(60.dp), style = MaterialTheme.typography.labelSmall, color = MaterialTheme.colorScheme.onSurfaceVariant, maxLines = 1, overflow = TextOverflow.Ellipsis)
-                                    AdminFoodSelectionItem(label = "ناهار", foods = foods.filter { it.type == FoodType.LUNCH }, selectedId = selection.lunchFoodId, modifier = Modifier.width(120.dp), onSelect = { onIntent(AdminIntent.ChangeFood(res.roomNumber, date, selection.guestIndex, it, true)) })
-                                    AdminFoodSelectionItem(label = "شام", foods = foods.filter { it.type == FoodType.DINNER }, selectedId = selection.dinnerFoodId, modifier = Modifier.width(120.dp), onSelect = { onIntent(AdminIntent.ChangeFood(res.roomNumber, date, selection.guestIndex, it, false)) })
+                                    val filteredFoods = foods.filter { it.isActive }.sortedBy { it.displayOrder }
+                                    AdminFoodSelectionItem(label = "ناهار", foods = filteredFoods.filter { it.type == FoodType.LUNCH }, selectedId = selection.lunchFoodId, modifier = Modifier.width(120.dp), onSelect = { onIntent(AdminIntent.ChangeFood(res.roomNumber, date, selection.guestIndex, it, true)) })
+                                    AdminFoodSelectionItem(label = "شام", foods = filteredFoods.filter { it.type == FoodType.DINNER }, selectedId = selection.dinnerFoodId, modifier = Modifier.width(120.dp), onSelect = { onIntent(AdminIntent.ChangeFood(res.roomNumber, date, selection.guestIndex, it, false)) })
                                 }
                             }
                         }

@@ -2,65 +2,14 @@ package com.braveboy.hotelzagrous.app.shared.features.reservation
 
 import androidx.compose.foundation.BorderStroke
 import androidx.compose.foundation.background
-import androidx.compose.foundation.layout.Arrangement
-import androidx.compose.foundation.layout.Box
-import androidx.compose.foundation.layout.Column
-import androidx.compose.foundation.layout.IntrinsicSize
-import androidx.compose.foundation.layout.PaddingValues
-import androidx.compose.foundation.layout.Row
-import androidx.compose.foundation.layout.Spacer
-import androidx.compose.foundation.layout.fillMaxSize
-import androidx.compose.foundation.layout.fillMaxWidth
-import androidx.compose.foundation.layout.height
-import androidx.compose.foundation.layout.offset
-import androidx.compose.foundation.layout.padding
-import androidx.compose.foundation.layout.size
-import androidx.compose.foundation.layout.width
-import androidx.compose.foundation.layout.wrapContentHeight
+import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.material.icons.Icons
-import androidx.compose.material.icons.filled.ArrowDropDown
-import androidx.compose.material.icons.filled.Badge
-import androidx.compose.material.icons.filled.Block
-import androidx.compose.material.icons.filled.Check
-import androidx.compose.material.icons.filled.CheckCircle
-import androidx.compose.material.icons.filled.DateRange
-import androidx.compose.material.icons.filled.Error
-import androidx.compose.material.icons.filled.Event
-import androidx.compose.material.icons.filled.Hotel
-import androidx.compose.material.icons.filled.Language
-import androidx.compose.material.icons.filled.MeetingRoom
-import androidx.compose.material.icons.filled.NightsStay
-import androidx.compose.material.icons.filled.People
-import androidx.compose.material.icons.filled.Person
-import androidx.compose.material.icons.filled.RestaurantMenu
-import androidx.compose.material.icons.filled.WbSunny
-import androidx.compose.material3.Button
-import androidx.compose.material3.ButtonDefaults
-import androidx.compose.material3.CircularProgressIndicator
-import androidx.compose.material3.DropdownMenu
-import androidx.compose.material3.DropdownMenuItem
-import androidx.compose.material3.ExperimentalMaterial3Api
-import androidx.compose.material3.HorizontalDivider
-import androidx.compose.material3.Icon
-import androidx.compose.material3.IconButton
-import androidx.compose.material3.MaterialTheme
-import androidx.compose.material3.OutlinedTextField
-import androidx.compose.material3.OutlinedTextFieldDefaults
-import androidx.compose.material3.Scaffold
-import androidx.compose.material3.Surface
-import androidx.compose.material3.Text
-import androidx.compose.material3.TextButton
-import androidx.compose.material3.TopAppBar
-import androidx.compose.material3.TopAppBarDefaults
-import androidx.compose.runtime.Composable
-import androidx.compose.runtime.collectAsState
-import androidx.compose.runtime.getValue
-import androidx.compose.runtime.mutableStateOf
-import androidx.compose.runtime.remember
-import androidx.compose.runtime.setValue
+import androidx.compose.material.icons.filled.*
+import androidx.compose.material3.*
+import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
@@ -121,7 +70,6 @@ fun LoginSection(
         modifier = Modifier.fillMaxSize(),
         contentAlignment = Alignment.Center
     ) {
-        // Language Button in Login
         Box(modifier = Modifier.align(Alignment.TopEnd).padding(16.dp)) {
             TextButton(onClick = onToggleLanguage) {
                 Icon(Icons.Default.Language, null, modifier = Modifier.size(18.dp))
@@ -130,7 +78,6 @@ fun LoginSection(
             }
         }
 
-        // Decorative background elements
         Box(
             modifier = Modifier
                 .size(400.dp)
@@ -547,25 +494,28 @@ fun FoodCard(date: String, state: ReservationState, viewModel: ReservationViewMo
                         modifier = Modifier.fillMaxWidth(),
                         horizontalArrangement = Arrangement.spacedBy(12.dp)
                     ) {
-                        val foods = when {
-                            DateUtils.isFriday(date) -> state.availableFoods.filter { it.dayType == DayType.FRIDAY }
-                            DateUtils.isEven(date) -> state.availableFoods.filter { it.dayType == DayType.EVEN }
-                            else -> state.availableFoods.filter { it.dayType == DayType.ODD }
+                        val dayType = when {
+                            DateUtils.isFriday(date) -> DayType.FRIDAY
+                            DateUtils.isEven(date) -> DayType.EVEN
+                            else -> DayType.ODD
                         }
 
-                        val twelveHours = 12 * 60 * 60 * 1000L
+                        val allFoods = state.availableFoods.filter { it.dayType == dayType && it.isActive && it.isVisibleToUsers }
+                            .sortedBy { it.displayOrder }
 
-                        val isMoreThan12Hours =
-                            (DateUtils.convertDateToTimeMillis(date) - Clock.System.now()
-                                .toEpochMilliseconds()) > twelveHours
+                        val lunchEnabled = state.menuConfigs.find { it.dayType == dayType && it.foodType == FoodType.LUNCH }?.isEnabled ?: true
+                        val dinnerEnabled = state.menuConfigs.find { it.dayType == dayType && it.foodType == FoodType.DINNER }?.isEnabled ?: true
+
+                        val twelveHours = 12 * 60 * 60 * 1000L
+                        val isTimeLocked = (DateUtils.convertDateToTimeMillis(date) - Clock.System.now().toEpochMilliseconds()) <= twelveHours
 
                         FoodSelectionItem(
                             modifier = Modifier.weight(1f),
                             label = strings.lunch,
                             icon = Icons.Default.WbSunny,
-                            foods = foods.filter { it.type == FoodType.LUNCH },
+                            foods = allFoods.filter { it.type == FoodType.LUNCH },
                             selectedId = guestSelection?.lunchFoodId,
-                            enabled = isMoreThan12Hours,
+                            enabled = lunchEnabled && !isTimeLocked,
                             strings = strings
                         ) { foodId ->
                             viewModel.onIntent(
@@ -582,9 +532,9 @@ fun FoodCard(date: String, state: ReservationState, viewModel: ReservationViewMo
                             modifier = Modifier.weight(1f),
                             label = strings.dinner,
                             icon = Icons.Default.NightsStay,
-                            foods = foods.filter { it.type == FoodType.DINNER },
+                            foods = allFoods.filter { it.type == FoodType.DINNER },
                             selectedId = guestSelection?.dinnerFoodId,
-                            enabled = isMoreThan12Hours,
+                            enabled = dinnerEnabled && !isTimeLocked,
                             strings = strings
                         ) { foodId ->
                             viewModel.onIntent(
@@ -631,7 +581,7 @@ fun FoodSelectionItem(
             onClick = { expanded = true },
             modifier = Modifier.fillMaxWidth(),
             shape = MaterialTheme.shapes.medium,
-            color = if (!enabled) MaterialTheme.colorScheme.outline.copy(alpha = 0.3F) else if (selectedFood != null) MaterialTheme.colorScheme.primaryContainer.copy(
+            color = if (!enabled) MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.3F) else if (selectedFood != null) MaterialTheme.colorScheme.primaryContainer.copy(
                 alpha = 0.1f
             ) else MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.5f),
             border = if (selectedFood != null) BorderStroke(
@@ -645,13 +595,13 @@ fun FoodSelectionItem(
                         icon,
                         null,
                         modifier = Modifier.size(14.dp),
-                        tint = if (selectedFood != null) MaterialTheme.colorScheme.primary else MaterialTheme.colorScheme.outline
+                        tint = if (!enabled) MaterialTheme.colorScheme.outline else if (selectedFood != null) MaterialTheme.colorScheme.primary else MaterialTheme.colorScheme.outline
                     )
                     Spacer(Modifier.width(6.dp))
                     Text(
                         label,
                         style = MaterialTheme.typography.labelSmall,
-                        color = if (selectedFood != null) MaterialTheme.colorScheme.primary else MaterialTheme.colorScheme.outline
+                        color = if (!enabled) MaterialTheme.colorScheme.outline else if (selectedFood != null) MaterialTheme.colorScheme.primary else MaterialTheme.colorScheme.outline
                     )
                 }
 
@@ -662,65 +612,69 @@ fun FoodSelectionItem(
                     horizontalArrangement = Arrangement.SpaceBetween
                 ) {
                     Text(
-                        selectedFood?.name ?: strings.notSelected,
+                        if (!enabled && selectedFood == null) strings.noSelection else selectedFood?.name ?: strings.notSelected,
                         maxLines = 1,
                         style = MaterialTheme.typography.bodyMedium,
                         fontWeight = if (selectedFood != null) FontWeight.Bold else FontWeight.Normal,
-                        color = if (selectedFood != null) MaterialTheme.colorScheme.onPrimaryContainer else MaterialTheme.colorScheme.onSurfaceVariant
+                        color = if (!enabled) MaterialTheme.colorScheme.outline else if (selectedFood != null) MaterialTheme.colorScheme.onPrimaryContainer else MaterialTheme.colorScheme.onSurfaceVariant
                     )
-                    Icon(
-                        Icons.Default.ArrowDropDown,
-                        contentDescription = null,
-                        tint = if (selectedFood != null) MaterialTheme.colorScheme.primary else MaterialTheme.colorScheme.outline,
-                        modifier = Modifier.size(20.dp)
-                    )
+                    if (enabled) {
+                        Icon(
+                            Icons.Default.ArrowDropDown,
+                            contentDescription = null,
+                            tint = if (selectedFood != null) MaterialTheme.colorScheme.primary else MaterialTheme.colorScheme.outline,
+                            modifier = Modifier.size(20.dp)
+                        )
+                    }
                 }
             }
         }
 
-        DropdownMenu(
-            expanded = expanded,
-            onDismissRequest = { expanded = false },
-            modifier = Modifier.background(MaterialTheme.colorScheme.surface)
-                .width(IntrinsicSize.Min)
-        ) {
-            DropdownMenuItem(
-                text = {
-                    Text(
-                        strings.noSelection,
-                        style = MaterialTheme.typography.bodyMedium
-                    )
-                },
-                onClick = {
-                    onSelect(null)
-                    expanded = false
-                },
-                leadingIcon = { Icon(Icons.Default.Block, null, modifier = Modifier.size(18.dp)) }
-            )
-            HorizontalDivider(color = MaterialTheme.colorScheme.surfaceVariant)
-            foods.forEach { food ->
+        if (enabled) {
+            DropdownMenu(
+                expanded = expanded,
+                onDismissRequest = { expanded = false },
+                modifier = Modifier.background(MaterialTheme.colorScheme.surface)
+                    .width(IntrinsicSize.Min)
+            ) {
                 DropdownMenuItem(
                     text = {
                         Text(
-                            food.name,
-                            style = MaterialTheme.typography.bodyMedium,
-                            fontWeight = FontWeight.Bold
+                            strings.noSelection,
+                            style = MaterialTheme.typography.bodyMedium
                         )
                     },
                     onClick = {
-                        onSelect(food.id)
+                        onSelect(null)
                         expanded = false
                     },
-                    trailingIcon = {
-                        if (food.id == selectedId) {
-                            Icon(
-                                Icons.Default.Check,
-                                null,
-                                tint = MaterialTheme.colorScheme.primary
-                            )
-                        }
-                    }
+                    leadingIcon = { Icon(Icons.Default.Block, null, modifier = Modifier.size(18.dp)) }
                 )
+                HorizontalDivider(color = MaterialTheme.colorScheme.surfaceVariant)
+                foods.forEach { food ->
+                    DropdownMenuItem(
+                        text = {
+                            Text(
+                                food.name,
+                                style = MaterialTheme.typography.bodyMedium,
+                                fontWeight = FontWeight.Bold
+                            )
+                        },
+                        onClick = {
+                            onSelect(food.id)
+                            expanded = false
+                        },
+                        trailingIcon = {
+                            if (food.id == selectedId) {
+                                Icon(
+                                    Icons.Default.Check,
+                                    null,
+                                    tint = MaterialTheme.colorScheme.primary
+                                )
+                            }
+                        }
+                    )
+                }
             }
         }
     }

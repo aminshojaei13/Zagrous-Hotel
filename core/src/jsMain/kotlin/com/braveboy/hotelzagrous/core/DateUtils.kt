@@ -37,7 +37,7 @@ actual object DateUtils {
 
     actual fun convertMillisToJalaliString(millis: Long): String {
         val instant = Instant.fromEpochMilliseconds(millis)
-        val localDate = instant.toLocalDateTime(TimeZone.UTC).date
+        val localDate = instant.toLocalDateTime(TimeZone.currentSystemDefault()).date
         return gregorianToJalali(localDate.year, localDate.month.ordinal + 1, localDate.day)
     }
 

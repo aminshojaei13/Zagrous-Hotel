@@ -16,7 +16,7 @@ actual object DateUtils {
     }
 
     actual fun convertMillisToJalaliString(millis: Long): String {
-        return Instant.fromEpochMilliseconds(millis).toPersianDateTime(TimeZone.UTC).toDateString()
+        return Instant.fromEpochMilliseconds(millis).toPersianDateTime(TimeZone.currentSystemDefault()).toDateString()
     }
 
     actual fun isFriday(dateString: String): Boolean {

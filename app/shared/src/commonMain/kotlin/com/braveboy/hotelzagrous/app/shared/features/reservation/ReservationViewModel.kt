@@ -19,8 +19,6 @@ class ReservationViewModel(
     private val scope: CoroutineScope
 ) : BaseViewModel<ReservationState, ReservationIntent>(ReservationState()) {
 
-    private var allMenuConfigs: List<MenuConfig> = emptyList()
-
     init {
         loadInitialData()
     }
@@ -32,8 +30,7 @@ class ReservationViewModel(
                 val configs = repository.getMenuConfigs()
                 foods to configs
             }.onSuccess { (foods, configs) ->
-                allMenuConfigs = configs
-                updateState { it.copy(availableFoods = foods, error = null) }
+                updateState { it.copy(availableFoods = foods, menuConfigs = configs, error = null) }
             }.onFailure {
                 // خطا در لود اولیه
                 updateState { it.copy(error = "error_connection") }
