@@ -23,9 +23,16 @@ import io.ktor.serialization.kotlinx.json.json
 import kotlinx.serialization.json.Json
 
 class HotelRepository(
-    private val apiBaseUrl: String = defaultApiBaseUrl(),
+    initialApiBaseUrl: String = defaultApiBaseUrl(),
     httpClient: HttpClient = createHotelHttpClient()
 ) {
+    var apiBaseUrl: String = initialApiBaseUrl
+        private set
+
+    fun updateBaseUrl(newUrl: String) {
+        apiBaseUrl = newUrl
+    }
+
     private val client = httpClient.config {
         expectSuccess = true
         install(ContentNegotiation) {

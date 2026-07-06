@@ -13,6 +13,7 @@ data class AdminState(
     val isLoading: Boolean = false,
     val selectedRoom: Room? = null,
     val selectedReportDate: String = "",
+    val apiBaseUrl: String = "",
     val error: String? = null
 )
 
@@ -56,6 +57,8 @@ sealed class AdminIntent {
 
     data class SelectRoomForFood(val room: Room?) : AdminIntent()
     data class SelectReportDate(val date: String) : AdminIntent()
+
+    data class ChangeApiBaseUrl(val newUrl: String) : AdminIntent()
 
     // Menu Management Intents
     data class UpsertFood(val food: FoodItem) : AdminIntent()

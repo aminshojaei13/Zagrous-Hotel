@@ -33,6 +33,7 @@ fun AdminScreen(viewModel: AdminViewModel) {
     var currentTab by remember { mutableStateOf("rooms") }
     var showAddRoomDialog by remember { mutableStateOf(false) }
     var showClearDataDialog by remember { mutableStateOf(false) }
+    var showApiUrlDialog by remember { mutableStateOf(false) }
 
     Row(modifier = Modifier.fillMaxSize().background(MaterialTheme.colorScheme.background)) {
         Surface(
@@ -86,6 +87,8 @@ fun AdminScreen(viewModel: AdminViewModel) {
                 NavigationItem(label = "گزارش تفصیلی روزانه", icon = Icons.AutoMirrored.Filled.Assignment, selected = currentTab == "daily_report", onClick = { currentTab = "daily_report" })
                 Spacer(Modifier.height(4.dp))
                 NavigationItem("مدیریت منوی غذا", Icons.Default.RestaurantMenu, selected = currentTab == "menu", onClick = { currentTab = "menu" })
+                Spacer(Modifier.height(4.dp))
+                NavigationItem(label = "تنظیمات هاست", icon = Icons.Default.Settings, selected = false, onClick = { showApiUrlDialog = true })
 
                 Spacer(Modifier.weight(1f))
                 HorizontalDivider(modifier = Modifier.padding(vertical = 12.dp), color = MaterialTheme.colorScheme.surfaceVariant)
@@ -160,6 +163,38 @@ fun AdminScreen(viewModel: AdminViewModel) {
                 Button(onClick = { viewModel.onIntent(AdminIntent.ClearAllData); showClearDataDialog = false }, colors = ButtonDefaults.buttonColors(containerColor = MaterialTheme.colorScheme.error)) { Text("بله، کاملاً پاک شود") }
             },
             dismissButton = { TextButton(onClick = { showClearDataDialog = false }) { Text("انصراف") } },
+            shape = MaterialTheme.shapes.large
+        )
+    }
+
+    if (showApiUrlDialog) {
+        var apiUrl by remember { mutableStateOf(state.apiBaseUrl) }
+        AlertDialog(
+            onDismissRequest = { showApiUrlDialog = false },
+            title = { Text("تنظیمات آدرس سرور (Host)") },
+            text = {
+                Column {
+                    Text("آدرس پایه API را وارد کنید:", style = MaterialTheme.typography.bodySmall)
+                    Spacer(Modifier.height(8.dp))
+                    OutlinedTextField(
+                        value = apiUrl,
+                        onValueChange = { apiUrl = it },
+                        modifier = Modifier.fillMaxWidth(),
+                        placeholder = { Text("http://192.168.1.100:8090/api") },
+                        singleLine = true,
+                        shape = MaterialTheme.shapes.medium
+                    )
+                }
+            },
+            confirmButton = {
+                Button(onClick = {
+                    viewModel.onIntent(AdminIntent.ChangeApiBaseUrl(apiUrl))
+                    showApiUrlDialog = false
+                }) { Text("ذخیره و بازنشانی") }
+            },
+            dismissButton = {
+                TextButton(onClick = { showApiUrlDialog = false }) { Text("انصراف") }
+            },
             shape = MaterialTheme.shapes.large
         )
     }

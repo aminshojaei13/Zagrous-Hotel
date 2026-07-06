@@ -13,7 +13,7 @@ import kotlinx.coroutines.launch
 class AdminViewModel(
     private val repository: HotelRepository,
     private val scope: CoroutineScope
-) : BaseViewModel<AdminState, AdminIntent>(AdminState()) {
+) : BaseViewModel<AdminState, AdminIntent>(AdminState(apiBaseUrl = repository.apiBaseUrl)) {
 
     init {
         onIntent(AdminIntent.LoadData)
@@ -31,6 +31,11 @@ class AdminViewModel(
             is AdminIntent.ChangeFood -> updateFoodSelection(intent)
             is AdminIntent.SelectRoomForFood -> updateState { it.copy(selectedRoom = intent.room) }
             is AdminIntent.SelectReportDate -> updateState { it.copy(selectedReportDate = intent.date) }
+            is AdminIntent.ChangeApiBaseUrl -> {
+                repository.updateBaseUrl(intent.newUrl)
+                updateState { it.copy(apiBaseUrl = intent.newUrl) }
+                loadData()
+            }
             is AdminIntent.UpsertFood -> upsertFood(intent.food)
             is AdminIntent.DeleteFood -> deleteFood(intent.id)
             is AdminIntent.UpdateMenuConfig -> updateMenuConfig(intent.config)
