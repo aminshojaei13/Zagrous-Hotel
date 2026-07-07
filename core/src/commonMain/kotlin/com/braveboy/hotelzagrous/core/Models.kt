@@ -5,6 +5,7 @@ import kotlinx.serialization.Serializable
 @Serializable
 data class Room(
     val roomNumber: String,
+    val capacity: Int = 1,
     val guestName: String = "",
     val identificationId: String = "",
     val guestCount: Int = 1,
@@ -63,7 +64,8 @@ data class UpdateRoomStayRequest(
     val checkOut: String,
     val checkInMillis: Long,
     val checkOutMillis: Long,
-    val guestCount: Int
+    val guestCount: Int,
+    val capacity: Int = 1
 )
 
 @Serializable

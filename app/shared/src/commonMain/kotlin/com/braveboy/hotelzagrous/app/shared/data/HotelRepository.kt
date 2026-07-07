@@ -143,7 +143,8 @@ class HotelRepository(
         checkOut: String,
         checkInMillis: Long,
         checkOutMillis: Long,
-        guestCount: Int
+        guestCount: Int,
+        capacity: Int
     ) {
         val normalizedRoomNumber = roomNumber.normalizeDigits()
         val normalizedIdentificationId = identificationId.normalizeDigits()
@@ -157,7 +158,8 @@ class HotelRepository(
                     checkOut = checkOut,
                     checkInMillis = checkInMillis,
                     checkOutMillis = checkOutMillis,
-                    guestCount = guestCount
+                    guestCount = guestCount,
+                    capacity = capacity
                 )
             )
         }

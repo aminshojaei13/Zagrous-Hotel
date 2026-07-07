@@ -33,7 +33,7 @@ class HotelDatabase(
 
     fun getRooms(): List<Room> = connection.prepareStatement(
         """
-        SELECT room_number, guest_name, identification_id, guest_count, check_in_date, check_out_date, check_in_epoch_millis, check_out_epoch_millis
+        SELECT room_number, capacity, guest_name, identification_id, guest_count, check_in_date, check_out_date, check_in_epoch_millis, check_out_epoch_millis
         FROM rooms
         ORDER BY room_number
         """.trimIndent()
@@ -44,6 +44,7 @@ class HotelDatabase(
                     add(
                         Room(
                             roomNumber = rows.getString("room_number"),
+                            capacity = rows.getInt("capacity"),
                             guestName = rows.getString("guest_name"),
                             identificationId = rows.getString("identification_id") ?: "",
                             guestCount = rows.getInt("guest_count"),
@@ -60,7 +61,7 @@ class HotelDatabase(
 
     fun getRoom(roomNumber: String): Room? = connection.prepareStatement(
         """
-        SELECT room_number, guest_name, identification_id, guest_count, check_in_date, check_out_date, check_in_epoch_millis, check_out_epoch_millis
+        SELECT room_number, capacity, guest_name, identification_id, guest_count, check_in_date, check_out_date, check_in_epoch_millis, check_out_epoch_millis
         FROM rooms
         WHERE room_number = ?
         """.trimIndent()
@@ -72,6 +73,7 @@ class HotelDatabase(
             } else {
                 Room(
                     roomNumber = rows.getString("room_number"),
+                    capacity = rows.getInt("capacity"),
                     guestName = rows.getString("guest_name"),
                     identificationId = rows.getString("identification_id") ?: "",
                     guestCount = rows.getInt("guest_count"),
@@ -87,9 +89,10 @@ class HotelDatabase(
     fun upsertRoom(room: Room) {
         connection.prepareStatement(
             """
-            INSERT INTO rooms(room_number, guest_name, identification_id, guest_count, check_in_date, check_out_date, check_in_epoch_millis, check_out_epoch_millis)
-            VALUES(?, ?, ?, ?, ?, ?, ?, ?)
+            INSERT INTO rooms(room_number, capacity, guest_name, identification_id, guest_count, check_in_date, check_out_date, check_in_epoch_millis, check_out_epoch_millis)
+            VALUES(?, ?, ?, ?, ?, ?, ?, ?, ?)
             ON CONFLICT(room_number) DO UPDATE SET
+                capacity = excluded.capacity,
                 guest_name = excluded.guest_name,
                 identification_id = excluded.identification_id,
                 guest_count = excluded.guest_count,
@@ -100,13 +103,14 @@ class HotelDatabase(
             """.trimIndent()
         ).use { statement ->
             statement.setString(1, room.roomNumber)
-            statement.setString(2, room.guestName)
-            statement.setString(3, room.identificationId)
-            statement.setInt(4, room.guestCount)
-            statement.setString(5, room.checkInDate)
-            statement.setString(6, room.checkOutDate)
-            statement.setLong(7, room.checkInEpochMillis)
-            statement.setLong(8, room.checkOutEpochMillis)
+            statement.setInt(2, room.capacity)
+            statement.setString(3, room.guestName)
+            statement.setString(4, room.identificationId)
+            statement.setInt(5, room.guestCount)
+            statement.setString(6, room.checkInDate)
+            statement.setString(7, room.checkOutDate)
+            statement.setLong(8, room.checkInEpochMillis)
+            statement.setLong(9, room.checkOutEpochMillis)
             statement.executeUpdate()
         }
     }
@@ -119,12 +123,13 @@ class HotelDatabase(
         checkOut: String,
         checkInMillis: Long,
         checkOutMillis: Long,
-        guestCount: Int
+        guestCount: Int,
+        capacity: Int
     ): Boolean {
         return connection.prepareStatement(
             """
             UPDATE rooms
-            SET guest_name = ?, identification_id = ?, check_in_date = ?, check_out_date = ?, check_in_epoch_millis = ?, check_out_epoch_millis = ?, guest_count = ?
+            SET guest_name = ?, identification_id = ?, check_in_date = ?, check_out_date = ?, check_in_epoch_millis = ?, check_out_epoch_millis = ?, guest_count = ?, capacity = ?
             WHERE room_number = ?
             """.trimIndent()
         ).use { statement ->
@@ -135,7 +140,8 @@ class HotelDatabase(
             statement.setLong(5, checkInMillis)
             statement.setLong(6, checkOutMillis)
             statement.setInt(7, guestCount)
-            statement.setString(8, roomNumber)
+            statement.setInt(8, capacity)
+            statement.setString(9, roomNumber)
             statement.executeUpdate() > 0
         }
     }
@@ -310,6 +316,7 @@ class HotelDatabase(
                 """
                 CREATE TABLE IF NOT EXISTS rooms(
                     room_number TEXT PRIMARY KEY,
+                    capacity INTEGER NOT NULL DEFAULT 1,
                     guest_name TEXT NOT NULL,
                     identification_id TEXT,
                     guest_count INTEGER NOT NULL DEFAULT 1,
@@ -374,6 +381,9 @@ class HotelDatabase(
                 if (roomColumns.contains("phone_number")) {
                     statement.executeUpdate("UPDATE rooms SET identification_id = phone_number")
                 }
+            }
+            if (!roomColumns.contains("capacity")) {
+                statement.executeUpdate("ALTER TABLE rooms ADD COLUMN capacity INTEGER NOT NULL DEFAULT 1")
             }
         }
 
@@ -604,6 +614,7 @@ class HotelDatabase(
             listOf(
                 Room(
                     "101",
+                    2,
                     "رضا احمدی",
                     "09121112233",
                     2,
@@ -614,6 +625,7 @@ class HotelDatabase(
                 ),
                 Room(
                     "102",
+                    1,
                     "مریم علوی",
                     "09124445566",
                     1,
@@ -624,6 +636,7 @@ class HotelDatabase(
                 ),
                 Room(
                     "103",
+                    3,
                     "محمد محمدی",
                     "09127778899",
                     3,

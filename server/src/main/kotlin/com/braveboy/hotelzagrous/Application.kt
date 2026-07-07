@@ -92,7 +92,8 @@ fun Application.module() {
                     request.checkOut,
                     request.checkInMillis,
                     request.checkOutMillis,
-                    request.guestCount
+                    request.guestCount,
+                    request.capacity
                 )
                 if (updated) call.respond(HttpStatusCode.OK, database.getRoom(roomNumber)!!)
                 else call.respond(HttpStatusCode.NotFound, ApiError("شماره اتاق یافت نشد"))

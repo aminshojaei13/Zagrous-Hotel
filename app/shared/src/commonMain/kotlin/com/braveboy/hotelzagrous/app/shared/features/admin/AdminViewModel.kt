@@ -2,6 +2,7 @@ package com.braveboy.hotelzagrous.app.shared.features.admin
 
 import com.braveboy.hotelzagrous.app.shared.data.HotelRepository
 import com.braveboy.hotelzagrous.app.shared.mvi.BaseViewModel
+import com.braveboy.hotelzagrous.core.DateUtils
 import com.braveboy.hotelzagrous.core.FoodItem
 import com.braveboy.hotelzagrous.core.FoodReservation
 import com.braveboy.hotelzagrous.core.GuestMealSelection
@@ -9,6 +10,7 @@ import com.braveboy.hotelzagrous.core.MenuConfig
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.launch
+import kotlin.time.Clock
 
 class AdminViewModel(
     private val repository: HotelRepository,
@@ -16,6 +18,11 @@ class AdminViewModel(
 ) : BaseViewModel<AdminState, AdminIntent>(AdminState()) {
 
     init {
+        val today = DateUtils.convertMillisToJalaliString(Clock.System.now().toEpochMilliseconds())
+        val parts = today.split("/")
+        if (parts.size == 3) {
+            updateState { it.copy(calendarYear = parts[0].toInt(), calendarMonth = parts[1].toInt()) }
+        }
         onIntent(AdminIntent.LoadData)
     }
 
@@ -31,6 +38,8 @@ class AdminViewModel(
             is AdminIntent.ChangeFood -> updateFoodSelection(intent)
             is AdminIntent.SelectRoomForFood -> updateState { it.copy(selectedRoom = intent.room) }
             is AdminIntent.SelectReportDate -> updateState { it.copy(selectedReportDate = intent.date) }
+            is AdminIntent.SelectCapacityFilter -> updateState { it.copy(selectedCapacity = intent.capacity) }
+            is AdminIntent.ChangeCalendarDate -> updateState { it.copy(calendarMonth = intent.month, calendarYear = intent.year) }
             is AdminIntent.UpsertFood -> upsertFood(intent.food)
             is AdminIntent.DeleteFood -> deleteFood(intent.id)
             is AdminIntent.UpdateMenuConfig -> updateMenuConfig(intent.config)
@@ -121,7 +130,8 @@ class AdminViewModel(
                     intent.checkOut,
                     intent.checkInMillis,
                     intent.checkOutMillis,
-                    intent.guestCount
+                    intent.guestCount,
+                    intent.capacity
                 )
             }.onSuccess {
                 loadData()

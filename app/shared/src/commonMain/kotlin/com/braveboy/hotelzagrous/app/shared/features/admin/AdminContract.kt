@@ -13,6 +13,9 @@ data class AdminState(
     val isLoading: Boolean = false,
     val selectedRoom: Room? = null,
     val selectedReportDate: String = "",
+    val selectedCapacity: Int? = null,
+    val calendarMonth: Int = 1,
+    val calendarYear: Int = 1403,
     val error: String? = null
 )
 
@@ -25,7 +28,8 @@ sealed class AdminIntent {
         val checkOut: String,
         val checkInMillis: Long,
         val checkOutMillis: Long,
-        val guestCount: Int
+        val guestCount: Int,
+        val capacity: Int
     ) : AdminIntent()
     data class AddRoom(val room: Room) : AdminIntent()
     object ExportPdf : AdminIntent()
@@ -56,6 +60,8 @@ sealed class AdminIntent {
 
     data class SelectRoomForFood(val room: Room?) : AdminIntent()
     data class SelectReportDate(val date: String) : AdminIntent()
+    data class SelectCapacityFilter(val capacity: Int?) : AdminIntent()
+    data class ChangeCalendarDate(val month: Int, val year: Int) : AdminIntent()
 
     // Menu Management Intents
     data class UpsertFood(val food: FoodItem) : AdminIntent()
