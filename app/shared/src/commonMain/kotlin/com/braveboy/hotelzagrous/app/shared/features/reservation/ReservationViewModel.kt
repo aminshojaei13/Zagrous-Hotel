@@ -9,6 +9,7 @@ import com.braveboy.hotelzagrous.core.FoodReservation
 import com.braveboy.hotelzagrous.core.FoodType
 import com.braveboy.hotelzagrous.core.GuestMealSelection
 import com.braveboy.hotelzagrous.core.MenuConfig
+import com.braveboy.hotelzagrous.core.normalizeDigits
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.launch
 import hotelzagrous.app.shared.generated.resources.Res
@@ -50,8 +51,8 @@ class ReservationViewModel(
     }
 
     private fun login() {
-        val currentRoomNumber = state.value.roomNumber
-        val currentIdentificationId = state.value.identificationId
+        val currentRoomNumber = state.value.roomNumber.normalizeDigits()
+        val currentIdentificationId = state.value.identificationId.normalizeDigits()
 
         if (currentRoomNumber.isBlank() || currentIdentificationId.isBlank()) {
             updateState { it.copy(error = "error_fill_fields") }

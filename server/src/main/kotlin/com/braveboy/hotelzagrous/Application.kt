@@ -74,14 +74,26 @@ fun Application.module() {
             }
             post("/rooms") {
                 val room = call.receive<Room>()
-                val normalizedRoom = room.copy(roomNumber = room.roomNumber.normalizeDigits())
+                val normalizedRoom = room.copy(
+                    roomNumber = room.roomNumber.normalizeDigits(),
+                    identificationId = room.identificationId.normalizeDigits()
+                )
                 database.upsertRoom(normalizedRoom)
                 call.respond(HttpStatusCode.Created, normalizedRoom)
             }
             put("/rooms/{roomNumber}/stay") {
                 val roomNumber = call.parameters["roomNumber"].orEmpty().normalizeDigits()
                 val request = call.receive<UpdateRoomStayRequest>()
-                val updated = database.updateRoomStay(roomNumber, request.guestName, request.identificationId, request.checkIn, request.checkOut, request.checkInMillis, request.checkOutMillis, request.guestCount)
+                val updated = database.updateRoomStay(
+                    roomNumber,
+                    request.guestName,
+                    request.identificationId.normalizeDigits(),
+                    request.checkIn,
+                    request.checkOut,
+                    request.checkInMillis,
+                    request.checkOutMillis,
+                    request.guestCount
+                )
                 if (updated) call.respond(HttpStatusCode.OK, database.getRoom(roomNumber)!!)
                 else call.respond(HttpStatusCode.NotFound, ApiError("شماره اتاق یافت نشد"))
             }

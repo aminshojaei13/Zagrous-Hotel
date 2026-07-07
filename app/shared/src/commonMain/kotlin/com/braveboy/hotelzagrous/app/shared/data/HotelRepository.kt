@@ -125,7 +125,10 @@ class HotelRepository(
     }
 
     suspend fun addRoom(room: Room) {
-        val normalizedRoom = room.copy(roomNumber = room.roomNumber.normalizeDigits())
+        val normalizedRoom = room.copy(
+            roomNumber = room.roomNumber.normalizeDigits(),
+            identificationId = room.identificationId.normalizeDigits()
+        )
         client.post("$apiBaseUrl/rooms") {
             contentType(ContentType.Application.Json)
             setBody(normalizedRoom)
@@ -143,12 +146,13 @@ class HotelRepository(
         guestCount: Int
     ) {
         val normalizedRoomNumber = roomNumber.normalizeDigits()
+        val normalizedIdentificationId = identificationId.normalizeDigits()
         client.put("$apiBaseUrl/rooms/$normalizedRoomNumber/stay") {
             contentType(ContentType.Application.Json)
             setBody(
                 UpdateRoomStayRequest(
                     guestName = guestName,
-                    identificationId = identificationId,
+                    identificationId = normalizedIdentificationId,
                     checkIn = checkIn,
                     checkOut = checkOut,
                     checkInMillis = checkInMillis,
