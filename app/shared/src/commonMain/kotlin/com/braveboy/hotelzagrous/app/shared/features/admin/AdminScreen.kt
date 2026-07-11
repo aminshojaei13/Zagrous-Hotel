@@ -237,6 +237,31 @@ fun AdminScreen(viewModel: AdminViewModel) {
                         Modifier.fillMaxSize(),
                         contentAlignment = Alignment.Center
                     ) { CircularProgressIndicator() }
+                } else if (state.error != null) {
+                    Box(
+                        Modifier.fillMaxSize().padding(16.dp),
+                        contentAlignment = Alignment.Center
+                    ) {
+                        Column(horizontalAlignment = Alignment.CenterHorizontally) {
+                            Icon(
+                                Icons.Default.Block,
+                                contentDescription = null,
+                                tint = MaterialTheme.colorScheme.error,
+                                modifier = Modifier.size(48.dp)
+                            )
+                            Spacer(Modifier.height(16.dp))
+                            Text(
+                                state.error ?: "خطای ناشناخته",
+                                style = MaterialTheme.typography.bodyMedium,
+                                textAlign = TextAlign.Center,
+                                color = MaterialTheme.colorScheme.error
+                            )
+                            Spacer(Modifier.height(16.dp))
+                            Button(onClick = { viewModel.onIntent(AdminIntent.LoadData) }) {
+                                Text("تلاش مجدد")
+                            }
+                        }
+                    }
                 } else {
                     when (currentTab) {
                         "rooms" -> RoomManagementContent(state, viewModel)

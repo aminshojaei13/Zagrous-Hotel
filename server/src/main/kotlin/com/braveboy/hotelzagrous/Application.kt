@@ -66,9 +66,10 @@ fun Application.module() {
             }
 
             get("/rooms") { call.respond(database.getRooms()) }
-            get("/rooms/{id}") {
-                val id = call.parameters["id"].orEmpty()
-                val room = if (id.length > 5) database.getRoom(id) else database.getRoomByNumber(id.normalizeDigits())
+            get("/rooms/{idOrNumber}") {
+                val idOrNumber = call.parameters["idOrNumber"].orEmpty()
+                // Try as UUID/ID first, then as Room Number
+                val room = database.getRoom(idOrNumber) ?: database.getRoomByNumber(idOrNumber.normalizeDigits())
                 if (room == null) call.respond(HttpStatusCode.NotFound, ApiError("اتاق یافت نشد"))
                 else call.respond(room)
             }

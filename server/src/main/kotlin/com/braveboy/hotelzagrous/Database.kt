@@ -7,6 +7,7 @@ import com.braveboy.hotelzagrous.core.FoodType
 import com.braveboy.hotelzagrous.core.Room
 import com.braveboy.hotelzagrous.core.GuestMealSelection
 import com.braveboy.hotelzagrous.core.MenuConfig
+import com.braveboy.hotelzagrous.core.normalizeDigits
 import java.sql.Connection
 import java.sql.DriverManager
 import java.util.UUID
@@ -85,31 +86,34 @@ class HotelDatabase(
         }
     }
 
-    fun getRoomByNumber(roomNumber: String): Room? = connection.prepareStatement(
-        """
-        SELECT id, room_number, guest_name, identification_id, guest_count, check_in_date, check_out_date, check_in_epoch_millis, check_out_epoch_millis
-        FROM rooms
-        WHERE room_number = ?
-        ORDER BY check_out_epoch_millis DESC
-        LIMIT 1
-        """.trimIndent()
-    ).use { statement ->
-        statement.setString(1, roomNumber)
-        statement.executeQuery().use { rows ->
-            if (!rows.next()) {
-                null
-            } else {
-                Room(
-                    id = rows.getString("id"),
-                    roomNumber = rows.getString("room_number"),
-                    guestName = rows.getString("guest_name"),
-                    identificationId = rows.getString("identification_id") ?: "",
-                    guestCount = rows.getInt("guest_count"),
-                    checkInDate = rows.getString("check_in_date"),
-                    checkOutDate = rows.getString("check_out_date"),
-                    checkInEpochMillis = rows.getLong("check_in_epoch_millis"),
-                    checkOutEpochMillis = rows.getLong("check_out_epoch_millis")
-                )
+    fun getRoomByNumber(roomNumber: String): Room? {
+        val normalized = roomNumber.normalizeDigits()
+        return connection.prepareStatement(
+            """
+            SELECT id, room_number, guest_name, identification_id, guest_count, check_in_date, check_out_date, check_in_epoch_millis, check_out_epoch_millis
+            FROM rooms
+            WHERE room_number = ?
+            ORDER BY check_out_epoch_millis DESC
+            LIMIT 1
+            """.trimIndent()
+        ).use { statement ->
+            statement.setString(1, normalized)
+            statement.executeQuery().use { rows ->
+                if (!rows.next()) {
+                    null
+                } else {
+                    Room(
+                        id = rows.getString("id"),
+                        roomNumber = rows.getString("room_number"),
+                        guestName = rows.getString("guest_name"),
+                        identificationId = rows.getString("identification_id") ?: "",
+                        guestCount = rows.getInt("guest_count"),
+                        checkInDate = rows.getString("check_in_date"),
+                        checkOutDate = rows.getString("check_out_date"),
+                        checkInEpochMillis = rows.getLong("check_in_epoch_millis"),
+                        checkOutEpochMillis = rows.getLong("check_out_epoch_millis")
+                    )
+                }
             }
         }
     }
@@ -417,18 +421,45 @@ class HotelDatabase(
 
         connection.createStatement().use { statement ->
             if (!roomColumns.contains("id")) {
-                // Since room_number was PRIMARY KEY, it's unique. We can use it as initial ID.
-                statement.executeUpdate("ALTER TABLE rooms ADD COLUMN id TEXT")
-                statement.executeUpdate("UPDATE rooms SET id = room_number")
-                // Note: Changing PRIMARY KEY in SQLite is hard (requires table recreation).
-                // For now, we'll just ensure the column exists. 
-                // If this were a real migration, we'd do the full dance.
+                println("Migrating database: Adding 'id' column to 'rooms' table...")
+                // In SQLite, changing PK is hard. We'll recreate the table.
+                statement.executeUpdate("ALTER TABLE rooms RENAME TO rooms_old")
+                statement.executeUpdate(
+                    """
+                    CREATE TABLE rooms(
+                        id TEXT PRIMARY KEY,
+                        room_number TEXT NOT NULL,
+                        capacity INTEGER NOT NULL DEFAULT 1,
+                        guest_name TEXT NOT NULL,
+                        identification_id TEXT,
+                        guest_count INTEGER NOT NULL DEFAULT 1,
+                        check_in_date TEXT NOT NULL,
+                        check_out_date TEXT NOT NULL,
+                        check_in_epoch_millis INTEGER NOT NULL,
+                        check_out_epoch_millis INTEGER NOT NULL
+                    )
+                    """.trimIndent()
+                )
+                statement.executeUpdate(
+                    """
+                    INSERT INTO rooms (id, room_number, capacity, guest_name, identification_id, guest_count, check_in_date, check_out_date, check_in_epoch_millis, check_out_epoch_millis)
+                    SELECT room_number, room_number, capacity, guest_name, identification_id, guest_count, check_in_date, check_out_date, check_in_epoch_millis, check_out_epoch_millis FROM rooms_old
+                    """.trimIndent()
+                )
+                statement.executeUpdate("DROP TABLE rooms_old")
+                println("Migration completed successfully.")
             }
+            
+            // Re-fetch columns after possible recreation
+            roomColumns.clear()
+            connection.metaData.getColumns(null, null, "rooms", null).use { rs ->
+                while (rs.next()) {
+                    roomColumns.add(rs.getString("COLUMN_NAME"))
+                }
+            }
+
             if (!roomColumns.contains("identification_id")) {
                 statement.executeUpdate("ALTER TABLE rooms ADD COLUMN identification_id TEXT")
-                if (roomColumns.contains("phone_number")) {
-                    statement.executeUpdate("UPDATE rooms SET identification_id = phone_number")
-                }
             }
             if (!roomColumns.contains("capacity")) {
                 statement.executeUpdate("ALTER TABLE rooms ADD COLUMN capacity INTEGER NOT NULL DEFAULT 1")
