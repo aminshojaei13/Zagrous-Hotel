@@ -135,13 +135,12 @@ class HotelRepository(
         }
     }
 
-    suspend fun deleteRoom(roomNumber: String) {
-        val normalizedRoomNumber = roomNumber.normalizeDigits()
-        client.delete("$apiBaseUrl/rooms/$normalizedRoomNumber")
+    suspend fun deleteRoom(id: String) {
+        client.delete("$apiBaseUrl/rooms/$id")
     }
 
     suspend fun updateRoomStay(
-        roomNumber: String,
+        id: String,
         guestName: String,
         identificationId: String,
         checkIn: String,
@@ -149,11 +148,9 @@ class HotelRepository(
         checkInMillis: Long,
         checkOutMillis: Long,
         guestCount: Int,
-        //capacity: Int
     ) {
-        val normalizedRoomNumber = roomNumber.normalizeDigits()
         val normalizedIdentificationId = identificationId.normalizeDigits()
-        client.put("$apiBaseUrl/rooms/$normalizedRoomNumber/stay") {
+        client.put("$apiBaseUrl/rooms/$id/stay") {
             contentType(ContentType.Application.Json)
             setBody(
                 UpdateRoomStayRequest(
@@ -164,7 +161,6 @@ class HotelRepository(
                     checkInMillis = checkInMillis,
                     checkOutMillis = checkOutMillis,
                     guestCount = guestCount,
-                    //capacity = capacity
                 )
             )
         }

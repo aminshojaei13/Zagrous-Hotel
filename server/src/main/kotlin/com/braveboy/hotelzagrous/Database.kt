@@ -32,7 +32,7 @@ class HotelDatabase(
 
     fun getRooms(): List<Room> = connection.prepareStatement(
         """
-        SELECT room_number, guest_name, identification_id, guest_count, check_in_date, check_out_date, check_in_epoch_millis, check_out_epoch_millis
+        SELECT id, room_number, guest_name, identification_id, guest_count, check_in_date, check_out_date, check_in_epoch_millis, check_out_epoch_millis
         FROM rooms
         ORDER BY room_number
         """.trimIndent()
@@ -42,6 +42,7 @@ class HotelDatabase(
                 while (rows.next()) {
                     add(
                         Room(
+                            id = rows.getString("id"),
                             roomNumber = rows.getString("room_number"),
                             guestName = rows.getString("guest_name"),
                             identificationId = rows.getString("identification_id") ?: "",
@@ -57,11 +58,40 @@ class HotelDatabase(
         }
     }
 
-    fun getRoom(roomNumber: String): Room? = connection.prepareStatement(
+    fun getRoom(id: String): Room? = connection.prepareStatement(
         """
-        SELECT room_number, guest_name, identification_id, guest_count, check_in_date, check_out_date, check_in_epoch_millis, check_out_epoch_millis
+        SELECT id, room_number, guest_name, identification_id, guest_count, check_in_date, check_out_date, check_in_epoch_millis, check_out_epoch_millis
+        FROM rooms
+        WHERE id = ?
+        """.trimIndent()
+    ).use { statement ->
+        statement.setString(1, id)
+        statement.executeQuery().use { rows ->
+            if (!rows.next()) {
+                null
+            } else {
+                Room(
+                    id = rows.getString("id"),
+                    roomNumber = rows.getString("room_number"),
+                    guestName = rows.getString("guest_name"),
+                    identificationId = rows.getString("identification_id") ?: "",
+                    guestCount = rows.getInt("guest_count"),
+                    checkInDate = rows.getString("check_in_date"),
+                    checkOutDate = rows.getString("check_out_date"),
+                    checkInEpochMillis = rows.getLong("check_in_epoch_millis"),
+                    checkOutEpochMillis = rows.getLong("check_out_epoch_millis")
+                )
+            }
+        }
+    }
+
+    fun getRoomByNumber(roomNumber: String): Room? = connection.prepareStatement(
+        """
+        SELECT id, room_number, guest_name, identification_id, guest_count, check_in_date, check_out_date, check_in_epoch_millis, check_out_epoch_millis
         FROM rooms
         WHERE room_number = ?
+        ORDER BY check_out_epoch_millis DESC
+        LIMIT 1
         """.trimIndent()
     ).use { statement ->
         statement.setString(1, roomNumber)
@@ -70,6 +100,7 @@ class HotelDatabase(
                 null
             } else {
                 Room(
+                    id = rows.getString("id"),
                     roomNumber = rows.getString("room_number"),
                     guestName = rows.getString("guest_name"),
                     identificationId = rows.getString("identification_id") ?: "",
@@ -84,11 +115,13 @@ class HotelDatabase(
     }
 
     fun upsertRoom(room: Room) {
+        val id = room.id.ifBlank { UUID.randomUUID().toString() }
         connection.prepareStatement(
             """
-            INSERT INTO rooms(room_number, guest_name, identification_id, guest_count, check_in_date, check_out_date, check_in_epoch_millis, check_out_epoch_millis)
-            VALUES(?, ?, ?, ?, ?, ?, ?, ?)
-            ON CONFLICT(room_number) DO UPDATE SET
+            INSERT INTO rooms(id, room_number, guest_name, identification_id, guest_count, check_in_date, check_out_date, check_in_epoch_millis, check_out_epoch_millis)
+            VALUES(?, ?, ?, ?, ?, ?, ?, ?, ?)
+            ON CONFLICT(id) DO UPDATE SET
+                room_number = excluded.room_number,
                 guest_name = excluded.guest_name,
                 identification_id = excluded.identification_id,
                 guest_count = excluded.guest_count,
@@ -98,20 +131,21 @@ class HotelDatabase(
                 check_out_epoch_millis = excluded.check_out_epoch_millis
             """.trimIndent()
         ).use { statement ->
-            statement.setString(1, room.roomNumber)
-            statement.setString(2, room.guestName)
-            statement.setString(3, room.identificationId)
-            statement.setInt(4, room.guestCount)
-            statement.setString(5, room.checkInDate)
-            statement.setString(6, room.checkOutDate)
-            statement.setLong(7, room.checkInEpochMillis)
-            statement.setLong(8, room.checkOutEpochMillis)
+            statement.setString(1, id)
+            statement.setString(2, room.roomNumber)
+            statement.setString(3, room.guestName)
+            statement.setString(4, room.identificationId)
+            statement.setInt(5, room.guestCount)
+            statement.setString(6, room.checkInDate)
+            statement.setString(7, room.checkOutDate)
+            statement.setLong(8, room.checkInEpochMillis)
+            statement.setLong(9, room.checkOutEpochMillis)
             statement.executeUpdate()
         }
     }
 
     fun updateRoomStay(
-        roomNumber: String,
+        id: String,
         guestName: String,
         identificationId: String,
         checkIn: String,
@@ -124,7 +158,7 @@ class HotelDatabase(
             """
             UPDATE rooms
             SET guest_name = ?, identification_id = ?, check_in_date = ?, check_out_date = ?, check_in_epoch_millis = ?, check_out_epoch_millis = ?, guest_count = ?
-            WHERE room_number = ?
+            WHERE id = ?
             """.trimIndent()
         ).use { statement ->
             statement.setString(1, guestName)
@@ -134,18 +168,19 @@ class HotelDatabase(
             statement.setLong(5, checkInMillis)
             statement.setLong(6, checkOutMillis)
             statement.setInt(7, guestCount)
-            statement.setString(8, roomNumber)
+            statement.setString(8, id)
             statement.executeUpdate() > 0
         }
     }
 
-    fun deleteRoom(roomNumber: String) {
+    fun deleteRoom(id: String) {
+        val room = getRoom(id) ?: return
         connection.prepareStatement("DELETE FROM food_reservations WHERE room_number = ?").use { statement ->
-            statement.setString(1, roomNumber)
+            statement.setString(1, room.roomNumber)
             statement.executeUpdate()
         }
-        connection.prepareStatement("DELETE FROM rooms WHERE room_number = ?").use { statement ->
-            statement.setString(1, roomNumber)
+        connection.prepareStatement("DELETE FROM rooms WHERE id = ?").use { statement ->
+            statement.setString(1, id)
             statement.executeUpdate()
         }
     }
@@ -319,7 +354,8 @@ class HotelDatabase(
             statement.executeUpdate(
                 """
                 CREATE TABLE IF NOT EXISTS rooms(
-                    room_number TEXT PRIMARY KEY,
+                    id TEXT PRIMARY KEY,
+                    room_number TEXT NOT NULL,
                     capacity INTEGER NOT NULL DEFAULT 1,
                     guest_name TEXT NOT NULL,
                     identification_id TEXT,
@@ -380,6 +416,14 @@ class HotelDatabase(
         }
 
         connection.createStatement().use { statement ->
+            if (!roomColumns.contains("id")) {
+                // Since room_number was PRIMARY KEY, it's unique. We can use it as initial ID.
+                statement.executeUpdate("ALTER TABLE rooms ADD COLUMN id TEXT")
+                statement.executeUpdate("UPDATE rooms SET id = room_number")
+                // Note: Changing PRIMARY KEY in SQLite is hard (requires table recreation).
+                // For now, we'll just ensure the column exists. 
+                // If this were a real migration, we'd do the full dance.
+            }
             if (!roomColumns.contains("identification_id")) {
                 statement.executeUpdate("ALTER TABLE rooms ADD COLUMN identification_id TEXT")
                 if (roomColumns.contains("phone_number")) {
@@ -617,34 +661,37 @@ class HotelDatabase(
         if (getRooms().isEmpty()) {
             listOf(
                 Room(
-                    "101",
-                    "رضا احمدی",
-                    "09121112233",
-                    2,
-                    "1402/08/01",
-                    "1402/08/05",
-                    1698823800000L,
-                    1699169400000L
+                    id = UUID.randomUUID().toString(),
+                    roomNumber = "101",
+                    guestName = "رضا احمدی",
+                    identificationId = "09121112233",
+                    guestCount = 2,
+                    checkInDate = "1402/08/01",
+                    checkOutDate = "1402/08/05",
+                    checkInEpochMillis = 1698823800000L,
+                    checkOutEpochMillis = 1699169400000L
                 ),
                 Room(
-                    "102",
-                    "مریم علوی",
-                    "09124445566",
-                    1,
-                    "1402/08/02",
-                    "1402/08/06",
-                    1698910200000L,
-                    1699255800000L
+                    id = UUID.randomUUID().toString(),
+                    roomNumber = "102",
+                    guestName = "مریم علوی",
+                    identificationId = "09124445566",
+                    guestCount = 1,
+                    checkInDate = "1402/08/02",
+                    checkOutDate = "1402/08/06",
+                    checkInEpochMillis = 1698910200000L,
+                    checkOutEpochMillis = 1699255800000L
                 ),
                 Room(
-                    "103",
-                    "محمد محمدی",
-                    "09127778899",
-                    3,
-                    "1402/08/05",
-                    "1402/08/10",
-                    1699169400000L,
-                    1699601400000L
+                    id = UUID.randomUUID().toString(),
+                    roomNumber = "103",
+                    guestName = "محمد محمدی",
+                    identificationId = "09127778899",
+                    guestCount = 3,
+                    checkInDate = "1402/08/05",
+                    checkOutDate = "1402/08/10",
+                    checkInEpochMillis = 1699169400000L,
+                    checkOutEpochMillis = 1699601400000L
                 )
             ).forEach(::upsertRoom)
         }

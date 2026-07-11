@@ -24,7 +24,7 @@ class AdminViewModel(
             is AdminIntent.LoadData -> loadData()
             is AdminIntent.UpdateRoomStay -> updateRoom(intent)
             is AdminIntent.AddRoom -> addRoom(intent)
-            is AdminIntent.DeleteRoom -> deleteRoom(intent.roomNumber)
+            is AdminIntent.DeleteRoom -> deleteRoom(intent.id)
             is AdminIntent.ExportPdf -> exportToPdf()
             is AdminIntent.ClearAllData -> clearAllData()
             is AdminIntent.MarkLunchDelivered -> markLunchDelivered(intent)
@@ -115,7 +115,7 @@ class AdminViewModel(
         scope.launch(Dispatchers.Main) {
             runCatching {
                 repository.updateRoomStay(
-                    intent.roomNumber,
+                    intent.id,
                     intent.guestName,
                     intent.identificationId,
                     intent.checkIn,
@@ -145,10 +145,10 @@ class AdminViewModel(
         }
     }
 
-    private fun deleteRoom(roomNumber: String) {
+    private fun deleteRoom(id: String) {
         scope.launch(Dispatchers.Main) {
             runCatching {
-                repository.deleteRoom(roomNumber)
+                repository.deleteRoom(id)
             }.onSuccess {
                 loadData()
             }.onFailure { e ->

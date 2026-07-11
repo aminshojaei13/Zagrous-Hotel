@@ -76,7 +76,6 @@ import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import com.braveboy.hotelzagrous.app.shared.features.PersianDatePickerDialog
-import com.braveboy.hotelzagrous.app.shared.features.reservation.FarsiStrings.identificationId
 import com.braveboy.hotelzagrous.core.DateUtils
 import com.braveboy.hotelzagrous.core.DayType
 import com.braveboy.hotelzagrous.core.FoodItem
@@ -471,7 +470,7 @@ fun RoomAdminCard(
                 )
                 Text(
                     modifier = Modifier.clickable { changeId = true },
-                    text = room.identificationId.ifBlank { identificationId.ifBlank { "0" } },
+                    text = room.identificationId.ifBlank { "0" },
                     style = MaterialTheme.typography.bodyMedium,
                     fontWeight = FontWeight.Bold,
                     maxLines = 1,
@@ -676,22 +675,22 @@ fun RoomManagementContent(state: AdminState, viewModel: AdminViewModel) {
         ) {
             items(items = state.rooms.filter {
                 it.checkOutEpochMillis >= Clock.System.now().toEpochMilliseconds()
-            }, key = { it.roomNumber }) { room ->
+            }, key = { it.id }) { room ->
                 RoomAdminCard(
                     room = room,
                     availableFoods = state.foods,
                     reservations = state.reservations,
-                    onUpdate = { name, id, inD, outD, inM, outM, count ->
+                    onUpdate = { name, identificationId, inD, outD, inM, outM, count ->
                         viewModel.onIntent(
                             AdminIntent.UpdateRoomStay(
-                                room.roomNumber,
-                                name,
-                                id,
-                                inD,
-                                outD,
-                                inM,
-                                outM,
-                                count
+                                id = room.id,
+                                guestName = name,
+                                identificationId = identificationId,
+                                checkIn = inD,
+                                checkOut = outD,
+                                checkInMillis = inM,
+                                checkOutMillis = outM,
+                                guestCount = count
                             )
                         )
                     },
@@ -709,7 +708,7 @@ fun RoomManagementContent(state: AdminState, viewModel: AdminViewModel) {
                     onDelete = {
                         viewModel.onIntent(
                             AdminIntent.DeleteRoom(
-                                roomNumber = room.roomNumber
+                                id = room.id
                             )
                         )
                     }
@@ -1874,7 +1873,6 @@ fun DeliveryChip(
 @Composable
 fun AddRoomDialog(onDismiss: () -> Unit, onConfirm: (Room) -> Unit) {
     var roomNumber by remember { mutableStateOf("") }
-    var capacity by remember { mutableIntStateOf(2) }
     var guestName by remember { mutableStateOf("") }
     var identificationId by remember { mutableStateOf("") }
     var guestCount by remember { mutableIntStateOf(1) }
@@ -1893,47 +1891,14 @@ fun AddRoomDialog(onDismiss: () -> Unit, onConfirm: (Room) -> Unit) {
                 verticalArrangement = Arrangement.spacedBy(12.dp),
                 modifier = Modifier.padding(top = 8.dp)
             ) {
-                Row(horizontalArrangement = Arrangement.spacedBy(10.dp)) {
-                    OutlinedTextField(
-                        value = roomNumber,
-                        onValueChange = { roomNumber = it },
-                        label = { Text("شماره اتاق") },
-                        modifier = Modifier.weight(1f),
-                        shape = MaterialTheme.shapes.medium,
-                        singleLine = true
-                    )
-
-                    Box(modifier = Modifier.weight(1f)) {
-                        Surface(
-                            onClick = { expandedCap = true },
-                            modifier = Modifier.fillMaxWidth().height(56.dp),
-                            shape = MaterialTheme.shapes.medium,
-                            border = BorderStroke(1.dp, MaterialTheme.colorScheme.outline),
-                            color = Color.Transparent
-                        ) {
-                            Row(
-                                modifier = Modifier.padding(horizontal = 12.dp),
-                                verticalAlignment = Alignment.CenterVertically
-                            ) {
-                                Text(
-                                    "ظرفیت: $capacity",
-                                    style = MaterialTheme.typography.bodyMedium
-                                )
-                                Spacer(Modifier.weight(1f))
-                                Icon(Icons.Default.ArrowDropDown, null)
-                            }
-                        }
-                        DropdownMenu(
-                            expanded = expandedCap,
-                            onDismissRequest = { expandedCap = false }) {
-                            (1..10).forEach { num ->
-                                DropdownMenuItem(
-                                    text = { Text("$num تخته") },
-                                    onClick = { capacity = num; expandedCap = false })
-                            }
-                        }
-                    }
-                }
+                OutlinedTextField(
+                    value = roomNumber,
+                    onValueChange = { roomNumber = it },
+                    label = { Text("شماره اتاق") },
+                    modifier = Modifier.fillMaxWidth(),
+                    shape = MaterialTheme.shapes.medium,
+                    singleLine = true
+                )
 
                 OutlinedTextField(
                     value = guestName,
@@ -1979,7 +1944,7 @@ fun AddRoomDialog(onDismiss: () -> Unit, onConfirm: (Room) -> Unit) {
                         DropdownMenu(
                             expanded = expandedGuest,
                             onDismissRequest = { expandedGuest = false }) {
-                            (1..capacity).forEach { num ->
+                            (1..7).forEach { num ->
                                 DropdownMenuItem(
                                     text = { Text("$num نفر") },
                                     onClick = { guestCount = num; expandedGuest = false })
@@ -2120,8 +2085,8 @@ fun RoomHistoryContent(
             verticalArrangement = Arrangement.spacedBy(10.dp)
         ) {
             items(items = state.rooms.filter {
-                it.checkOutEpochMillis >= Clock.System.now().toEpochMilliseconds()
-            }, key = { it.roomNumber })
+                it.checkOutEpochMillis < Clock.System.now().toEpochMilliseconds()
+            }, key = { it.id })
             { room ->
                 Surface(
                     modifier = Modifier.fillMaxWidth(),
@@ -2172,7 +2137,7 @@ fun RoomHistoryContent(
                                 color = MaterialTheme.colorScheme.outline
                             )
                             Text(
-                                text = room.identificationId.ifBlank { identificationId.ifBlank { "0" } },
+                                text = room.identificationId.ifBlank { "0" },
                                 style = MaterialTheme.typography.bodyMedium,
                                 fontWeight = FontWeight.Bold,
                                 maxLines = 1,

@@ -18,7 +18,7 @@ data class AdminState(
 
 sealed class AdminIntent {
     data class UpdateRoomStay(
-        val roomNumber: String, 
+        val id: String, 
         val guestName: String,
         val identificationId: String,
         val checkIn: String, 
@@ -28,7 +28,7 @@ sealed class AdminIntent {
         val guestCount: Int
     ) : AdminIntent()
     data class AddRoom(val room: Room) : AdminIntent()
-    data class DeleteRoom(val roomNumber: String) : AdminIntent()
+    data class DeleteRoom(val id: String) : AdminIntent()
     object ExportPdf : AdminIntent()
     data class PrintDailyLaunchReport(val date: String) : AdminIntent()
     data class PrintDailyDinnerReport(val date: String) : AdminIntent()

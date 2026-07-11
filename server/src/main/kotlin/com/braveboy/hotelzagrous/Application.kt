@@ -66,10 +66,10 @@ fun Application.module() {
             }
 
             get("/rooms") { call.respond(database.getRooms()) }
-            get("/rooms/{roomNumber}") {
-                val roomNumber = call.parameters["roomNumber"].orEmpty().normalizeDigits()
-                val room = database.getRoom(roomNumber)
-                if (room == null) call.respond(HttpStatusCode.NotFound, ApiError("شماره اتاق یافت نشد"))
+            get("/rooms/{id}") {
+                val id = call.parameters["id"].orEmpty()
+                val room = if (id.length > 5) database.getRoom(id) else database.getRoomByNumber(id.normalizeDigits())
+                if (room == null) call.respond(HttpStatusCode.NotFound, ApiError("اتاق یافت نشد"))
                 else call.respond(room)
             }
             post("/rooms") {
@@ -81,16 +81,16 @@ fun Application.module() {
                 database.upsertRoom(normalizedRoom)
                 call.respond(HttpStatusCode.Created, normalizedRoom)
             }
-            delete("/rooms/{roomNumber}") {
-                val roomNumber = call.parameters["roomNumber"].orEmpty().normalizeDigits()
-                database.deleteRoom(roomNumber)
+            delete("/rooms/{id}") {
+                val id = call.parameters["id"].orEmpty()
+                database.deleteRoom(id)
                 call.respond(HttpStatusCode.OK)
             }
-            put("/rooms/{roomNumber}/stay") {
-                val roomNumber = call.parameters["roomNumber"].orEmpty().normalizeDigits()
+            put("/rooms/{id}/stay") {
+                val id = call.parameters["id"].orEmpty()
                 val request = call.receive<UpdateRoomStayRequest>()
                 val updated = database.updateRoomStay(
-                    roomNumber,
+                    id,
                     request.guestName,
                     request.identificationId.normalizeDigits(),
                     request.checkIn,
@@ -99,8 +99,8 @@ fun Application.module() {
                     request.checkOutMillis,
                     request.guestCount,
                 )
-                if (updated) call.respond(HttpStatusCode.OK, database.getRoom(roomNumber)!!)
-                else call.respond(HttpStatusCode.NotFound, ApiError("شماره اتاق یافت نشد"))
+                if (updated) call.respond(HttpStatusCode.OK, database.getRoom(id)!!)
+                else call.respond(HttpStatusCode.NotFound, ApiError("شناسه اتاق یافت نشد"))
             }
             get("/foods") { call.respond(database.getFoods()) }
             post("/foods") {
