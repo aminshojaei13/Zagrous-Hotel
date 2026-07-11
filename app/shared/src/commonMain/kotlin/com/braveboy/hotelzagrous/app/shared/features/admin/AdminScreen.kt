@@ -215,6 +215,7 @@ fun RoomAdminCard(
     availableFoods: List<FoodItem>,
     reservations: List<FoodReservation>,
     onUpdate: (String, String, String, String, Long, Long, Int, Int) -> Unit,
+    onDelete: () -> Unit,
     onFoodChange: (String, Int, String?, Boolean) -> Unit
 ) {
     var guestName by remember(room) { mutableStateOf(room.guestName) }
@@ -228,6 +229,7 @@ fun RoomAdminCard(
     var expandedGuestCount by remember { mutableStateOf(false) }
     var expandedCapacity by remember { mutableStateOf(false) }
     var showFoodDialog by remember { mutableStateOf(false) }
+    var showDeleteConfirm by remember { mutableStateOf(false) }
 
     Surface(
         modifier = Modifier.fillMaxWidth(),
@@ -329,6 +331,9 @@ fun RoomAdminCard(
                 IconButton(onClick = { showFoodDialog = true }, modifier = Modifier.size(32.dp)) {
                     Icon(Icons.Default.Restaurant, null, tint = MaterialTheme.colorScheme.secondary, modifier = Modifier.size(18.dp))
                 }
+                IconButton(onClick = { showDeleteConfirm = true }, modifier = Modifier.size(32.dp)) {
+                    Icon(Icons.Default.Delete, null, tint = MaterialTheme.colorScheme.error, modifier = Modifier.size(18.dp))
+                }
                 Button(
                     onClick = { onUpdate(guestName, identificationId, checkIn, checkOut, checkInMillis, checkOutMillis, guestCount, capacity) },
                     shape = MaterialTheme.shapes.small,
@@ -344,6 +349,24 @@ fun RoomAdminCard(
 
     if (showFoodDialog) {
         RoomFoodReservationsDialog(room = room, availableFoods = availableFoods, reservations = reservations.filter { it.roomNumber == room.roomNumber }, onDismiss = { showFoodDialog = false }, onFoodChange = onFoodChange)
+    }
+
+    if (showDeleteConfirm) {
+        AlertDialog(
+            onDismissRequest = { showDeleteConfirm = false },
+            title = { Text("حذف اتاق ${room.roomNumber}") },
+            text = { Text("آیا از حذف این اتاق اطمینان دارید؟") },
+            confirmButton = {
+                TextButton(onClick = { onDelete(); showDeleteConfirm = false }, colors = ButtonDefaults.textButtonColors(contentColor = MaterialTheme.colorScheme.error)) {
+                    Text("حذف")
+                }
+            },
+            dismissButton = {
+                TextButton(onClick = { showDeleteConfirm = false }) {
+                    Text("انصراف")
+                }
+            }
+        )
     }
 }
 
@@ -394,6 +417,9 @@ fun RoomManagementContent(state: AdminState, viewModel: AdminViewModel) {
                     onUpdate = { name, id, inD, outD, inM, outM, count, cap -> 
                         viewModel.onIntent(AdminIntent.UpdateRoomStay(room.roomNumber, name, id, inD, outD, inM, outM, count, cap)) 
                     }, 
+                    onDelete = {
+                        viewModel.onIntent(AdminIntent.DeleteRoom(room.roomNumber))
+                    },
                     onFoodChange = { d, idx, fId, isL -> 
                         viewModel.onIntent(AdminIntent.ChangeFood(room.roomNumber, d, idx, fId, isL)) 
                     }
@@ -407,10 +433,49 @@ fun RoomManagementContent(state: AdminState, viewModel: AdminViewModel) {
 fun RoomCalendarContent(state: AdminState, viewModel: AdminViewModel) {
     val months = DateUtils.getJalaliMonthNames()
     val daysInMonth = DateUtils.getDaysInJalaliMonth(state.calendarYear, state.calendarMonth)
-    val firstDayOffset = DateUtils.getFirstDayOfMonth(state.calendarYear, state.calendarMonth)
     val today = DateUtils.convertMillisToJalaliString(Clock.System.now().toEpochMilliseconds())
+    var manualRoomNumber by remember { mutableStateOf("") }
 
     Column(modifier = Modifier.fillMaxSize().padding(16.dp)) {
+        // Add Room Section
+        Row(
+            modifier = Modifier.fillMaxWidth().padding(bottom = 16.dp),
+            verticalAlignment = Alignment.CenterVertically,
+            horizontalArrangement = Arrangement.spacedBy(12.dp)
+        ) {
+            OutlinedTextField(
+                value = manualRoomNumber,
+                onValueChange = { manualRoomNumber = it },
+                label = { Text("شماره اتاق (مثلاً ۱۰۱)", style = MaterialTheme.typography.labelSmall) },
+                modifier = Modifier.width(150.dp),
+                shape = MaterialTheme.shapes.small,
+                singleLine = true,
+                textStyle = MaterialTheme.typography.bodySmall
+            )
+            Button(
+                onClick = {
+                    if (manualRoomNumber.isNotBlank()) {
+                        viewModel.onIntent(AdminIntent.AddRoom(Room(roomNumber = manualRoomNumber.normalizeDigits())))
+                        manualRoomNumber = ""
+                    }
+                },
+                shape = MaterialTheme.shapes.small,
+                modifier = Modifier.height(56.dp)
+            ) {
+                Icon(Icons.Default.Add, null, modifier = Modifier.size(18.dp))
+                Spacer(Modifier.width(4.dp))
+                Text("افزودن به لیست", style = MaterialTheme.typography.labelSmall)
+            }
+            
+            Spacer(Modifier.weight(1f))
+
+            Row(horizontalArrangement = Arrangement.spacedBy(12.dp)) {
+                LegendItem("خالی", Color(0xFFE8F5E9))
+                LegendItem("اشغال", Color(0xFFFDE8E8))
+                LegendItem("امروز", MaterialTheme.colorScheme.primary.copy(alpha = 0.1f))
+            }
+        }
+
         // Month Selector
         Row(
             modifier = Modifier.fillMaxWidth().padding(bottom = 16.dp),
@@ -448,12 +513,6 @@ fun RoomCalendarContent(state: AdminState, viewModel: AdminViewModel) {
                     Text("امروز", style = MaterialTheme.typography.labelSmall)
                 }
             }
-            
-            Row(horizontalArrangement = Arrangement.spacedBy(12.dp)) {
-                LegendItem("خالی", MaterialTheme.colorScheme.surface)
-                LegendItem("اشغال", Color(0xFFFDE8E8))
-                LegendItem("امروز", MaterialTheme.colorScheme.primary.copy(alpha = 0.1f))
-            }
         }
 
         val rooms = state.rooms.sortedBy { it.roomNumber }
@@ -463,7 +522,6 @@ fun RoomCalendarContent(state: AdminState, viewModel: AdminViewModel) {
             Box(Modifier.width(80.dp).height(40.dp), contentAlignment = Alignment.Center) {
                 Text("اتاق", style = MaterialTheme.typography.labelMedium, fontWeight = FontWeight.Bold)
             }
-            LazyColumn(modifier = Modifier.weight(1f), userScrollEnabled = false) {} // Placeholder
             
             Row(modifier = Modifier.weight(1f).horizontalScroll(rememberScrollState())) {
                 for (day in 1..daysInMonth) {
@@ -494,14 +552,11 @@ fun RoomCalendarContent(state: AdminState, viewModel: AdminViewModel) {
                             val dateStr = "${state.calendarYear}/${state.calendarMonth.toString().padStart(2, '0')}/${day.toString().padStart(2, '0')}"
                             val dateMillis = DateUtils.convertDateToTimeMillis(dateStr)
                             
-                            // 12:00 checkout and 14:00 checkin logic
-                            // For simplicity, if date is between checkIn and checkOut (exclusive on checkout day)
-                            // Or handle the overlap if needed.
                             val isOccupied = dateMillis >= room.checkInEpochMillis && dateMillis < room.checkOutEpochMillis
                             
                             Box(
                                 Modifier.width(36.dp).fillMaxHeight()
-                                    .background(if (isOccupied) Color(0xFFFDE8E8) else Color.Transparent)
+                                    .background(if (isOccupied) Color(0xFFFDE8E8) else Color(0xFFE8F5E9))
                                     .border(0.2.dp, MaterialTheme.colorScheme.outlineVariant.copy(alpha = 0.3f)),
                                 contentAlignment = Alignment.Center
                             ) {

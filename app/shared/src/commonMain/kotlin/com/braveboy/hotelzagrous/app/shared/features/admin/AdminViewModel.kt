@@ -31,6 +31,7 @@ class AdminViewModel(
             is AdminIntent.LoadData -> loadData()
             is AdminIntent.UpdateRoomStay -> updateRoom(intent)
             is AdminIntent.AddRoom -> addRoom(intent)
+            is AdminIntent.DeleteRoom -> deleteRoom(intent.roomNumber)
             is AdminIntent.ExportPdf -> exportToPdf()
             is AdminIntent.ClearAllData -> clearAllData()
             is AdminIntent.MarkLunchDelivered -> markLunchDelivered(intent)
@@ -149,6 +150,18 @@ class AdminViewModel(
                 loadData()
             }.onFailure { e ->
                 updateState { current -> current.copy(error = "افزودن اتاق انجام نشد: ${e.message}") }
+            }
+        }
+    }
+
+    private fun deleteRoom(roomNumber: String) {
+        scope.launch(Dispatchers.Main) {
+            runCatching {
+                repository.deleteRoom(roomNumber)
+            }.onSuccess {
+                loadData()
+            }.onFailure { e ->
+                updateState { it.copy(error = "حذف اتاق انجام نشد: ${e.message}") }
             }
         }
     }

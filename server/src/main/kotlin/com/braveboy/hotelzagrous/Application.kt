@@ -81,6 +81,11 @@ fun Application.module() {
                 database.upsertRoom(normalizedRoom)
                 call.respond(HttpStatusCode.Created, normalizedRoom)
             }
+            delete("/rooms/{roomNumber}") {
+                val roomNumber = call.parameters["roomNumber"].orEmpty().normalizeDigits()
+                database.deleteRoom(roomNumber)
+                call.respond(HttpStatusCode.OK)
+            }
             put("/rooms/{roomNumber}/stay") {
                 val roomNumber = call.parameters["roomNumber"].orEmpty().normalizeDigits()
                 val request = call.receive<UpdateRoomStayRequest>()

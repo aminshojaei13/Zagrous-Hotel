@@ -146,6 +146,17 @@ class HotelDatabase(
         }
     }
 
+    fun deleteRoom(roomNumber: String) {
+        connection.prepareStatement("DELETE FROM food_reservations WHERE room_number = ?").use { statement ->
+            statement.setString(1, roomNumber)
+            statement.executeUpdate()
+        }
+        connection.prepareStatement("DELETE FROM rooms WHERE room_number = ?").use { statement ->
+            statement.setString(1, roomNumber)
+            statement.executeUpdate()
+        }
+    }
+
     fun getFoods(): List<FoodItem> = connection.prepareStatement(
         "SELECT id, name, type, day_type, is_active, is_visible_to_users, display_order FROM food_items ORDER BY day_type, type, display_order"
     ).use { statement ->
