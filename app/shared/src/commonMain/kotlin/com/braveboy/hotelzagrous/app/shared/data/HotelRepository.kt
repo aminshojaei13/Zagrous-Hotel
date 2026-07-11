@@ -135,6 +135,11 @@ class HotelRepository(
         }
     }
 
+    suspend fun deleteRoom(roomNumber: String) {
+        val normalizedRoomNumber = roomNumber.normalizeDigits()
+        client.delete("$apiBaseUrl/rooms/$normalizedRoomNumber")
+    }
+
     suspend fun updateRoomStay(
         roomNumber: String,
         guestName: String,
@@ -143,7 +148,8 @@ class HotelRepository(
         checkOut: String,
         checkInMillis: Long,
         checkOutMillis: Long,
-        guestCount: Int
+        guestCount: Int,
+        //capacity: Int
     ) {
         val normalizedRoomNumber = roomNumber.normalizeDigits()
         val normalizedIdentificationId = identificationId.normalizeDigits()
@@ -157,7 +163,8 @@ class HotelRepository(
                     checkOut = checkOut,
                     checkInMillis = checkInMillis,
                     checkOutMillis = checkOutMillis,
-                    guestCount = guestCount
+                    guestCount = guestCount,
+                    //capacity = capacity
                 )
             )
         }

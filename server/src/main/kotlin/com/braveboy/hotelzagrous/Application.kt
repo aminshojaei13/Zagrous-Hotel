@@ -81,6 +81,11 @@ fun Application.module() {
                 database.upsertRoom(normalizedRoom)
                 call.respond(HttpStatusCode.Created, normalizedRoom)
             }
+            delete("/rooms/{roomNumber}") {
+                val roomNumber = call.parameters["roomNumber"].orEmpty().normalizeDigits()
+                database.deleteRoom(roomNumber)
+                call.respond(HttpStatusCode.OK)
+            }
             put("/rooms/{roomNumber}/stay") {
                 val roomNumber = call.parameters["roomNumber"].orEmpty().normalizeDigits()
                 val request = call.receive<UpdateRoomStayRequest>()
@@ -92,7 +97,7 @@ fun Application.module() {
                     request.checkOut,
                     request.checkInMillis,
                     request.checkOutMillis,
-                    request.guestCount
+                    request.guestCount,
                 )
                 if (updated) call.respond(HttpStatusCode.OK, database.getRoom(roomNumber)!!)
                 else call.respond(HttpStatusCode.NotFound, ApiError("شماره اتاق یافت نشد"))

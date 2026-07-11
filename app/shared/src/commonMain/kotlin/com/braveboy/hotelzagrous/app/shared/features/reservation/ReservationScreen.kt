@@ -2,14 +2,64 @@ package com.braveboy.hotelzagrous.app.shared.features.reservation
 
 import androidx.compose.foundation.BorderStroke
 import androidx.compose.foundation.background
-import androidx.compose.foundation.layout.*
+import androidx.compose.foundation.layout.Arrangement
+import androidx.compose.foundation.layout.Box
+import androidx.compose.foundation.layout.Column
+import androidx.compose.foundation.layout.IntrinsicSize
+import androidx.compose.foundation.layout.PaddingValues
+import androidx.compose.foundation.layout.Row
+import androidx.compose.foundation.layout.Spacer
+import androidx.compose.foundation.layout.fillMaxSize
+import androidx.compose.foundation.layout.fillMaxWidth
+import androidx.compose.foundation.layout.height
+import androidx.compose.foundation.layout.offset
+import androidx.compose.foundation.layout.padding
+import androidx.compose.foundation.layout.size
+import androidx.compose.foundation.layout.width
+import androidx.compose.foundation.layout.wrapContentHeight
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.material.icons.Icons
-import androidx.compose.material.icons.filled.*
-import androidx.compose.material3.*
-import androidx.compose.runtime.*
+import androidx.compose.material.icons.filled.ArrowDropDown
+import androidx.compose.material.icons.filled.Badge
+import androidx.compose.material.icons.filled.Block
+import androidx.compose.material.icons.filled.Check
+import androidx.compose.material.icons.filled.CheckCircle
+import androidx.compose.material.icons.filled.DateRange
+import androidx.compose.material.icons.filled.Error
+import androidx.compose.material.icons.filled.Event
+import androidx.compose.material.icons.filled.Hotel
+import androidx.compose.material.icons.filled.Language
+import androidx.compose.material.icons.filled.MeetingRoom
+import androidx.compose.material.icons.filled.NightsStay
+import androidx.compose.material.icons.filled.People
+import androidx.compose.material.icons.filled.Person
+import androidx.compose.material.icons.filled.RestaurantMenu
+import androidx.compose.material.icons.filled.WbSunny
+import androidx.compose.material3.Button
+import androidx.compose.material3.ButtonDefaults
+import androidx.compose.material3.CircularProgressIndicator
+import androidx.compose.material3.DropdownMenu
+import androidx.compose.material3.DropdownMenuItem
+import androidx.compose.material3.ExperimentalMaterial3Api
+import androidx.compose.material3.HorizontalDivider
+import androidx.compose.material3.Icon
+import androidx.compose.material3.MaterialTheme
+import androidx.compose.material3.OutlinedTextField
+import androidx.compose.material3.OutlinedTextFieldDefaults
+import androidx.compose.material3.Scaffold
+import androidx.compose.material3.Surface
+import androidx.compose.material3.Text
+import androidx.compose.material3.TextButton
+import androidx.compose.material3.TopAppBar
+import androidx.compose.material3.TopAppBarDefaults
+import androidx.compose.runtime.Composable
+import androidx.compose.runtime.collectAsState
+import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableStateOf
+import androidx.compose.runtime.remember
+import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
@@ -429,7 +479,12 @@ fun UserDashboard(state: ReservationState, viewModel: ReservationViewModel, stri
 }
 
 @Composable
-fun FoodCard(date: String, state: ReservationState, viewModel: ReservationViewModel, strings: AppStrings) {
+fun FoodCard(
+    date: String,
+    state: ReservationState,
+    viewModel: ReservationViewModel,
+    strings: AppStrings
+) {
     val guestCount = state.room?.guestCount ?: 1
     val reservation = state.tempReservations.find { it.date == date }
 
@@ -500,14 +555,25 @@ fun FoodCard(date: String, state: ReservationState, viewModel: ReservationViewMo
                             else -> DayType.ODD
                         }
 
-                        val allFoods = state.availableFoods.filter { it.dayType == dayType && it.isActive && it.isVisibleToUsers }
-                            .sortedBy { it.displayOrder }
+                        val allFoods =
+                            state.availableFoods.filter { it.dayType == dayType && it.isActive && it.isVisibleToUsers }
+                                .sortedBy { it.displayOrder }
 
-                        val lunchEnabled = state.menuConfigs.find { it.dayType == dayType && it.foodType == FoodType.LUNCH }?.isEnabled ?: true
-                        val dinnerEnabled = state.menuConfigs.find { it.dayType == dayType && it.foodType == FoodType.DINNER }?.isEnabled ?: true
+                        val lunchEnabled =
+                            state.menuConfigs.find { it.dayType == dayType && it.foodType == FoodType.LUNCH }?.isEnabled
+                                ?: true
+                        val dinnerEnabled =
+                            state.menuConfigs.find { it.dayType == dayType && it.foodType == FoodType.DINNER }?.isEnabled
+                                ?: true
 
+                        val sixHours = 6 * 60 * 60 * 1000L
                         val twelveHours = 12 * 60 * 60 * 1000L
-                        val isTimeLocked = (DateUtils.convertDateToTimeMillis(date) - Clock.System.now().toEpochMilliseconds()) <= twelveHours
+                        val isLaunchTimeLocked =
+                            (DateUtils.convertDateToTimeMillis(date) - Clock.System.now()
+                                .toEpochMilliseconds()) <= sixHours
+                        val isDinnerTimeLocked =
+                            ((DateUtils.convertDateToTimeMillis(date) + twelveHours) - Clock.System.now()
+                                .toEpochMilliseconds()) <= twelveHours
 
                         FoodSelectionItem(
                             modifier = Modifier.weight(1f),
@@ -515,15 +581,15 @@ fun FoodCard(date: String, state: ReservationState, viewModel: ReservationViewMo
                             icon = Icons.Default.WbSunny,
                             foods = allFoods.filter { it.type == FoodType.LUNCH },
                             selectedId = guestSelection?.lunchFoodId,
-                            enabled = lunchEnabled && !isTimeLocked,
+                            enabled = lunchEnabled && !isLaunchTimeLocked,
                             strings = strings
                         ) { foodId ->
                             viewModel.onIntent(
                                 ReservationIntent.ChangeFood(
-                                    date,
-                                    index,
-                                    foodId,
-                                    true
+                                    date = date,
+                                    guestIndex = index,
+                                    foodId = foodId,
+                                    isLunch = true
                                 )
                             )
                         }
@@ -534,15 +600,15 @@ fun FoodCard(date: String, state: ReservationState, viewModel: ReservationViewMo
                             icon = Icons.Default.NightsStay,
                             foods = allFoods.filter { it.type == FoodType.DINNER },
                             selectedId = guestSelection?.dinnerFoodId,
-                            enabled = dinnerEnabled && !isTimeLocked,
+                            enabled = dinnerEnabled && !isDinnerTimeLocked,
                             strings = strings
                         ) { foodId ->
                             viewModel.onIntent(
                                 ReservationIntent.ChangeFood(
-                                    date,
-                                    index,
-                                    foodId,
-                                    false
+                                    date = date,
+                                    guestIndex = index,
+                                    foodId = foodId,
+                                    isLunch = false
                                 )
                             )
                         }
@@ -612,7 +678,8 @@ fun FoodSelectionItem(
                     horizontalArrangement = Arrangement.SpaceBetween
                 ) {
                     Text(
-                        if (!enabled && selectedFood == null) strings.noSelection else selectedFood?.name ?: strings.notSelected,
+                        if (!enabled && selectedFood == null) strings.noSelection else selectedFood?.name
+                            ?: strings.notSelected,
                         maxLines = 1,
                         style = MaterialTheme.typography.bodyMedium,
                         fontWeight = if (selectedFood != null) FontWeight.Bold else FontWeight.Normal,
@@ -648,7 +715,13 @@ fun FoodSelectionItem(
                         onSelect(null)
                         expanded = false
                     },
-                    leadingIcon = { Icon(Icons.Default.Block, null, modifier = Modifier.size(18.dp)) }
+                    leadingIcon = {
+                        Icon(
+                            Icons.Default.Block,
+                            null,
+                            modifier = Modifier.size(18.dp)
+                        )
+                    }
                 )
                 HorizontalDivider(color = MaterialTheme.colorScheme.surfaceVariant)
                 foods.forEach { food ->

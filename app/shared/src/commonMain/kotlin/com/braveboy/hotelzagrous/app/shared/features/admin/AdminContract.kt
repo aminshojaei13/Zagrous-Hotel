@@ -28,6 +28,7 @@ sealed class AdminIntent {
         val guestCount: Int
     ) : AdminIntent()
     data class AddRoom(val room: Room) : AdminIntent()
+    data class DeleteRoom(val roomNumber: String) : AdminIntent()
     object ExportPdf : AdminIntent()
     data class PrintDailyLaunchReport(val date: String) : AdminIntent()
     data class PrintDailyDinnerReport(val date: String) : AdminIntent()

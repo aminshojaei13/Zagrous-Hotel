@@ -11,7 +11,6 @@ import java.sql.Connection
 import java.sql.DriverManager
 import java.util.UUID
 import kotlinx.serialization.json.Json
-import kotlinx.serialization.encodeToString
 
 class HotelDatabase(
     databasePath: String = "hotel-zagrous.sqlite"
@@ -140,6 +139,17 @@ class HotelDatabase(
         }
     }
 
+    fun deleteRoom(roomNumber: String) {
+        connection.prepareStatement("DELETE FROM food_reservations WHERE room_number = ?").use { statement ->
+            statement.setString(1, roomNumber)
+            statement.executeUpdate()
+        }
+        connection.prepareStatement("DELETE FROM rooms WHERE room_number = ?").use { statement ->
+            statement.setString(1, roomNumber)
+            statement.executeUpdate()
+        }
+    }
+
     fun getFoods(): List<FoodItem> = connection.prepareStatement(
         "SELECT id, name, type, day_type, is_active, is_visible_to_users, display_order FROM food_items ORDER BY day_type, type, display_order"
     ).use { statement ->
@@ -163,7 +173,7 @@ class HotelDatabase(
     }
 
     fun upsertFood(food: FoodItem) {
-        val id = if (food.id.isBlank()) UUID.randomUUID().toString() else food.id
+        val id = food.id.ifBlank { UUID.randomUUID().toString() }
         connection.prepareStatement(
             """
             INSERT INTO food_items(id, name, type, day_type, is_active, is_visible_to_users, display_order)
@@ -310,6 +320,7 @@ class HotelDatabase(
                 """
                 CREATE TABLE IF NOT EXISTS rooms(
                     room_number TEXT PRIMARY KEY,
+                    capacity INTEGER NOT NULL DEFAULT 1,
                     guest_name TEXT NOT NULL,
                     identification_id TEXT,
                     guest_count INTEGER NOT NULL DEFAULT 1,
@@ -362,7 +373,7 @@ class HotelDatabase(
 
     private fun migrateIfNeeded() {
         val roomColumns = mutableSetOf<String>()
-        connection.getMetaData().getColumns(null, null, "rooms", null).use { rs ->
+        connection.metaData.getColumns(null, null, "rooms", null).use { rs ->
             while (rs.next()) {
                 roomColumns.add(rs.getString("COLUMN_NAME"))
             }
@@ -375,10 +386,13 @@ class HotelDatabase(
                     statement.executeUpdate("UPDATE rooms SET identification_id = phone_number")
                 }
             }
+            if (!roomColumns.contains("capacity")) {
+                statement.executeUpdate("ALTER TABLE rooms ADD COLUMN capacity INTEGER NOT NULL DEFAULT 1")
+            }
         }
 
         val foodColumns = mutableSetOf<String>()
-        connection.getMetaData().getColumns(null, null, "food_items", null).use { rs ->
+        connection.metaData.getColumns(null, null, "food_items", null).use { rs ->
             while (rs.next()) {
                 foodColumns.add(rs.getString("COLUMN_NAME"))
             }
