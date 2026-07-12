@@ -123,7 +123,7 @@ class AdminViewModel(
                     intent.checkInMillis,
                     intent.checkOutMillis,
                     intent.guestCount,
-                    //intent.capacity
+                    intent.capacity
                 )
             }.onSuccess {
                 loadData()

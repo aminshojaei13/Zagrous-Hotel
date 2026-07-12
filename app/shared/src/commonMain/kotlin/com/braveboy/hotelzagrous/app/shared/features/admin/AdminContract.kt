@@ -25,7 +25,8 @@ sealed class AdminIntent {
         val checkOut: String,
         val checkInMillis: Long,
         val checkOutMillis: Long,
-        val guestCount: Int
+        val guestCount: Int,
+        val capacity: Int
     ) : AdminIntent()
     data class AddRoom(val room: Room) : AdminIntent()
     data class DeleteRoom(val id: String) : AdminIntent()

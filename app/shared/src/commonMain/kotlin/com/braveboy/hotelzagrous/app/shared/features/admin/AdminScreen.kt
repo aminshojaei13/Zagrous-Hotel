@@ -2,7 +2,9 @@ package com.braveboy.hotelzagrous.app.shared.features.admin
 
 import androidx.compose.foundation.BorderStroke
 import androidx.compose.foundation.background
+import androidx.compose.foundation.border
 import androidx.compose.foundation.clickable
+import androidx.compose.foundation.horizontalScroll
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
@@ -19,8 +21,10 @@ import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.layout.widthIn
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
+import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
+import androidx.compose.foundation.verticalScroll
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.filled.Assignment
 import androidx.compose.material.icons.filled.Add
@@ -29,10 +33,13 @@ import androidx.compose.material.icons.filled.Bed
 import androidx.compose.material.icons.filled.Block
 import androidx.compose.material.icons.filled.CalendarToday
 import androidx.compose.material.icons.filled.Check
+import androidx.compose.material.icons.filled.ChevronLeft
+import androidx.compose.material.icons.filled.ChevronRight
 import androidx.compose.material.icons.filled.Delete
 import androidx.compose.material.icons.filled.DeleteForever
 import androidx.compose.material.icons.filled.Edit
 import androidx.compose.material.icons.filled.Event
+import androidx.compose.material.icons.filled.FilterList
 import androidx.compose.material.icons.filled.Hotel
 import androidx.compose.material.icons.filled.Person
 import androidx.compose.material.icons.filled.Print
@@ -57,6 +64,7 @@ import androidx.compose.material3.Surface
 import androidx.compose.material3.Switch
 import androidx.compose.material3.Text
 import androidx.compose.material3.TextButton
+import androidx.compose.material3.VerticalDivider
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
@@ -67,6 +75,7 @@ import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.draw.clip
 import androidx.compose.ui.draw.scale
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.vector.ImageVector
@@ -85,7 +94,6 @@ import com.braveboy.hotelzagrous.core.GuestMealSelection
 import com.braveboy.hotelzagrous.core.MenuConfig
 import com.braveboy.hotelzagrous.core.Room
 import com.braveboy.hotelzagrous.core.normalizeDigits
-import io.ktor.utils.io.ioDispatcher
 import kotlin.time.Clock
 
 @OptIn(ExperimentalMaterial3Api::class)
@@ -148,6 +156,12 @@ fun AdminScreen(viewModel: AdminViewModel) {
                     onClick = { currentTab = "rooms" })
                 Spacer(Modifier.height(4.dp))
                 NavigationItem(
+                    label = "نقشه هتل",
+                    icon = Icons.Default.CalendarToday,
+                    selected = currentTab == "map",
+                    onClick = { currentTab = "map" })
+                Spacer(Modifier.height(4.dp))
+                NavigationItem(
                     label = "گزارش رزرو غذا",
                     icon = Icons.Default.Restaurant,
                     selected = currentTab == "reservations",
@@ -200,6 +214,7 @@ fun AdminScreen(viewModel: AdminViewModel) {
                 Column {
                     val title = when (currentTab) {
                         "rooms" -> "مدیریت اتاق‌ها"
+                        "map" -> "نقشه اشغال اتاق‌ها"
                         "menu" -> "مدیریت منو غذا"
                         "daily_report" -> "مشاهده و چاپ غذا"
                         "history" -> "تاریخچه اتاق‌های ثبت شده"
@@ -266,6 +281,7 @@ fun AdminScreen(viewModel: AdminViewModel) {
                 } else {
                     when (currentTab) {
                         "rooms" -> RoomManagementContent(state, viewModel)
+                        "map" -> HotelMapContent(state, viewModel)
                         "menu" -> MenuManagementContent(state, viewModel)
                         "reservations" -> ReservationSummaryContent(state, viewModel)
                         "daily_report" -> DailyDetailedReportContent(state, viewModel)
@@ -350,7 +366,7 @@ fun RoomAdminCard(
     room: Room,
     availableFoods: List<FoodItem>,
     reservations: List<FoodReservation>,
-    onUpdate: (String, String, String, String, Long, Long, Int) -> Unit,
+    onUpdate: (String, String, String, String, Long, Long, Int, Int) -> Unit,
     onDelete: () -> Unit,
     onFoodChange: (String, Int, String?, Boolean) -> Unit
 ) {
@@ -361,7 +377,9 @@ fun RoomAdminCard(
     var checkInMillis by remember(room) { mutableLongStateOf(room.checkInEpochMillis) }
     var checkOutMillis by remember(room) { mutableLongStateOf(room.checkOutEpochMillis) }
     var guestCount by remember(room) { mutableIntStateOf(room.guestCount) }
+    var capacity by remember(room) { mutableIntStateOf(room.capacity) }
     var expandedGuestCount by remember { mutableStateOf(false) }
+    var expandedCapacity by remember { mutableStateOf(false) }
     var showFoodDialog by remember { mutableStateOf(false) }
     var showDeleteConfirm by remember { mutableStateOf(false) }
     var changeName by remember { mutableStateOf(false) }
@@ -419,6 +437,7 @@ fun RoomAdminCard(
                                     checkInMillis,
                                     checkOutMillis,
                                     guestCount,
+                                    capacity
                                 )
                                 changeName = false
                             },
@@ -474,6 +493,7 @@ fun RoomAdminCard(
                                     checkInMillis,
                                     checkOutMillis,
                                     guestCount,
+                                    capacity
                                 )
                                 changeId = false
                             },
@@ -509,7 +529,7 @@ fun RoomAdminCard(
             // Guest Count
             Column(modifier = Modifier.width(75.dp)) {
                 Text(
-                    "تعداد",
+                    "مهمان",
                     style = MaterialTheme.typography.labelSmall,
                     color = MaterialTheme.colorScheme.outline
                 )
@@ -555,8 +575,68 @@ fun RoomAdminCard(
                                         checkInMillis,
                                         checkOutMillis,
                                         guestCount,
+                                        capacity
                                     )
                                     expandedGuestCount = false
+                                }
+                            )
+                        }
+                    }
+                }
+            }
+            
+            // Capacity
+            Column(modifier = Modifier.width(75.dp)) {
+                Text(
+                    "تخت",
+                    style = MaterialTheme.typography.labelSmall,
+                    color = MaterialTheme.colorScheme.outline
+                )
+                Box {
+                    Surface(
+                        onClick = { expandedCapacity = true },
+                        color = MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.5f),
+                        shape = MaterialTheme.shapes.small
+                    ) {
+                        Row(
+                            modifier = Modifier.padding(horizontal = 6.dp, vertical = 2.dp),
+                            verticalAlignment = Alignment.CenterVertically
+                        ) {
+                            Text(
+                                text = "$capacity تخت",
+                                style = MaterialTheme.typography.bodySmall,
+                                fontWeight = FontWeight.Bold,
+                                maxLines = 1
+                            )
+                            Icon(Icons.Default.ArrowDropDown, null, modifier = Modifier.size(14.dp))
+                        }
+                    }
+                    DropdownMenu(
+                        expanded = expandedCapacity,
+                        onDismissRequest = { expandedCapacity = false }
+                    )
+                    {
+                        (1..7).forEach { number ->
+                            DropdownMenuItem(
+                                text = {
+                                    Text(
+                                        "$number تخت",
+                                        style = MaterialTheme.typography.bodySmall
+                                    )
+                                },
+                                onClick = {
+                                    capacity = number
+                                    onUpdate(
+                                        guestName,
+                                        identificationId,
+                                        checkIn,
+                                        checkOut,
+                                        checkInMillis,
+                                        checkOutMillis,
+                                        guestCount,
+                                        capacity
+                                    )
+                                    expandedCapacity = false
                                 }
                             )
                         }
@@ -583,6 +663,7 @@ fun RoomAdminCard(
                             checkInMillis,
                             checkOutMillis,
                             guestCount,
+                            capacity
                         )
                     }
                     Text(
@@ -602,6 +683,7 @@ fun RoomAdminCard(
                             checkInMillis,
                             checkOutMillis,
                             guestCount,
+                            capacity
                         )
                     }
                 }
@@ -710,7 +792,7 @@ fun RoomManagementContent(state: AdminState, viewModel: AdminViewModel) {
                     room = room,
                     availableFoods = state.foods,
                     reservations = state.reservations,
-                    onUpdate = { name, identificationId, inD, outD, inM, outM, count ->
+                    onUpdate = { name, identificationId, inD, outD, inM, outM, count, cap ->
                         viewModel.onIntent(
                             AdminIntent.UpdateRoomStay(
                                 id = room.id,
@@ -720,7 +802,8 @@ fun RoomManagementContent(state: AdminState, viewModel: AdminViewModel) {
                                 checkOut = outD,
                                 checkInMillis = inM,
                                 checkOutMillis = outM,
-                                guestCount = count
+                                guestCount = count,
+                                capacity = cap
                             )
                         )
                     },
@@ -1528,6 +1611,219 @@ fun ReservationSummary(
 }
 
 @Composable
+fun HotelMapContent(state: AdminState, viewModel: AdminViewModel) {
+    val jalaliToday = remember { DateUtils.convertMillisToJalaliString(Clock.System.now().toEpochMilliseconds()) }
+    val todayParts = jalaliToday.split("/")
+    var selectedYear by remember { mutableStateOf(todayParts[0].toInt()) }
+    var selectedMonth by remember { mutableStateOf(todayParts[1].toInt()) }
+    var capacityFilter by remember { mutableStateOf<Int?>(null) }
+    var expandedFilter by remember { mutableStateOf(false) }
+
+    val daysInMonth = DateUtils.getDaysInJalaliMonth(selectedYear, selectedMonth)
+    val monthNames = DateUtils.getJalaliMonthNames()
+
+    // Grouping and sorting in a way that works in common code
+    val roomsByNumber = state.rooms.groupBy { it.roomNumber }.entries
+        .sortedBy { it.key }
+        .associate { it.key to it.value }
+
+    val filteredRooms = if (capacityFilter == null) {
+        roomsByNumber
+    } else {
+        roomsByNumber.filter { entry -> entry.value.any { it.capacity == capacityFilter } }
+    }
+
+    Column(modifier = Modifier.fillMaxSize().padding(16.dp)) {
+        // Toolbar
+        Row(
+            modifier = Modifier.fillMaxWidth().padding(bottom = 16.dp),
+            verticalAlignment = Alignment.CenterVertically,
+            horizontalArrangement = Arrangement.SpaceBetween
+        ) {
+            Row(verticalAlignment = Alignment.CenterVertically) {
+                IconButton(onClick = {
+                    if (selectedMonth == 1) {
+                        selectedMonth = 12
+                        selectedYear--
+                    } else {
+                        selectedMonth--
+                    }
+                }) { Icon(Icons.Default.ChevronRight, "ماه قبلی") }
+
+                Text(
+                    "${monthNames[selectedMonth - 1]} $selectedYear",
+                    style = MaterialTheme.typography.titleMedium,
+                    fontWeight = FontWeight.Bold,
+                    modifier = Modifier.padding(horizontal = 16.dp)
+                )
+
+                IconButton(onClick = {
+                    if (selectedMonth == 12) {
+                        selectedMonth = 1
+                        selectedYear++
+                    } else {
+                        selectedMonth++
+                    }
+                }) { Icon(Icons.Default.ChevronLeft, "ماه بعدی") }
+            }
+
+            Box {
+                Button(
+                    onClick = { expandedFilter = true },
+                    contentPadding = PaddingValues(horizontal = 12.dp, vertical = 8.dp),
+                    shape = MaterialTheme.shapes.small,
+                    colors = ButtonDefaults.buttonColors(
+                        containerColor = if (capacityFilter != null) MaterialTheme.colorScheme.primaryContainer else MaterialTheme.colorScheme.surfaceVariant,
+                        contentColor = if (capacityFilter != null) MaterialTheme.colorScheme.onPrimaryContainer else MaterialTheme.colorScheme.onSurfaceVariant
+                    )
+                ) {
+                    Icon(Icons.Default.FilterList, null, modifier = Modifier.size(18.dp))
+                    Spacer(Modifier.width(8.dp))
+                    Text(if (capacityFilter == null) "فیلتر تخت" else "$capacityFilter تخت")
+                }
+                DropdownMenu(expanded = expandedFilter, onDismissRequest = { expandedFilter = false }) {
+                    DropdownMenuItem(
+                        text = { Text("همه") },
+                        onClick = { capacityFilter = null; expandedFilter = false }
+                    )
+                    (1..7).forEach { cap ->
+                        DropdownMenuItem(
+                            text = { Text("$cap تخت") },
+                            onClick = { capacityFilter = cap; expandedFilter = false }
+                        )
+                    }
+                }
+            }
+        }
+
+        // Calendar Grid
+        val horizontalScrollState = rememberScrollState()
+        val verticalScrollState = rememberScrollState()
+
+        Box(modifier = Modifier.fillMaxSize().border(1.dp, MaterialTheme.colorScheme.outlineVariant, MaterialTheme.shapes.medium).clip(MaterialTheme.shapes.medium)) {
+            Column(modifier = Modifier.fillMaxSize()) {
+                // Header (Days)
+                Row(modifier = Modifier.fillMaxWidth().background(MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.5f))) {
+                    Box(
+                        modifier = Modifier.width(80.dp).height(40.dp).background(MaterialTheme.colorScheme.surfaceVariant),
+                        contentAlignment = Alignment.Center
+                    ) {
+                        Text("اتاق", style = MaterialTheme.typography.labelMedium, fontWeight = FontWeight.Bold)
+                    }
+                    VerticalDivider(color = MaterialTheme.colorScheme.outlineVariant)
+                    Row(modifier = Modifier.horizontalScroll(horizontalScrollState)) {
+                        for (day in 1..daysInMonth) {
+                            val dayStr = day.toString().padStart(2, '0')
+                            val monthStr = selectedMonth.toString().padStart(2, '0')
+                            val dateStr = "$selectedYear/$monthStr/$dayStr"
+                            val isFriday = DateUtils.isFriday(dateStr)
+                            val isToday = jalaliToday == dateStr
+                            
+                            Box(
+                                modifier = Modifier
+                                    .width(40.dp)
+                                    .height(40.dp)
+                                    .background(
+                                        if (isToday) MaterialTheme.colorScheme.primary.copy(alpha = 0.2f)
+                                        else if (isFriday) MaterialTheme.colorScheme.error.copy(alpha = 0.05f)
+                                        else Color.Transparent
+                                    ),
+                                contentAlignment = Alignment.Center
+                            ) {
+                                Text(
+                                    day.toString(),
+                                    style = MaterialTheme.typography.labelSmall,
+                                    fontWeight = if (isToday) FontWeight.ExtraBold else FontWeight.Bold,
+                                    color = if (isFriday) MaterialTheme.colorScheme.error else MaterialTheme.colorScheme.onSurface
+                                )
+                            }
+                            VerticalDivider(color = MaterialTheme.colorScheme.outlineVariant)
+                        }
+                    }
+                }
+                HorizontalDivider(color = MaterialTheme.colorScheme.outlineVariant)
+
+                // Body (Rooms & Stays)
+                Column(modifier = Modifier.fillMaxSize().verticalScroll(verticalScrollState)) {
+                    filteredRooms.forEach { (roomNumber, stays) ->
+                        Row(modifier = Modifier.fillMaxWidth().height(50.dp)) {
+                            // Room label
+                            Box(
+                                modifier = Modifier.width(80.dp).fillMaxHeight().background(MaterialTheme.colorScheme.surface),
+                                contentAlignment = Alignment.Center
+                            ) {
+                                Column(horizontalAlignment = Alignment.CenterHorizontally) {
+                                    Text(roomNumber, style = MaterialTheme.typography.titleSmall, fontWeight = FontWeight.Bold)
+                                    val cap = stays.firstOrNull()?.capacity ?: 0
+                                    if (cap > 0) {
+                                        Text("$cap تخت", style = MaterialTheme.typography.labelSmall, color = MaterialTheme.colorScheme.outline, fontSize = 8.sp)
+                                    }
+                                }
+                            }
+                            VerticalDivider(color = MaterialTheme.colorScheme.outlineVariant)
+
+                            // Days status
+                            Row(modifier = Modifier.horizontalScroll(horizontalScrollState)) {
+                                for (day in 1..daysInMonth) {
+                                    val dayStr = day.toString().padStart(2, '0')
+                                    val monthStr = selectedMonth.toString().padStart(2, '0')
+                                    val currentDayDate = "$selectedYear/$monthStr/$dayStr"
+                                    val currentDayMillis = DateUtils.convertDateToTimeMillis(currentDayDate)
+                                    
+                                    // Find if any stay covers this day
+                                    val activeStay = stays.find { stay: Room ->
+                                        currentDayMillis >= stay.checkInEpochMillis && currentDayMillis <= stay.checkOutEpochMillis
+                                    }
+
+                                    Box(
+                                        modifier = Modifier.width(40.dp).fillMaxHeight(),
+                                        contentAlignment = Alignment.Center
+                                    ) {
+                                        if (activeStay != null) {
+                                            val isStart = DateUtils.convertMillisToJalaliString(activeStay.checkInEpochMillis) == currentDayDate
+                                            val isEnd = DateUtils.convertMillisToJalaliString(activeStay.checkOutEpochMillis) == currentDayDate
+                                            
+                                            Box(
+                                                modifier = Modifier
+                                                    .fillMaxSize()
+                                                    .padding(vertical = 4.dp)
+                                                    .background(
+                                                        MaterialTheme.colorScheme.primary.copy(alpha = 0.8f),
+                                                        shape = when {
+                                                            isStart && isEnd -> MaterialTheme.shapes.small
+                                                            isStart -> RoundedCornerShape(topStart = 8.dp, bottomStart = 8.dp)
+                                                            isEnd -> RoundedCornerShape(topEnd = 8.dp, bottomEnd = 8.dp)
+                                                            else -> androidx.compose.ui.graphics.RectangleShape
+                                                        }
+                                                    )
+                                            ) {
+                                                if (isStart) {
+                                                    Text(
+                                                        activeStay.guestName.take(6),
+                                                        style = MaterialTheme.typography.labelSmall,
+                                                        color = Color.White,
+                                                        fontSize = 7.sp,
+                                                        modifier = Modifier.padding(start = 4.dp).align(Alignment.CenterStart),
+                                                        maxLines = 1,
+                                                        overflow = TextOverflow.Ellipsis
+                                                    )
+                                                }
+                                            }
+                                        }
+                                    }
+                                    VerticalDivider(color = MaterialTheme.colorScheme.outlineVariant)
+                                }
+                            }
+                        }
+                        HorizontalDivider(color = MaterialTheme.colorScheme.outlineVariant)
+                    }
+                }
+            }
+        }
+    }
+}
+
+@Composable
 fun TodayReservationDetail(state: AdminState) {
     val todayMillis = Clock.System.now().toEpochMilliseconds()
     val today = DateUtils.convertMillisToJalaliString(todayMillis)
@@ -1906,6 +2202,7 @@ fun AddRoomDialog(onDismiss: () -> Unit, onConfirm: (Room) -> Unit) {
     var guestName by remember { mutableStateOf("") }
     var identificationId by remember { mutableStateOf("") }
     var guestCount by remember { mutableIntStateOf(1) }
+    var capacity by remember { mutableIntStateOf(1) }
     var checkIn by remember { mutableStateOf("") }
     var checkOut by remember { mutableStateOf("") }
     var checkInMillis by remember { mutableLongStateOf(0L) }
@@ -1981,6 +2278,37 @@ fun AddRoomDialog(onDismiss: () -> Unit, onConfirm: (Room) -> Unit) {
                             }
                         }
                     }
+
+                    Box(modifier = Modifier.weight(1f)) {
+                        Surface(
+                            onClick = { expandedCap = true },
+                            modifier = Modifier.fillMaxWidth().height(56.dp),
+                            shape = MaterialTheme.shapes.medium,
+                            border = BorderStroke(1.dp, MaterialTheme.colorScheme.outline),
+                            color = Color.Transparent
+                        ) {
+                            Row(
+                                modifier = Modifier.padding(horizontal = 12.dp),
+                                verticalAlignment = Alignment.CenterVertically
+                            ) {
+                                Text(
+                                    "تعداد تخت: $capacity",
+                                    style = MaterialTheme.typography.bodyMedium
+                                )
+                                Spacer(Modifier.weight(1f))
+                                Icon(Icons.Default.ArrowDropDown, null)
+                            }
+                        }
+                        DropdownMenu(
+                            expanded = expandedCap,
+                            onDismissRequest = { expandedCap = false }) {
+                            (1..7).forEach { num ->
+                                DropdownMenuItem(
+                                    text = { Text("$num تخت") },
+                                    onClick = { capacity = num; expandedCap = false })
+                            }
+                        }
+                    }
                 }
 
                 Row(
@@ -2007,7 +2335,7 @@ fun AddRoomDialog(onDismiss: () -> Unit, onConfirm: (Room) -> Unit) {
                         onConfirm(
                             Room(
                                 roomNumber = roomNumber.normalizeDigits(),
-                                //capacity = capacity,
+                                capacity = capacity,
                                 guestName = guestName,
                                 identificationId = identificationId.normalizeDigits(),
                                 guestCount = guestCount,
