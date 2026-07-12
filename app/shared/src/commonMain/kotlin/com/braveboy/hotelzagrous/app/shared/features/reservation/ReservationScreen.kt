@@ -277,13 +277,23 @@ fun LoginSection(
 @Composable
 fun UserDashboard(state: ReservationState, viewModel: ReservationViewModel, strings: AppStrings) {
     val room = state.room
-    val stayDays = remember(room) {
+    val stayDays = remember(room, state.tempReservations) {
         if (room != null && room.checkInEpochMillis != 0L && room.checkOutEpochMillis != 0L) {
             val days = mutableListOf<String>()
             var currentMillis = room.checkInEpochMillis
             while (currentMillis <= room.checkOutEpochMillis) {
                 days.add(DateUtils.convertMillisToJalaliString(currentMillis))
                 currentMillis += 24 * 60 * 60 * 1000L
+            }
+
+            if (days.size > 1) {
+                val firstDay = days.first()
+                val firstDayReservation = state.tempReservations.find { it.date == firstDay }
+                val isFirstDayLunchSelected =
+                    firstDayReservation?.guestMealSelections?.any { it.lunchFoodId != null } == true
+                if (isFirstDayLunchSelected) {
+                    days.removeLast()
+                }
             }
             days
         } else {

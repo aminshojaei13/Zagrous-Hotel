@@ -85,6 +85,7 @@ import com.braveboy.hotelzagrous.core.GuestMealSelection
 import com.braveboy.hotelzagrous.core.MenuConfig
 import com.braveboy.hotelzagrous.core.Room
 import com.braveboy.hotelzagrous.core.normalizeDigits
+import io.ktor.utils.io.ioDispatcher
 import kotlin.time.Clock
 
 @OptIn(ExperimentalMaterial3Api::class)
@@ -681,17 +682,21 @@ fun RoomManagementContent(state: AdminState, viewModel: AdminViewModel) {
                 maxLines = 1,
                 overflow = TextOverflow.Ellipsis
             )
-            Surface(
-                color = MaterialTheme.colorScheme.primary.copy(alpha = 0.1f),
-                shape = CircleShape
-            ) {
-                Text(
-                    "${state.rooms.size} اتاق",
-                    modifier = Modifier.padding(horizontal = 10.dp, vertical = 2.dp),
-                    style = MaterialTheme.typography.labelSmall,
-                    color = MaterialTheme.colorScheme.primary,
-                    fontWeight = FontWeight.Bold
-                )
+            state.rooms.filter {
+                it.checkOutEpochMillis > Clock.System.now().toEpochMilliseconds()
+            }.let {
+                Surface(
+                    color = MaterialTheme.colorScheme.primary.copy(alpha = 0.1f),
+                    shape = CircleShape
+                ) {
+                    Text(
+                        "${it.size} اتاق",
+                        modifier = Modifier.padding(horizontal = 10.dp, vertical = 2.dp),
+                        style = MaterialTheme.typography.labelSmall,
+                        color = MaterialTheme.colorScheme.primary,
+                        fontWeight = FontWeight.Bold
+                    )
+                }
             }
         }
         LazyColumn(
@@ -2092,17 +2097,21 @@ fun RoomHistoryContent(
                 maxLines = 1,
                 overflow = TextOverflow.Ellipsis
             )
-            Surface(
-                color = MaterialTheme.colorScheme.primary.copy(alpha = 0.1f),
-                shape = CircleShape
-            ) {
-                Text(
-                    "${state.rooms.size} اتاق",
-                    modifier = Modifier.padding(horizontal = 10.dp, vertical = 2.dp),
-                    style = MaterialTheme.typography.labelSmall,
-                    color = MaterialTheme.colorScheme.primary,
-                    fontWeight = FontWeight.Bold
-                )
+            state.rooms.filter {
+                it.checkOutEpochMillis < Clock.System.now().toEpochMilliseconds()
+            }.let {
+                Surface(
+                    color = MaterialTheme.colorScheme.primary.copy(alpha = 0.1f),
+                    shape = CircleShape
+                ) {
+                    Text(
+                        "${it.size} اتاق",
+                        modifier = Modifier.padding(horizontal = 10.dp, vertical = 2.dp),
+                        style = MaterialTheme.typography.labelSmall,
+                        color = MaterialTheme.colorScheme.primary,
+                        fontWeight = FontWeight.Bold
+                    )
+                }
             }
         }
         LazyColumn(
@@ -2213,6 +2222,23 @@ fun RoomHistoryContent(
                                     modifier = Modifier.padding(horizontal = 2.dp)
                                 )
                             }
+                        }
+
+                        Column(modifier = Modifier.weight(1.4f)) {
+                            val roomReservations = state.reservations.filter { it.roomNumber == room.roomNumber }
+                            val totalLunch = roomReservations.flatMap { it.guestMealSelections }.count { it.lunchDelivered }
+                            val totalDinner = roomReservations.flatMap { it.guestMealSelections }.count { it.dinnerDelivered }
+
+                            Text(
+                                "ناهار: $totalLunch",
+                                style = MaterialTheme.typography.labelSmall,
+                                color = MaterialTheme.colorScheme.outline
+                            )
+                            Text(
+                                "شام: $totalDinner",
+                                style = MaterialTheme.typography.labelSmall,
+                                color = MaterialTheme.colorScheme.outline
+                            )
                         }
                     }
                 }
