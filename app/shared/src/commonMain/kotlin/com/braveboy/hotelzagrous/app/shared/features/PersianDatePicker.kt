@@ -113,8 +113,8 @@ fun PersianDatePicker(
 
             LazyVerticalGrid(
                 columns = GridCells.Fixed(7),
-                modifier = Modifier.height(260.dp),
-                userScrollEnabled = false
+                modifier = Modifier.heightIn(300.dp),
+                userScrollEnabled = true
             ) {
                 items(cells) { index ->
                     if (index < firstDayOfMonth) {
