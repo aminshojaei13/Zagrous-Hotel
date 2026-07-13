@@ -628,49 +628,6 @@ fun RoomAdminCard(
                 }
             }
 
-            // Breakfast
-            Column(modifier = Modifier.width(110.dp)) {
-                Text(
-                    "صبحانه سلف",
-                    style = MaterialTheme.typography.labelLarge,
-                    color = MaterialTheme.colorScheme.outline
-                )
-                Row(verticalAlignment = Alignment.CenterVertically) {
-                    Switch(
-                        checked = hasBreakfast,
-                        onCheckedChange = {
-                            hasBreakfast = it
-                            if (it && breakfastCount == 0) breakfastCount = guestCount
-                            onUpdate(roomNumber, guestName, identificationId, checkIn, checkOut, checkInMillis, checkOutMillis, guestCount, hasBreakfast, breakfastCount)
-                        },
-                        modifier = Modifier.scale(0.6f)
-                    )
-                    if (hasBreakfast) {
-                        Box {
-                            Surface(
-                                onClick = { expandedBreakfastCount = true },
-                                color = MaterialTheme.colorScheme.primary.copy(alpha = 0.1f),
-                                shape = MaterialTheme.shapes.small
-                            ) {
-                                Row(modifier = Modifier.padding(horizontal = 4.dp, vertical = 2.dp)) {
-                                    Text("$breakfastCount نفر", style = MaterialTheme.typography.labelMedium, fontWeight = FontWeight.Bold)
-                                    Icon(Icons.Default.ArrowDropDown, null, modifier = Modifier.size(12.dp))
-                                }
-                            }
-                            DropdownMenu(expanded = expandedBreakfastCount, onDismissRequest = { expandedBreakfastCount = false }) {
-                                (1..guestCount).forEach { num ->
-                                    DropdownMenuItem(text = { Text("$num نفر") }, onClick = {
-                                        breakfastCount = num
-                                        onUpdate(roomNumber, guestName, identificationId, checkIn, checkOut, checkInMillis, checkOutMillis, guestCount, hasBreakfast, breakfastCount)
-                                        expandedBreakfastCount = false
-                                    })
-                                }
-                            }
-                        }
-                    }
-                }
-            }
-
             // Stay Period
             Column(modifier = Modifier.weight(1.4f)) {
                 Text(
@@ -819,15 +776,17 @@ fun RoomManagementContent(state: AdminState, viewModel: AdminViewModel) {
         ) {
             items(items = state.rooms.filter {
                 it.checkOutEpochMillis >= Clock.System.now().toEpochMilliseconds()
-            }, key = { it.id }) { room ->
+            }, key = { it.id.ifBlank { "active_${it.roomNumber}_${it.checkInEpochMillis}" } }) { room ->
                 RoomAdminCard(
                     room = room,
                     availableFoods = state.foods,
                     reservations = state.reservations,
                     onUpdate = { rNum, name, idId, inD, outD, inM, outM, count, hasB, bCount ->
+                        val effectiveId = room.id.ifBlank { room.roomNumber }
+                        println("id s is $effectiveId")
                         viewModel.onIntent(
                             AdminIntent.UpdateRoomStay(
-                                id = room.id,
+                                id = effectiveId,
                                 roomNumber = rNum,
                                 guestName = name,
                                 identificationId = idId,
@@ -862,9 +821,10 @@ fun RoomManagementContent(state: AdminState, viewModel: AdminViewModel) {
                         )
                     },
                     onDelete = {
+                        val effectiveId = room.id.ifBlank { room.roomNumber }
                         viewModel.onIntent(
                             AdminIntent.DeleteRoom(
-                                id = room.id
+                                id = effectiveId
                             )
                         )
                     }
@@ -980,7 +940,7 @@ fun MenuManagementContent(state: AdminState, viewModel: AdminViewModel) {
             state.foods.filter { it.dayType == selectedDayType && it.type == selectedFoodType }
                 .sortedBy { it.displayOrder }
         LazyColumn(verticalArrangement = Arrangement.spacedBy(6.dp)) {
-            items(foods) { food ->
+            items(foods, key = { it.id.ifBlank { "${it.name}_${it.type}_${it.dayType}" } }) { food ->
                 Surface(
                     border = BorderStroke(1.dp, MaterialTheme.colorScheme.outlineVariant),
                     shape = MaterialTheme.shapes.medium
@@ -1383,9 +1343,10 @@ fun RoomFoodReservationsDialog(
                                     verticalAlignment = Alignment.CenterVertically,
                                     horizontalArrangement = Arrangement.SpaceBetween
                                 ) {
+                                    val currentBreakfastCount = reservation?.breakfastCount ?: if (room.hasBreakfast) room.breakfastCount else 0
                                     Text("تعداد صبحانه امروز:", style = MaterialTheme.typography.labelMedium)
                                     AdminBreakfastCountSelection(
-                                        currentCount = reservation?.breakfastCount ?: 0,
+                                        currentCount = currentBreakfastCount,
                                         guestCount = room.guestCount,
                                         onCountChange = { onBreakfastChange(date, it) }
                                     )
@@ -2244,7 +2205,10 @@ fun AddRoomDialog(onDismiss: () -> Unit, onConfirm: (Room) -> Unit) {
                     modifier = Modifier.fillMaxWidth(),
                     verticalAlignment = Alignment.CenterVertically
                 ) {
-                    Checkbox(checked = hasBreakfast, onCheckedChange = { hasBreakfast = it })
+                    Checkbox(checked = hasBreakfast, onCheckedChange = { 
+                        hasBreakfast = it
+                        if (it) breakfastCount = guestCount
+                    })
                     Text("دارای صبحانه (سلف سرویس)")
                     if (hasBreakfast) {
                         Spacer(Modifier.width(8.dp))
@@ -2415,7 +2379,7 @@ fun RoomHistoryContent(
         ) {
             items(items = state.rooms.filter {
                 it.checkOutEpochMillis < Clock.System.now().toEpochMilliseconds()
-            }, key = { it.id })
+            }, key = { it.id.ifBlank { "history_${it.roomNumber}_${it.checkInEpochMillis}" } })
             { room ->
                 Surface(
                     modifier = Modifier.fillMaxWidth(),

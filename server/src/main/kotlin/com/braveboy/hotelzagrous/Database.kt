@@ -128,7 +128,7 @@ class HotelDatabase(
         }
     }
 
-    fun upsertRoom(room: Room) {
+    fun upsertRoom(room: Room): String {
         val id = room.id.ifBlank { UUID.randomUUID().toString() }
         connection.prepareStatement(
             """
@@ -160,6 +160,7 @@ class HotelDatabase(
             statement.setLong(11, room.checkOutEpochMillis)
             statement.executeUpdate()
         }
+        return id
     }
 
     fun updateRoomStay(

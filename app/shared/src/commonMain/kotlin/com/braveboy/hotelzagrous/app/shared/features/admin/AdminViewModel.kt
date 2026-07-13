@@ -117,6 +117,7 @@ class AdminViewModel(
     private fun updateRoom(intent: AdminIntent.UpdateRoomStay) {
         scope.launch(Dispatchers.Main) {
             runCatching {
+                println("id  vm is ${intent.id}")
                 repository.updateRoomStay(
                     intent.id,
                     intent.roomNumber,
@@ -133,7 +134,8 @@ class AdminViewModel(
             }.onSuccess {
                 loadData()
             }.onFailure { e ->
-                updateState { current -> current.copy(error = "به‌روزرسانی اتاق انجام نشد: ${e.message}") }
+                println("Update room failed: ${e.message}")
+                // Don't set global error to avoid blocking the whole UI
             }
         }
     }
@@ -249,7 +251,7 @@ class AdminViewModel(
             }.onSuccess {
                 loadData()
             }.onFailure { e ->
-                updateState { it.copy(error = "تغییر غذا با خطا مواجه شد: ${e.message}") }
+                println("Update food selection failed: ${e.message}")
             }
         }
     }
@@ -267,7 +269,7 @@ class AdminViewModel(
             }.onSuccess {
                 loadData()
             }.onFailure { e ->
-                updateState { it.copy(error = "تغییر تعداد صبحانه با خطا مواجه شد: ${e.message}") }
+                println("Update breakfast count failed: ${e.message}")
             }
         }
     }

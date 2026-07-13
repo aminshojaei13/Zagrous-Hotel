@@ -152,6 +152,7 @@ class HotelRepository(
         hasBreakfast: Boolean,
         breakfastCount: Int
     ) {
+        println("id is $id")
         val normalizedIdentificationId = identificationId.normalizeDigits()
         client.put("$apiBaseUrl/rooms/$id/stay") {
             contentType(ContentType.Application.Json)

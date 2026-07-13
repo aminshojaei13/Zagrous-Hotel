@@ -79,8 +79,8 @@ fun Application.module() {
                     roomNumber = room.roomNumber.normalizeDigits(),
                     identificationId = room.identificationId.normalizeDigits()
                 )
-                database.upsertRoom(normalizedRoom)
-                call.respond(HttpStatusCode.Created, normalizedRoom)
+                val id = database.upsertRoom(normalizedRoom)
+                call.respond(HttpStatusCode.Created, normalizedRoom.copy(id = id))
             }
             delete("/rooms/{id}") {
                 val id = call.parameters["id"].orEmpty()
