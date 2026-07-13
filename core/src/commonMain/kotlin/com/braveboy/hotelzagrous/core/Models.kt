@@ -9,6 +9,8 @@ data class Room(
     val guestName: String = "",
     val identificationId: String = "",
     val guestCount: Int = 1,
+    val hasBreakfast: Boolean = false,
+    val breakfastCount: Int = 0,
     val checkInDate: String = "",
     val checkOutDate: String = "",
     val checkInEpochMillis: Long = 0,
@@ -65,7 +67,9 @@ data class UpdateRoomStayRequest(
     val checkOut: String,
     val checkInMillis: Long,
     val checkOutMillis: Long,
-    val guestCount: Int
+    val guestCount: Int,
+    val hasBreakfast: Boolean = false,
+    val breakfastCount: Int = 0
 )
 
 @Serializable

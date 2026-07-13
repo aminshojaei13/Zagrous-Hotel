@@ -359,9 +359,9 @@ fun RoomAdminCard(
     room: Room,
     availableFoods: List<FoodItem>,
     reservations: List<FoodReservation>,
-    onUpdate: (String, String, String, String, String, Long, Long, Int) -> Unit,
+    onUpdate: (String, String, String, String, String, Long, Long, Int, Boolean, Int) -> Unit,
     onDelete: () -> Unit,
-    onFoodChange: (String, Int, String?, Boolean) -> Unit
+    onFoodChange: (String, Int, String?, com.braveboy.hotelzagrous.core.FoodType) -> Unit
 ) {
     var roomNumber by remember(room) { mutableStateOf(room.roomNumber) }
     var guestName by remember(room) { mutableStateOf(room.guestName) }
@@ -371,7 +371,10 @@ fun RoomAdminCard(
     var checkInMillis by remember(room) { mutableLongStateOf(room.checkInEpochMillis) }
     var checkOutMillis by remember(room) { mutableLongStateOf(room.checkOutEpochMillis) }
     var guestCount by remember(room) { mutableIntStateOf(room.guestCount) }
+    var hasBreakfast by remember(room) { mutableStateOf(room.hasBreakfast) }
+    var breakfastCount by remember(room) { mutableIntStateOf(room.breakfastCount) }
     var expandedGuestCount by remember { mutableStateOf(false) }
+    var expandedBreakfastCount by remember { mutableStateOf(false) }
     var showFoodDialog by remember { mutableStateOf(false) }
     var showDeleteConfirm by remember { mutableStateOf(false) }
     var changeRoomNumber by remember { mutableStateOf(false) }
@@ -415,6 +418,8 @@ fun RoomAdminCard(
                                     checkInMillis,
                                     checkOutMillis,
                                     guestCount,
+                                    hasBreakfast,
+                                    breakfastCount
                                 )
                                 changeRoomNumber = false
                             }
@@ -471,6 +476,8 @@ fun RoomAdminCard(
                                     checkInMillis,
                                     checkOutMillis,
                                     guestCount,
+                                    hasBreakfast,
+                                    breakfastCount
                                 )
                                 changeName = false
                             }
@@ -526,6 +533,8 @@ fun RoomAdminCard(
                                     checkInMillis,
                                     checkOutMillis,
                                     guestCount,
+                                    hasBreakfast,
+                                    breakfastCount
                                 )
                                 changeId = false
                             }
@@ -607,10 +616,55 @@ fun RoomAdminCard(
                                         checkInMillis,
                                         checkOutMillis,
                                         guestCount,
+                                        hasBreakfast,
+                                        breakfastCount
                                     )
                                     expandedGuestCount = false
                                 }
                             )
+                        }
+                    }
+                }
+            }
+
+            // Breakfast
+            Column(modifier = Modifier.width(110.dp)) {
+                Text(
+                    "صبحانه سلف",
+                    style = MaterialTheme.typography.labelLarge,
+                    color = MaterialTheme.colorScheme.outline
+                )
+                Row(verticalAlignment = Alignment.CenterVertically) {
+                    Switch(
+                        checked = hasBreakfast,
+                        onCheckedChange = {
+                            hasBreakfast = it
+                            if (it && breakfastCount == 0) breakfastCount = guestCount
+                            onUpdate(roomNumber, guestName, identificationId, checkIn, checkOut, checkInMillis, checkOutMillis, guestCount, hasBreakfast, breakfastCount)
+                        },
+                        modifier = Modifier.scale(0.6f)
+                    )
+                    if (hasBreakfast) {
+                        Box {
+                            Surface(
+                                onClick = { expandedBreakfastCount = true },
+                                color = MaterialTheme.colorScheme.primary.copy(alpha = 0.1f),
+                                shape = MaterialTheme.shapes.small
+                            ) {
+                                Row(modifier = Modifier.padding(horizontal = 4.dp, vertical = 2.dp)) {
+                                    Text("$breakfastCount نفر", style = MaterialTheme.typography.labelMedium, fontWeight = FontWeight.Bold)
+                                    Icon(Icons.Default.ArrowDropDown, null, modifier = Modifier.size(12.dp))
+                                }
+                            }
+                            DropdownMenu(expanded = expandedBreakfastCount, onDismissRequest = { expandedBreakfastCount = false }) {
+                                (1..guestCount).forEach { num ->
+                                    DropdownMenuItem(text = { Text("$num نفر") }, onClick = {
+                                        breakfastCount = num
+                                        onUpdate(roomNumber, guestName, identificationId, checkIn, checkOut, checkInMillis, checkOutMillis, guestCount, hasBreakfast, breakfastCount)
+                                        expandedBreakfastCount = false
+                                    })
+                                }
+                            }
                         }
                     }
                 }
@@ -636,6 +690,8 @@ fun RoomAdminCard(
                             checkInMillis,
                             checkOutMillis,
                             guestCount,
+                            hasBreakfast,
+                            breakfastCount
                         )
                     }
                     Text(
@@ -656,6 +712,8 @@ fun RoomAdminCard(
                             checkInMillis,
                             checkOutMillis,
                             guestCount,
+                            hasBreakfast,
+                            breakfastCount
                         )
                     }
                 }
@@ -764,29 +822,31 @@ fun RoomManagementContent(state: AdminState, viewModel: AdminViewModel) {
                     room = room,
                     availableFoods = state.foods,
                     reservations = state.reservations,
-                    onUpdate = { rNum, name, identificationId, inD, outD, inM, outM, count ->
+                    onUpdate = { rNum, name, idId, inD, outD, inM, outM, count, hasB, bCount ->
                         viewModel.onIntent(
                             AdminIntent.UpdateRoomStay(
                                 id = room.id,
                                 roomNumber = rNum,
                                 guestName = name,
-                                identificationId = identificationId,
+                                identificationId = idId,
                                 checkIn = inD,
                                 checkOut = outD,
                                 checkInMillis = inM,
                                 checkOutMillis = outM,
-                                guestCount = count
+                                guestCount = count,
+                                hasBreakfast = hasB,
+                                breakfastCount = bCount
                             )
                         )
                     },
-                    onFoodChange = { d, idx, fId, isL ->
+                    onFoodChange = { d, idx, fId, fType ->
                         viewModel.onIntent(
                             AdminIntent.ChangeFood(
                                 room.roomNumber,
                                 d,
                                 idx,
                                 fId,
-                                isL
+                                fType
                             )
                         )
                     },
@@ -1037,6 +1097,18 @@ fun DailyDetailedReportContent(state: AdminState, viewModel: AdminViewModel) {
                 }
                 Button(
                     shape = MaterialTheme.shapes.small,
+                    onClick = { viewModel.onIntent(AdminIntent.PrintDailyBreakfastReport(reportDate)) },
+                    colors = ButtonDefaults.buttonColors(containerColor = MaterialTheme.colorScheme.secondary),
+                    modifier = Modifier.height(32.dp),
+                    contentPadding = PaddingValues(horizontal = 8.dp)
+                ) {
+                    Icon(Icons.Default.Print, null, modifier = Modifier.size(16.dp)); Text(
+                    " صبحانه",
+                    style = MaterialTheme.typography.labelMedium
+                )
+                }
+                Button(
+                    shape = MaterialTheme.shapes.small,
                     onClick = { viewModel.onIntent(AdminIntent.PrintDailyLaunchReport(reportDate)) },
                     colors = ButtonDefaults.buttonColors(containerColor = MaterialTheme.colorScheme.secondary),
                     modifier = Modifier.height(32.dp),
@@ -1251,7 +1323,7 @@ fun RoomFoodReservationsDialog(
     availableFoods: List<FoodItem>,
     reservations: List<FoodReservation>,
     onDismiss: () -> Unit,
-    onFoodChange: (String, Int, String?, Boolean) -> Unit
+    onFoodChange: (String, Int, String?, com.braveboy.hotelzagrous.core.FoodType) -> Unit
 ) {
     val stayDays = remember(room) {
         if (room.checkInEpochMillis != 0L && room.checkOutEpochMillis != 0L) {
@@ -1321,13 +1393,13 @@ fun RoomFoodReservationsDialog(
                                             foods = menu.filter { it.type == FoodType.LUNCH },
                                             selectedId = selection?.lunchFoodId,
                                             modifier = Modifier.weight(1f),
-                                            onSelect = { onFoodChange(date, index, it, true) })
+                                            onSelect = { onFoodChange(date, index, it, FoodType.LUNCH) })
                                         AdminFoodSelectionItem(
                                             label = "شام",
                                             foods = menu.filter { it.type == FoodType.DINNER },
                                             selectedId = selection?.dinnerFoodId,
                                             modifier = Modifier.weight(1f),
-                                            onSelect = { onFoodChange(date, index, it, false) })
+                                            onSelect = { onFoodChange(date, index, it, FoodType.DINNER) })
                                     }
                                 }
                             }
@@ -1356,6 +1428,7 @@ fun AdminFoodSelectionItem(
     Box(modifier = modifier) {
         if (selectedFood == null) {
             Text(
+                modifier = Modifier.clickable{ expanded = true },
                 text = "عدم رزرو $label",
                 style = MaterialTheme.typography.labelMedium.copy(fontSize = 14.sp),
                 maxLines = 1,
@@ -1561,7 +1634,7 @@ fun ReservationSummary(
                                                     date,
                                                     selection.guestIndex,
                                                     it,
-                                                    true
+                                                    FoodType.LUNCH
                                                 )
                                             )
                                         })
@@ -1577,7 +1650,7 @@ fun ReservationSummary(
                                                     date,
                                                     selection.guestIndex,
                                                     it,
-                                                    false
+                                                    FoodType.DINNER
                                                 )
                                             )
                                         })
@@ -1599,6 +1672,11 @@ fun TodayReservationDetail(state: AdminState) {
     val foodMap = state.foods.associateBy { it.id }
     val allLunch = todayResList.flatMap { it.guestMealSelections }.mapNotNull { it.lunchFoodId }
     val allDinner = todayResList.flatMap { it.guestMealSelections }.mapNotNull { it.dinnerFoodId }
+
+    val activeRooms = state.rooms.filter {
+        it.checkInEpochMillis <= todayMillis && it.checkOutEpochMillis >= todayMillis
+    }
+    val buffetBreakfastCount = activeRooms.filter { it.hasBreakfast }.sumOf { it.breakfastCount }
 
     Surface(
         modifier = Modifier.fillMaxWidth(),
@@ -1634,6 +1712,28 @@ fun TodayReservationDetail(state: AdminState) {
                 modifier = Modifier.fillMaxWidth(),
                 horizontalArrangement = Arrangement.spacedBy(12.dp)
             ) {
+                Surface(
+                    modifier = Modifier.weight(1f),
+                    color = MaterialTheme.colorScheme.surface,
+                    shape = MaterialTheme.shapes.medium,
+                    border = BorderStroke(1.dp, MaterialTheme.colorScheme.surfaceVariant)
+                ) {
+                    Column(modifier = Modifier.padding(12.dp)) {
+                        Text(
+                            "وعده صبحانه",
+                            style = MaterialTheme.typography.labelLarge,
+                            fontWeight = FontWeight.Bold,
+                            color = MaterialTheme.colorScheme.primary
+                        )
+                        Spacer(Modifier.height(8.dp))
+                        Text("سلف سرویس", style = MaterialTheme.typography.labelMedium, color = MaterialTheme.colorScheme.outline)
+                        HorizontalDivider(Modifier.padding(vertical = 6.dp), thickness = 0.5.dp, color = MaterialTheme.colorScheme.surfaceVariant)
+                        Row(modifier = Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.SpaceBetween) {
+                            Text("مجموع", fontWeight = FontWeight.Bold, style = MaterialTheme.typography.labelMedium)
+                            Text("$buffetBreakfastCount پرس", fontWeight = FontWeight.ExtraBold, color = MaterialTheme.colorScheme.primary, style = MaterialTheme.typography.labelMedium)
+                        }
+                    }
+                }
                 MealSummaryBox("وعده ناهار", allLunch, foodMap, Modifier.weight(1f))
                 MealSummaryBox("وعده شام", allDinner, foodMap, Modifier.weight(1f))
             }
@@ -1833,14 +1933,14 @@ fun RoomDeliveryCard(
                             )
                         )
                     },
-                    onFoodChange = { fId, isL ->
+                    onFoodChange = { fId, fType ->
                         onIntent(
                             AdminIntent.ChangeFood(
                                 res.roomNumber,
                                 today,
                                 selection.guestIndex,
                                 fId,
-                                isL
+                                fType
                             )
                         )
                     })
@@ -1856,7 +1956,7 @@ fun GuestDeliveryRow(
     isLast: Boolean,
     onLunchDeliver: () -> Unit,
     onDinnerDeliver: () -> Unit,
-    onFoodChange: (String?, Boolean) -> Unit
+    onFoodChange: (String?, FoodType) -> Unit
 ) {
     Column(modifier = Modifier.padding(horizontal = 12.dp)) {
         Row(
@@ -1895,7 +1995,7 @@ fun GuestDeliveryRow(
                         foods = availableFoods.filter { it.type == FoodType.LUNCH },
                         selectedId = selection.lunchFoodId,
                         enabled = false,
-                        onSelect = { onFoodChange(it, true) }
+                        onSelect = { onFoodChange(it, FoodType.LUNCH) }
                     )
                     if (selection.lunchFoodId != null)
                         DeliveryChip(
@@ -1917,7 +2017,7 @@ fun GuestDeliveryRow(
                         foods = availableFoods.filter { it.type == FoodType.DINNER },
                         selectedId = selection.dinnerFoodId,
                         enabled = false,
-                        onSelect = { onFoodChange(it, false) }
+                        onSelect = { onFoodChange(it, FoodType.DINNER) }
                     )
                     if (selection.dinnerFoodId != null)
                         DeliveryChip(
@@ -1978,12 +2078,14 @@ fun AddRoomDialog(onDismiss: () -> Unit, onConfirm: (Room) -> Unit) {
     var guestName by remember { mutableStateOf("") }
     var identificationId by remember { mutableStateOf("") }
     var guestCount by remember { mutableIntStateOf(1) }
+    var hasBreakfast by remember { mutableStateOf(false) }
+    var breakfastCount by remember { mutableIntStateOf(1) }
     var checkIn by remember { mutableStateOf("") }
     var checkOut by remember { mutableStateOf("") }
     var checkInMillis by remember { mutableLongStateOf(0L) }
     var checkOutMillis by remember { mutableLongStateOf(0L) }
-    var expandedCap by remember { mutableStateOf(false) }
     var expandedGuest by remember { mutableStateOf(false) }
+    var expandedBreakfast by remember { mutableStateOf(false) }
 
     AlertDialog(
         onDismissRequest = onDismiss,
@@ -2021,7 +2123,8 @@ fun AddRoomDialog(onDismiss: () -> Unit, onConfirm: (Room) -> Unit) {
 
                 Row(
                     modifier = Modifier.fillMaxWidth(),
-                    horizontalArrangement = Arrangement.spacedBy(10.dp)
+                    horizontalArrangement = Arrangement.spacedBy(10.dp),
+                    verticalAlignment = Alignment.CenterVertically
                 ) {
                     Box(modifier = Modifier.weight(1f)) {
                         Surface(
@@ -2049,7 +2152,48 @@ fun AddRoomDialog(onDismiss: () -> Unit, onConfirm: (Room) -> Unit) {
                             (1..7).forEach { num ->
                                 DropdownMenuItem(
                                     text = { Text("$num نفر") },
-                                    onClick = { guestCount = num; expandedGuest = false })
+                                    onClick = {
+                                        guestCount = num
+                                        if (breakfastCount > num) breakfastCount = num
+                                        expandedGuest = false
+                                    })
+                            }
+                        }
+                    }
+                }
+
+                Row(
+                    modifier = Modifier.fillMaxWidth(),
+                    verticalAlignment = Alignment.CenterVertically
+                ) {
+                    Checkbox(checked = hasBreakfast, onCheckedChange = { hasBreakfast = it })
+                    Text("دارای صبحانه (سلف سرویس)")
+                    if (hasBreakfast) {
+                        Spacer(Modifier.width(8.dp))
+                        Box {
+                            Surface(
+                                onClick = { expandedBreakfast = true },
+                                modifier = Modifier.width(100.dp).height(40.dp),
+                                shape = MaterialTheme.shapes.medium,
+                                border = BorderStroke(1.dp, MaterialTheme.colorScheme.outline),
+                                color = Color.Transparent
+                            ) {
+                                Row(
+                                    modifier = Modifier.padding(horizontal = 8.dp),
+                                    verticalAlignment = Alignment.CenterVertically
+                                ) {
+                                    Text("$breakfastCount نفر")
+                                    Spacer(Modifier.weight(1f))
+                                    Icon(Icons.Default.ArrowDropDown, null)
+                                }
+                            }
+                            DropdownMenu(expanded = expandedBreakfast, onDismissRequest = { expandedBreakfast = false }) {
+                                (1..guestCount).forEach { num ->
+                                    DropdownMenuItem(text = { Text("$num نفر") }, onClick = {
+                                        breakfastCount = num
+                                        expandedBreakfast = false
+                                    })
+                                }
                             }
                         }
                     }
@@ -2079,10 +2223,11 @@ fun AddRoomDialog(onDismiss: () -> Unit, onConfirm: (Room) -> Unit) {
                         onConfirm(
                             Room(
                                 roomNumber = roomNumber.normalizeDigits(),
-                                //capacity = capacity,
                                 guestName = guestName,
                                 identificationId = identificationId.normalizeDigits(),
                                 guestCount = guestCount,
+                                hasBreakfast = hasBreakfast,
+                                breakfastCount = if (hasBreakfast) breakfastCount else 0,
                                 checkInDate = checkIn,
                                 checkOutDate = checkOut,
                                 checkInEpochMillis = checkInMillis,

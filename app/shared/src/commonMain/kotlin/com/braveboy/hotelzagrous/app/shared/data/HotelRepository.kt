@@ -149,6 +149,8 @@ class HotelRepository(
         checkInMillis: Long,
         checkOutMillis: Long,
         guestCount: Int,
+        hasBreakfast: Boolean,
+        breakfastCount: Int
     ) {
         val normalizedIdentificationId = identificationId.normalizeDigits()
         client.put("$apiBaseUrl/rooms/$id/stay") {
@@ -163,6 +165,8 @@ class HotelRepository(
                     checkInMillis = checkInMillis,
                     checkOutMillis = checkOutMillis,
                     guestCount = guestCount,
+                    hasBreakfast = hasBreakfast,
+                    breakfastCount = breakfastCount
                 )
             )
         }

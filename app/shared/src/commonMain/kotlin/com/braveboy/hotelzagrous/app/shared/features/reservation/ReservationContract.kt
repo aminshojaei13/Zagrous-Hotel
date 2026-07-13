@@ -26,7 +26,7 @@ sealed class ReservationIntent {
         val date: String,
         val guestIndex: Int,
         val foodId: String?,
-        val isLunch: Boolean
+        val foodType: com.braveboy.hotelzagrous.core.FoodType
     ) : ReservationIntent()
     object ConfirmReservation : ReservationIntent()
     object ToggleLanguage : ReservationIntent()

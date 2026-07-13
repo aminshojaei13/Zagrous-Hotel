@@ -599,7 +599,7 @@ fun FoodCard(
                                     date = date,
                                     guestIndex = index,
                                     foodId = foodId,
-                                    isLunch = true
+                                    foodType = FoodType.LUNCH
                                 )
                             )
                         }
@@ -618,7 +618,7 @@ fun FoodCard(
                                     date = date,
                                     guestIndex = index,
                                     foodId = foodId,
-                                    isLunch = false
+                                    foodType = FoodType.DINNER
                                 )
                             )
                         }

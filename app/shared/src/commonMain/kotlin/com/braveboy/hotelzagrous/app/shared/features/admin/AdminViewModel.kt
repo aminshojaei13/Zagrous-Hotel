@@ -6,6 +6,7 @@ import com.braveboy.hotelzagrous.core.FoodItem
 import com.braveboy.hotelzagrous.core.FoodReservation
 import com.braveboy.hotelzagrous.core.GuestMealSelection
 import com.braveboy.hotelzagrous.core.MenuConfig
+import com.braveboy.hotelzagrous.core.Room
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.launch
@@ -35,8 +36,9 @@ class AdminViewModel(
             is AdminIntent.UpsertFood -> upsertFood(intent.food)
             is AdminIntent.DeleteFood -> deleteFood(intent.id)
             is AdminIntent.UpdateMenuConfig -> updateMenuConfig(intent.config)
-            is AdminIntent.PrintDailyDinnerReport -> printDailyReport(intent.date, isLunch = false)
-            is AdminIntent.PrintDailyLaunchReport -> printDailyReport(intent.date, isLunch = true)
+            is AdminIntent.PrintDailyBreakfastReport -> printBreakfastBuffetReport(intent.date, state.value.rooms)
+            is AdminIntent.PrintDailyDinnerReport -> printDailyReport(intent.date, com.braveboy.hotelzagrous.core.FoodType.DINNER)
+            is AdminIntent.PrintDailyLaunchReport -> printDailyReport(intent.date, com.braveboy.hotelzagrous.core.FoodType.LUNCH)
         }
     }
 
@@ -124,7 +126,8 @@ class AdminViewModel(
                     intent.checkInMillis,
                     intent.checkOutMillis,
                     intent.guestCount,
-                    //intent.capacity
+                    intent.hasBreakfast,
+                    intent.breakfastCount
                 )
             }.onSuccess {
                 loadData()
@@ -231,10 +234,9 @@ class AdminViewModel(
                 ?: GuestMealSelection(intent.guestIndex)
 
             updatedSelections.removeAll { it.guestIndex == intent.guestIndex }
-            val newSelection = if (intent.isLunch) {
-                existingSelection.copy(lunchFoodId = intent.foodId)
-            } else {
-                existingSelection.copy(dinnerFoodId = intent.foodId)
+            val newSelection = when (intent.foodType) {
+                com.braveboy.hotelzagrous.core.FoodType.LUNCH -> existingSelection.copy(lunchFoodId = intent.foodId)
+                com.braveboy.hotelzagrous.core.FoodType.DINNER -> existingSelection.copy(dinnerFoodId = intent.foodId)
             }
             updatedSelections.add(newSelection)
 
@@ -254,7 +256,55 @@ class AdminViewModel(
     private fun exportToPdf() {
     }
 
-    private fun printDailyReport(date: String, isLunch: Boolean) {
+    private fun printBreakfastBuffetReport(date: String, rooms: List<Room>) {
+        // Find rooms that are active on this date
+        // Note: date format is Jalali "1402/08/01"
+        // For simplicity, we filter rooms where hasBreakfast is true and they are currently in the state
+        // (The state usually has active rooms or we can check date range if needed)
+        val breakfastRooms = rooms.filter { it.hasBreakfast }.sortedBy { it.roomNumber }
+        if (breakfastRooms.isEmpty()) return
+
+        val html = buildString {
+            append("<!DOCTYPE html><html><head><meta charset='UTF-8'><style>")
+            append("body { direction: rtl; font-family: Tahoma, Arial, sans-serif; padding: 10px; }")
+            append("h2 { text-align: center; margin-bottom: 20px; font-size: 20px; }")
+            append("table { width: 100%; border-collapse: collapse; border: 2px solid black; }")
+            append("th, td { border: 1.5px solid black; padding: 12px 6px; text-align: center; font-size: 16px; }")
+            append("th { background-color: #f8f8f8; font-weight: bold; }")
+            append(".total-row { font-weight: bold; background-color: #f0f0f0; }")
+            append("</style></head><body>")
+
+            append("<h2>گزارش صبحانه (سلف سرویس) - تاریخ: $date</h2>")
+            append("<table>")
+            append("<thead><tr>")
+            append("<th>ردیف</th><th>شماره اتاق</th><th>نام مهمان</th><th>تعداد نفرات صبحانه</th><th>امضا/تایید</th>")
+            append("</tr></thead>")
+            append("<tbody>")
+
+            var totalBreakfasts = 0
+            breakfastRooms.forEachIndexed { index, room ->
+                append("<tr>")
+                append("<td>${index + 1}</td>")
+                append("<td>${room.roomNumber}</td>")
+                append("<td>${room.guestName}</td>")
+                append("<td>${room.breakfastCount}</td>")
+                append("<td></td>")
+                append("</tr>")
+                totalBreakfasts += room.breakfastCount
+            }
+            append("</tbody>")
+            append("<tfoot><tr class='total-row'>")
+            append("<td colspan='3'>جمع کل صبحانه امروز</td>")
+            append("<td>$totalBreakfasts</td>")
+            append("<td></td>")
+            append("</tr></tfoot>")
+            append("</table>")
+            append("</body></html>")
+        }
+        ReportPrinter.openInBrowser(html)
+    }
+
+    private fun printDailyReport(date: String, foodType: com.braveboy.hotelzagrous.core.FoodType) {
         val reservations =
             state.value.reservations.filter { it.date == date }.sortedBy { it.roomNumber }
         val foodMap = state.value.foods.associateBy { it.id }
@@ -263,14 +313,22 @@ class AdminViewModel(
 
         // 1. Identify unique foods ordered on this day for the specific meal
         val orderedFoodIds = reservations.flatMap { res ->
-            res.guestMealSelections.mapNotNull { if (isLunch) it.lunchFoodId else it.dinnerFoodId }
+            res.guestMealSelections.mapNotNull {
+                when (foodType) {
+                    com.braveboy.hotelzagrous.core.FoodType.LUNCH -> it.lunchFoodId
+                    com.braveboy.hotelzagrous.core.FoodType.DINNER -> it.dinnerFoodId
+                }
+            }
         }.distinct()
 
         val columnFoods = orderedFoodIds.mapNotNull { foodMap[it] }.sortedBy { it.displayOrder }
 
         if (columnFoods.isEmpty()) return
 
-        val mealTitle = if (isLunch) "ناهار" else "شام"
+        val mealTitle = when (foodType) {
+            com.braveboy.hotelzagrous.core.FoodType.LUNCH -> "ناهار"
+            com.braveboy.hotelzagrous.core.FoodType.DINNER -> "شام"
+        }
 
         val html = buildString {
             append("<!DOCTYPE html><html><head><meta charset='UTF-8'><style>")
@@ -304,7 +362,12 @@ class AdminViewModel(
             reservations.forEach { res ->
                 val roomSelections = res.guestMealSelections
                 val roomFoodIds =
-                    roomSelections.mapNotNull { if (isLunch) it.lunchFoodId else it.dinnerFoodId }
+                    roomSelections.mapNotNull {
+                        when (foodType) {
+                            com.braveboy.hotelzagrous.core.FoodType.LUNCH -> it.lunchFoodId
+                            com.braveboy.hotelzagrous.core.FoodType.DINNER -> it.dinnerFoodId
+                        }
+                    }
 
                 if (roomFoodIds.isEmpty()) return@forEach
 

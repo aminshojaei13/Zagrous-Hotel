@@ -90,26 +90,25 @@ class ReservationViewModel(
     private fun updateFoodSelection(intent: ReservationIntent.ChangeFood) {
         updateState { currentState ->
             val updatedTemp = currentState.tempReservations.toMutableList()
-            val existingRes = updatedTemp.find { it.date == intent.date } 
+            val existingRes = updatedTemp.find { it.date == intent.date }
                 ?: FoodReservation(currentState.roomNumber, intent.date)
-            
+
             val updatedSelections = existingRes.guestMealSelections.toMutableList()
             val existingSelection = updatedSelections.find { it.guestIndex == intent.guestIndex }
                 ?: GuestMealSelection(intent.guestIndex)
-            
+
             updatedSelections.removeAll { it.guestIndex == intent.guestIndex }
-            val newSelection = if (intent.isLunch) {
-                existingSelection.copy(lunchFoodId = intent.foodId)
-            } else {
-                existingSelection.copy(dinnerFoodId = intent.foodId)
+            val newSelection = when (intent.foodType) {
+                FoodType.LUNCH -> existingSelection.copy(lunchFoodId = intent.foodId)
+                FoodType.DINNER -> existingSelection.copy(dinnerFoodId = intent.foodId)
             }
             updatedSelections.add(newSelection)
-            
+
             val newRes = existingRes.copy(guestMealSelections = updatedSelections.sortedBy { it.guestIndex })
-            
+
             updatedTemp.removeAll { it.date == intent.date }
             updatedTemp.add(newRes)
-            
+
             currentState.copy(tempReservations = updatedTemp)
         }
     }
