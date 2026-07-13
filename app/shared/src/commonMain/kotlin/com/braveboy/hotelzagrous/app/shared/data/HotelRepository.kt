@@ -141,6 +141,7 @@ class HotelRepository(
 
     suspend fun updateRoomStay(
         id: String,
+        roomNumber: String,
         guestName: String,
         identificationId: String,
         checkIn: String,
@@ -154,6 +155,7 @@ class HotelRepository(
             contentType(ContentType.Application.Json)
             setBody(
                 UpdateRoomStayRequest(
+                    roomNumber = roomNumber.normalizeDigits(),
                     guestName = guestName,
                     identificationId = normalizedIdentificationId,
                     checkIn = checkIn,

@@ -150,6 +150,7 @@ class HotelDatabase(
 
     fun updateRoomStay(
         id: String,
+        roomNumber: String,
         guestName: String,
         identificationId: String,
         checkIn: String,
@@ -158,21 +159,33 @@ class HotelDatabase(
         checkOutMillis: Long,
         guestCount: Int
     ): Boolean {
+        val oldRoom = getRoom(id) ?: return false
+        val newRoomNumber = roomNumber.normalizeDigits()
+
+        if (oldRoom.roomNumber != newRoomNumber) {
+            connection.prepareStatement("UPDATE food_reservations SET room_number = ? WHERE room_number = ?").use { statement ->
+                statement.setString(1, newRoomNumber)
+                statement.setString(2, oldRoom.roomNumber)
+                statement.executeUpdate()
+            }
+        }
+
         return connection.prepareStatement(
             """
             UPDATE rooms
-            SET guest_name = ?, identification_id = ?, check_in_date = ?, check_out_date = ?, check_in_epoch_millis = ?, check_out_epoch_millis = ?, guest_count = ?
+            SET room_number = ?, guest_name = ?, identification_id = ?, check_in_date = ?, check_out_date = ?, check_in_epoch_millis = ?, check_out_epoch_millis = ?, guest_count = ?
             WHERE id = ?
             """.trimIndent()
         ).use { statement ->
-            statement.setString(1, guestName)
-            statement.setString(2, identificationId)
-            statement.setString(3, checkIn)
-            statement.setString(4, checkOut)
-            statement.setLong(5, checkInMillis)
-            statement.setLong(6, checkOutMillis)
-            statement.setInt(7, guestCount)
-            statement.setString(8, id)
+            statement.setString(1, newRoomNumber)
+            statement.setString(2, guestName)
+            statement.setString(3, identificationId)
+            statement.setString(4, checkIn)
+            statement.setString(5, checkOut)
+            statement.setLong(6, checkInMillis)
+            statement.setLong(7, checkOutMillis)
+            statement.setInt(8, guestCount)
+            statement.setString(9, id)
             statement.executeUpdate() > 0
         }
     }

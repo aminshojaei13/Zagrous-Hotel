@@ -92,6 +92,7 @@ fun Application.module() {
                 val request = call.receive<UpdateRoomStayRequest>()
                 val updated = database.updateRoomStay(
                     id,
+                    request.roomNumber.normalizeDigits(),
                     request.guestName,
                     request.identificationId.normalizeDigits(),
                     request.checkIn,

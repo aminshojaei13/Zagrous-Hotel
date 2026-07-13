@@ -18,10 +18,11 @@ data class AdminState(
 
 sealed class AdminIntent {
     data class UpdateRoomStay(
-        val id: String, 
+        val id: String,
+        val roomNumber: String,
         val guestName: String,
         val identificationId: String,
-        val checkIn: String, 
+        val checkIn: String,
         val checkOut: String,
         val checkInMillis: Long,
         val checkOutMillis: Long,

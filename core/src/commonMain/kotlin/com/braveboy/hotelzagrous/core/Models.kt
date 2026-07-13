@@ -58,6 +58,7 @@ data class GuestMealSelection(
 
 @Serializable
 data class UpdateRoomStayRequest(
+    val roomNumber: String,
     val guestName: String,
     val identificationId: String,
     val checkIn: String,

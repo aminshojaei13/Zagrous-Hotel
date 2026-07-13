@@ -33,6 +33,7 @@ import androidx.compose.material.icons.filled.Delete
 import androidx.compose.material.icons.filled.DeleteForever
 import androidx.compose.material.icons.filled.Edit
 import androidx.compose.material.icons.filled.Event
+import androidx.compose.material.icons.filled.History
 import androidx.compose.material.icons.filled.Hotel
 import androidx.compose.material.icons.filled.Person
 import androidx.compose.material.icons.filled.Print
@@ -126,7 +127,7 @@ fun AdminScreen(viewModel: AdminViewModel) {
                     Spacer(Modifier.width(10.dp))
                     Text(
                         text = "هتل زاگرس",
-                        style = MaterialTheme.typography.titleMedium,
+                        style = MaterialTheme.typography.titleLarge,
                         fontWeight = FontWeight.ExtraBold,
                         color = MaterialTheme.colorScheme.onSurface,
                         maxLines = 1,
@@ -136,7 +137,7 @@ fun AdminScreen(viewModel: AdminViewModel) {
 
                 Text(
                     "منوی مدیریت",
-                    style = MaterialTheme.typography.labelSmall,
+                    style = MaterialTheme.typography.labelMedium,
                     color = MaterialTheme.colorScheme.outline,
                     modifier = Modifier.padding(start = 12.dp, bottom = 8.dp)
                 )
@@ -154,7 +155,7 @@ fun AdminScreen(viewModel: AdminViewModel) {
                     onClick = { currentTab = "reservations" })
                 Spacer(Modifier.height(4.dp))
                 NavigationItem(
-                    label = "گزارش تفصیلی روزانه",
+                    label = "گزارش و چاپ روزانه",
                     icon = Icons.AutoMirrored.Filled.Assignment,
                     selected = currentTab == "daily_report",
                     onClick = { currentTab = "daily_report" })
@@ -167,7 +168,7 @@ fun AdminScreen(viewModel: AdminViewModel) {
                 Spacer(Modifier.height(4.dp))
                 NavigationItem(
                     label = "تاریخچه",
-                    icon = Icons.Default.RestaurantMenu,
+                    icon = Icons.Default.History,
                     selected = currentTab == "history",
                     onClick = { currentTab = "history" })
 
@@ -215,7 +216,7 @@ fun AdminScreen(viewModel: AdminViewModel) {
                     }
                     Text(
                         title,
-                        style = MaterialTheme.typography.headlineSmall,
+                        style = MaterialTheme.typography.headlineMedium,
                         fontWeight = FontWeight.Bold,
                         maxLines = 1,
                         overflow = TextOverflow.Ellipsis
@@ -229,7 +230,7 @@ fun AdminScreen(viewModel: AdminViewModel) {
                     ) {
                         Icon(Icons.Default.Add, null, modifier = Modifier.size(18.dp))
                         Spacer(Modifier.width(6.dp))
-                        Text("افزودن اتاق", style = MaterialTheme.typography.labelMedium)
+                        Text("افزودن اتاق", style = MaterialTheme.typography.labelLarge)
                     }
                 }
             }
@@ -261,7 +262,7 @@ fun AdminScreen(viewModel: AdminViewModel) {
                             Spacer(Modifier.height(16.dp))
                             Text(
                                 state.error ?: "خطای ناشناخته",
-                                style = MaterialTheme.typography.bodyMedium,
+                                style = MaterialTheme.typography.bodyLarge,
                                 textAlign = TextAlign.Center,
                                 color = MaterialTheme.colorScheme.error
                             )
@@ -337,7 +338,7 @@ fun NavigationItem(
                 label,
                 color = contentColor,
                 fontWeight = if (selected) FontWeight.Bold else FontWeight.Normal,
-                style = MaterialTheme.typography.bodyMedium,
+                style = MaterialTheme.typography.bodyLarge,
                 maxLines = 1,
                 overflow = TextOverflow.Ellipsis
             )
@@ -358,10 +359,11 @@ fun RoomAdminCard(
     room: Room,
     availableFoods: List<FoodItem>,
     reservations: List<FoodReservation>,
-    onUpdate: (String, String, String, String, Long, Long, Int) -> Unit,
+    onUpdate: (String, String, String, String, String, Long, Long, Int) -> Unit,
     onDelete: () -> Unit,
     onFoodChange: (String, Int, String?, Boolean) -> Unit
 ) {
+    var roomNumber by remember(room) { mutableStateOf(room.roomNumber) }
     var guestName by remember(room) { mutableStateOf(room.guestName) }
     var identificationId by remember(room) { mutableStateOf(room.identificationId) }
     var checkIn by remember(room) { mutableStateOf(room.checkInDate) }
@@ -372,6 +374,7 @@ fun RoomAdminCard(
     var expandedGuestCount by remember { mutableStateOf(false) }
     var showFoodDialog by remember { mutableStateOf(false) }
     var showDeleteConfirm by remember { mutableStateOf(false) }
+    var changeRoomNumber by remember { mutableStateOf(false) }
     var changeName by remember { mutableStateOf(false) }
     var changeId by remember { mutableStateOf(false) }
 
@@ -386,15 +389,55 @@ fun RoomAdminCard(
             verticalAlignment = Alignment.CenterVertically
         ) {
             // Room
+            if (changeRoomNumber) {
+                AlertDialog(
+                    onDismissRequest = { changeRoomNumber = false },
+                    title = { Text("شماره اتاق جدید") },
+                    text = {
+                        OutlinedTextField(
+                            value = roomNumber,
+                            onValueChange = { roomNumber = it },
+                            modifier = Modifier.fillMaxWidth(),
+                            textStyle = MaterialTheme.typography.bodyLarge.copy(fontWeight = FontWeight.Bold),
+                            shape = MaterialTheme.shapes.small,
+                            singleLine = true
+                        )
+                    },
+                    confirmButton = {
+                        Button(
+                            onClick = {
+                                onUpdate(
+                                    roomNumber,
+                                    guestName,
+                                    identificationId,
+                                    checkIn,
+                                    checkOut,
+                                    checkInMillis,
+                                    checkOutMillis,
+                                    guestCount,
+                                )
+                                changeRoomNumber = false
+                            }
+                        ) { Text("تایید") }
+                    },
+                    dismissButton = {
+                        TextButton(onClick = {
+                            changeRoomNumber = false
+                        }) { Text("انصراف") }
+                    },
+                    shape = MaterialTheme.shapes.large
+                )
+            }
             Column(modifier = Modifier.width(55.dp)) {
                 Text(
                     text = "اتاق",
-                    style = MaterialTheme.typography.labelSmall,
+                    style = MaterialTheme.typography.labelLarge,
                     color = MaterialTheme.colorScheme.outline
                 )
                 Text(
+                    modifier = Modifier.clickable { changeRoomNumber = true },
                     text = room.roomNumber,
-                    style = MaterialTheme.typography.titleMedium,
+                    style = MaterialTheme.typography.titleLarge,
                     fontWeight = FontWeight.ExtraBold,
                     color = MaterialTheme.colorScheme.primary,
                     maxLines = 1,
@@ -411,7 +454,7 @@ fun RoomAdminCard(
                             value = guestName,
                             onValueChange = { guestName = it },
                             modifier = Modifier.fillMaxWidth(),
-                            textStyle = MaterialTheme.typography.bodySmall.copy(fontWeight = FontWeight.Bold),
+                            textStyle = MaterialTheme.typography.bodyLarge.copy(fontWeight = FontWeight.Bold),
                             shape = MaterialTheme.shapes.small,
                             singleLine = true
                         )
@@ -420,6 +463,7 @@ fun RoomAdminCard(
                         Button(
                             onClick = {
                                 onUpdate(
+                                    roomNumber,
                                     guestName,
                                     identificationId,
                                     checkIn,
@@ -429,8 +473,7 @@ fun RoomAdminCard(
                                     guestCount,
                                 )
                                 changeName = false
-                            },
-                            colors = ButtonDefaults.buttonColors(containerColor = MaterialTheme.colorScheme.error)
+                            }
                         ) { Text("تایید") }
                     },
                     dismissButton = {
@@ -444,13 +487,13 @@ fun RoomAdminCard(
             Column(modifier = Modifier.weight(1.2f)) {
                 Text(
                     text = "نام مهمان",
-                    style = MaterialTheme.typography.labelSmall,
+                    style = MaterialTheme.typography.labelLarge,
                     color = MaterialTheme.colorScheme.outline
                 )
                 Text(
                     modifier = Modifier.clickable { changeName = true },
                     text = room.guestName,
-                    style = MaterialTheme.typography.bodyMedium,
+                    style = MaterialTheme.typography.bodyLarge,
                     fontWeight = FontWeight.Bold,
                     maxLines = 1,
                     overflow = TextOverflow.Ellipsis
@@ -466,7 +509,7 @@ fun RoomAdminCard(
                             value = identificationId,
                             onValueChange = { identificationId = it },
                             modifier = Modifier.fillMaxWidth(),
-                            textStyle = MaterialTheme.typography.bodySmall.copy(fontWeight = FontWeight.Bold),
+                            textStyle = MaterialTheme.typography.bodyLarge.copy(fontWeight = FontWeight.Bold),
                             shape = MaterialTheme.shapes.small,
                             singleLine = true
                         )
@@ -475,6 +518,7 @@ fun RoomAdminCard(
                         Button(
                             onClick = {
                                 onUpdate(
+                                    roomNumber,
                                     guestName,
                                     identificationId,
                                     checkIn,
@@ -484,8 +528,7 @@ fun RoomAdminCard(
                                     guestCount,
                                 )
                                 changeId = false
-                            },
-                            colors = ButtonDefaults.buttonColors(containerColor = MaterialTheme.colorScheme.error)
+                            }
                         ) { Text("تایید") }
                     },
                     dismissButton = {
@@ -499,13 +542,13 @@ fun RoomAdminCard(
             Column(modifier = Modifier.weight(1f)) {
                 Text(
                     text = "شناسایی",
-                    style = MaterialTheme.typography.labelSmall,
+                    style = MaterialTheme.typography.labelLarge,
                     color = MaterialTheme.colorScheme.outline
                 )
                 Text(
                     modifier = Modifier.clickable { changeId = true },
                     text = room.identificationId.ifBlank { "0" },
-                    style = MaterialTheme.typography.bodyMedium,
+                    style = MaterialTheme.typography.bodyLarge,
                     fontWeight = FontWeight.Bold,
                     maxLines = 1,
                     overflow = TextOverflow.Ellipsis
@@ -518,7 +561,7 @@ fun RoomAdminCard(
             Column(modifier = Modifier.width(75.dp)) {
                 Text(
                     "تعداد",
-                    style = MaterialTheme.typography.labelSmall,
+                    style = MaterialTheme.typography.labelLarge,
                     color = MaterialTheme.colorScheme.outline
                 )
                 Box {
@@ -533,7 +576,7 @@ fun RoomAdminCard(
                         ) {
                             Text(
                                 text = "$guestCount نفر",
-                                style = MaterialTheme.typography.bodySmall,
+                                style = MaterialTheme.typography.bodyLarge,
                                 fontWeight = FontWeight.Bold,
                                 maxLines = 1
                             )
@@ -550,12 +593,13 @@ fun RoomAdminCard(
                                 text = {
                                     Text(
                                         "$number نفر",
-                                        style = MaterialTheme.typography.bodySmall
+                                        style = MaterialTheme.typography.bodyLarge
                                     )
                                 },
                                 onClick = {
                                     guestCount = number
                                     onUpdate(
+                                        roomNumber,
                                         guestName,
                                         identificationId,
                                         checkIn,
@@ -576,7 +620,7 @@ fun RoomAdminCard(
             Column(modifier = Modifier.weight(1.4f)) {
                 Text(
                     "بازه اقامت",
-                    style = MaterialTheme.typography.labelSmall,
+                    style = MaterialTheme.typography.labelLarge,
                     color = MaterialTheme.colorScheme.outline
                 )
                 Row(verticalAlignment = Alignment.CenterVertically) {
@@ -584,6 +628,7 @@ fun RoomAdminCard(
                         checkIn = date
                         checkInMillis = millis
                         onUpdate(
+                            roomNumber,
                             guestName,
                             identificationId,
                             checkIn,
@@ -595,7 +640,7 @@ fun RoomAdminCard(
                     }
                     Text(
                         "-",
-                        style = MaterialTheme.typography.bodySmall,
+                        style = MaterialTheme.typography.bodyLarge,
                         color = MaterialTheme.colorScheme.outline,
                         modifier = Modifier.padding(horizontal = 2.dp)
                     )
@@ -603,6 +648,7 @@ fun RoomAdminCard(
                         checkOut = date
                         checkOutMillis = millis
                         onUpdate(
+                            roomNumber,
                             guestName,
                             identificationId,
                             checkIn,
@@ -685,7 +731,7 @@ fun RoomManagementContent(state: AdminState, viewModel: AdminViewModel) {
         ) {
             Text(
                 "لیست اتاق‌های ثبت شده",
-                style = MaterialTheme.typography.titleMedium,
+                style = MaterialTheme.typography.titleLarge,
                 fontWeight = FontWeight.Bold,
                 maxLines = 1,
                 overflow = TextOverflow.Ellipsis
@@ -700,7 +746,7 @@ fun RoomManagementContent(state: AdminState, viewModel: AdminViewModel) {
                     Text(
                         "${it.size} اتاق",
                         modifier = Modifier.padding(horizontal = 10.dp, vertical = 2.dp),
-                        style = MaterialTheme.typography.labelSmall,
+                        style = MaterialTheme.typography.labelMedium,
                         color = MaterialTheme.colorScheme.primary,
                         fontWeight = FontWeight.Bold
                     )
@@ -718,10 +764,11 @@ fun RoomManagementContent(state: AdminState, viewModel: AdminViewModel) {
                     room = room,
                     availableFoods = state.foods,
                     reservations = state.reservations,
-                    onUpdate = { name, identificationId, inD, outD, inM, outM, count ->
+                    onUpdate = { rNum, name, identificationId, inD, outD, inM, outM, count ->
                         viewModel.onIntent(
                             AdminIntent.UpdateRoomStay(
                                 id = room.id,
+                                roomNumber = rNum,
                                 guestName = name,
                                 identificationId = identificationId,
                                 checkIn = inD,
@@ -793,7 +840,7 @@ fun MenuManagementContent(state: AdminState, viewModel: AdminViewModel) {
                         Text(
                             when (it) {
                                 DayType.EVEN -> "زوج"; DayType.ODD -> " فرد"; else -> "جمعه"
-                            }, style = MaterialTheme.typography.labelSmall
+                            }, style = MaterialTheme.typography.labelMedium
                         )
                     })
             }
@@ -810,14 +857,14 @@ fun MenuManagementContent(state: AdminState, viewModel: AdminViewModel) {
                     label = {
                         Text(
                             if (it == FoodType.LUNCH) "ناهار" else "شام",
-                            style = MaterialTheme.typography.labelSmall
+                            style = MaterialTheme.typography.labelMedium
                         )
                     })
             }
             Spacer(Modifier.weight(1f))
             val config =
                 state.menuConfigs.find { it.dayType == selectedDayType && it.foodType == selectedFoodType }
-            Text("فعال", style = MaterialTheme.typography.labelSmall)
+            Text("فعال", style = MaterialTheme.typography.labelMedium)
             Switch(
                 checked = config?.isEnabled ?: true,
                 onCheckedChange = {
@@ -842,7 +889,7 @@ fun MenuManagementContent(state: AdminState, viewModel: AdminViewModel) {
         ) {
             Text(
                 "لیست غذاها",
-                style = MaterialTheme.typography.titleMedium,
+                style = MaterialTheme.typography.titleLarge,
                 fontWeight = FontWeight.Bold,
                 maxLines = 1,
                 overflow = TextOverflow.Ellipsis
@@ -854,7 +901,7 @@ fun MenuManagementContent(state: AdminState, viewModel: AdminViewModel) {
             ) {
                 Icon(Icons.Default.Add, null, modifier = Modifier.size(16.dp))
                 Spacer(Modifier.width(4.dp))
-                Text("افزودن", style = MaterialTheme.typography.labelSmall)
+                Text("افزودن", style = MaterialTheme.typography.labelMedium)
             }
         }
 
@@ -875,13 +922,13 @@ fun MenuManagementContent(state: AdminState, viewModel: AdminViewModel) {
                             Text(
                                 food.name,
                                 fontWeight = FontWeight.Bold,
-                                style = MaterialTheme.typography.bodyMedium,
+                                style = MaterialTheme.typography.bodyLarge,
                                 maxLines = 1,
                                 overflow = TextOverflow.Ellipsis
                             )
                             Text(
                                 "ترتیب: ${food.displayOrder}",
-                                style = MaterialTheme.typography.labelSmall,
+                                style = MaterialTheme.typography.labelMedium,
                                 maxLines = 1,
                                 overflow = TextOverflow.Ellipsis
                             )
@@ -897,7 +944,7 @@ fun MenuManagementContent(state: AdminState, viewModel: AdminViewModel) {
                             },
                             modifier = Modifier.scale(0.7f)
                         )
-                        Text("فعال", style = MaterialTheme.typography.labelSmall, maxLines = 1)
+                        Text("فعال", style = MaterialTheme.typography.labelMedium, maxLines = 1)
                         Checkbox(
                             checked = food.isVisibleToUsers,
                             onCheckedChange = {
@@ -909,7 +956,7 @@ fun MenuManagementContent(state: AdminState, viewModel: AdminViewModel) {
                             },
                             modifier = Modifier.scale(0.7f)
                         )
-                        Text("نمایش", style = MaterialTheme.typography.labelSmall, maxLines = 1)
+                        Text("نمایش", style = MaterialTheme.typography.labelMedium, maxLines = 1)
                         IconButton(
                             onClick = { editingFood = food },
                             modifier = Modifier.size(28.dp)
@@ -963,15 +1010,15 @@ fun DailyDetailedReportContent(state: AdminState, viewModel: AdminViewModel) {
         ) {
             Column(modifier = Modifier.weight(1f)) {
                 Text(
-                    "گزارش تفصیلی روزانه",
-                    style = MaterialTheme.typography.titleMedium,
+                    "گزارش روزانه",
+                    style = MaterialTheme.typography.titleLarge,
                     fontWeight = FontWeight.Bold,
                     maxLines = 1,
                     overflow = TextOverflow.Ellipsis
                 )
                 Text(
                     "سفارشات به تفکیک اتاق",
-                    style = MaterialTheme.typography.labelSmall,
+                    style = MaterialTheme.typography.labelMedium,
                     color = MaterialTheme.colorScheme.onSurfaceVariant,
                     maxLines = 1,
                     overflow = TextOverflow.Ellipsis
@@ -997,7 +1044,7 @@ fun DailyDetailedReportContent(state: AdminState, viewModel: AdminViewModel) {
                 ) {
                     Icon(Icons.Default.Print, null, modifier = Modifier.size(16.dp)); Text(
                     " ناهار",
-                    style = MaterialTheme.typography.labelSmall
+                    style = MaterialTheme.typography.labelMedium
                 )
                 }
                 Button(
@@ -1009,7 +1056,7 @@ fun DailyDetailedReportContent(state: AdminState, viewModel: AdminViewModel) {
                 ) {
                     Icon(Icons.Default.Print, null, modifier = Modifier.size(16.dp)); Text(
                     " شام",
-                    style = MaterialTheme.typography.labelSmall
+                    style = MaterialTheme.typography.labelMedium
                 )
                 }
             }
@@ -1027,7 +1074,7 @@ fun DailyDetailedReportContent(state: AdminState, viewModel: AdminViewModel) {
                 Text(
                     "سفارشی برای $reportDate نیست.",
                     color = MaterialTheme.colorScheme.outline,
-                    style = MaterialTheme.typography.bodySmall
+                    style = MaterialTheme.typography.bodyMedium
                 )
             }
         } else {
@@ -1055,7 +1102,7 @@ fun DailyDetailedReportContent(state: AdminState, viewModel: AdminViewModel) {
                                 ) {
                                     Text(
                                         "اتاق ${res.roomNumber}",
-                                        style = MaterialTheme.typography.titleMedium,
+                                        style = MaterialTheme.typography.titleLarge,
                                         fontWeight = FontWeight.Bold,
                                         color = MaterialTheme.colorScheme.primary,
                                         maxLines = 1,
@@ -1063,7 +1110,7 @@ fun DailyDetailedReportContent(state: AdminState, viewModel: AdminViewModel) {
                                     )
                                     Text(
                                         room?.guestName ?: "---",
-                                        style = MaterialTheme.typography.bodySmall,
+                                        style = MaterialTheme.typography.bodyMedium,
                                         maxLines = 1,
                                         overflow = TextOverflow.Ellipsis,
                                         modifier = Modifier.weight(1f),
@@ -1077,13 +1124,13 @@ fun DailyDetailedReportContent(state: AdminState, viewModel: AdminViewModel) {
                                             "ناهار",
                                             fontWeight = FontWeight.Bold,
                                             color = MaterialTheme.colorScheme.secondary,
-                                            style = MaterialTheme.typography.labelSmall,
+                                            style = MaterialTheme.typography.labelMedium,
                                             maxLines = 1,
                                             overflow = TextOverflow.Ellipsis
                                         )
                                         if (lunchOrders.isEmpty()) Text(
                                             "-",
-                                            style = MaterialTheme.typography.labelSmall
+                                            style = MaterialTheme.typography.labelMedium
                                         )
                                         else lunchOrders.forEach { (foodId, count) ->
                                             Row(
@@ -1093,7 +1140,7 @@ fun DailyDetailedReportContent(state: AdminState, viewModel: AdminViewModel) {
                                             ) {
                                                 Text(
                                                     foodMap[foodId]?.name ?: "---",
-                                                    style = MaterialTheme.typography.labelSmall,
+                                                    style = MaterialTheme.typography.labelMedium,
                                                     maxLines = 1,
                                                     overflow = TextOverflow.Ellipsis,
                                                     modifier = Modifier.weight(1f)
@@ -1101,7 +1148,7 @@ fun DailyDetailedReportContent(state: AdminState, viewModel: AdminViewModel) {
                                                 Text(
                                                     "$count پرس",
                                                     fontWeight = FontWeight.Bold,
-                                                    style = MaterialTheme.typography.labelSmall,
+                                                    style = MaterialTheme.typography.labelMedium,
                                                     maxLines = 1
                                                 )
                                             }
@@ -1113,13 +1160,13 @@ fun DailyDetailedReportContent(state: AdminState, viewModel: AdminViewModel) {
                                             "شام",
                                             fontWeight = FontWeight.Bold,
                                             color = MaterialTheme.colorScheme.secondary,
-                                            style = MaterialTheme.typography.labelSmall,
+                                            style = MaterialTheme.typography.labelMedium,
                                             maxLines = 1,
                                             overflow = TextOverflow.Ellipsis
                                         )
                                         if (dinnerOrders.isEmpty()) Text(
                                             "-",
-                                            style = MaterialTheme.typography.labelSmall
+                                            style = MaterialTheme.typography.labelMedium
                                         )
                                         else dinnerOrders.forEach { (foodId, count) ->
                                             Row(
@@ -1129,7 +1176,7 @@ fun DailyDetailedReportContent(state: AdminState, viewModel: AdminViewModel) {
                                             ) {
                                                 Text(
                                                     foodMap[foodId]?.name ?: "---",
-                                                    style = MaterialTheme.typography.labelSmall,
+                                                    style = MaterialTheme.typography.labelMedium,
                                                     maxLines = 1,
                                                     overflow = TextOverflow.Ellipsis,
                                                     modifier = Modifier.weight(1f)
@@ -1137,7 +1184,7 @@ fun DailyDetailedReportContent(state: AdminState, viewModel: AdminViewModel) {
                                                 Text(
                                                     "$count پرس",
                                                     fontWeight = FontWeight.Bold,
-                                                    style = MaterialTheme.typography.labelSmall,
+                                                    style = MaterialTheme.typography.labelMedium,
                                                     maxLines = 1
                                                 )
                                             }
@@ -1224,7 +1271,7 @@ fun RoomFoodReservationsDialog(
             Text(
                 "غذای اتاق ${room.roomNumber} - ${room.guestName}",
                 fontWeight = FontWeight.Bold,
-                style = MaterialTheme.typography.titleMedium,
+                style = MaterialTheme.typography.titleLarge,
                 maxLines = 1,
                 overflow = TextOverflow.Ellipsis
             )
@@ -1244,7 +1291,7 @@ fun RoomFoodReservationsDialog(
                                     date,
                                     fontWeight = FontWeight.Bold,
                                     color = MaterialTheme.colorScheme.primary,
-                                    style = MaterialTheme.typography.bodySmall,
+                                    style = MaterialTheme.typography.bodyMedium,
                                     maxLines = 1
                                 )
                                 HorizontalDivider(modifier = Modifier.padding(vertical = 6.dp))
@@ -1259,7 +1306,7 @@ fun RoomFoodReservationsDialog(
                                         Text(
                                             "مهمان ${index + 1}:",
                                             modifier = Modifier.width(60.dp),
-                                            style = MaterialTheme.typography.labelSmall,
+                                            style = MaterialTheme.typography.labelMedium,
                                             maxLines = 1,
                                             overflow = TextOverflow.Ellipsis
                                         )
@@ -1310,7 +1357,7 @@ fun AdminFoodSelectionItem(
         if (selectedFood == null) {
             Text(
                 text = "عدم رزرو $label",
-                style = MaterialTheme.typography.labelSmall.copy(fontSize = 12.sp),
+                style = MaterialTheme.typography.labelMedium.copy(fontSize = 14.sp),
                 maxLines = 1,
                 overflow = TextOverflow.Ellipsis,
                 fontWeight = FontWeight.Bold,
@@ -1336,7 +1383,7 @@ fun AdminFoodSelectionItem(
                     Text(
                         modifier = Modifier.weight(1f),
                         text = selectedFood.name,
-                        style = MaterialTheme.typography.labelSmall.copy(fontSize = 12.sp),
+                        style = MaterialTheme.typography.labelMedium.copy(fontSize = 14.sp),
                         maxLines = 1,
                         overflow = TextOverflow.Ellipsis,
                         fontWeight = FontWeight.Bold,
@@ -1355,7 +1402,7 @@ fun AdminFoodSelectionItem(
                 text = {
                     Text(
                         "بدون انتخاب",
-                        style = MaterialTheme.typography.labelSmall
+                        style = MaterialTheme.typography.labelMedium
                     )
                 },
                 onClick = { onSelect(null); expanded = false },
@@ -1365,7 +1412,7 @@ fun AdminFoodSelectionItem(
                     text = {
                         Text(
                             food.name,
-                            style = MaterialTheme.typography.labelSmall
+                            style = MaterialTheme.typography.labelMedium
                         )
                     },
                     onClick = { onSelect(food.id); expanded = false },
@@ -1393,7 +1440,7 @@ fun DatePickerFieldSmall(value: String, onDateSelected: (String, Long) -> Unit) 
         Text(
             text = value.ifBlank { "انتخاب" },
             modifier = Modifier.padding(horizontal = 6.dp, vertical = 2.dp),
-            style = MaterialTheme.typography.labelSmall,
+            style = MaterialTheme.typography.labelMedium,
             fontWeight = FontWeight.Bold,
             color = MaterialTheme.colorScheme.onSurface,
             maxLines = 1,
@@ -1434,7 +1481,7 @@ fun ReservationSummary(
             Text(
                 "رزروی برای تاریخ‌های آینده ثبت نشده است.",
                 modifier = Modifier.padding(16.dp),
-                style = MaterialTheme.typography.bodySmall,
+                style = MaterialTheme.typography.bodyMedium,
                 color = MaterialTheme.colorScheme.outline,
                 maxLines = 1,
                 overflow = TextOverflow.Ellipsis
@@ -1464,7 +1511,7 @@ fun ReservationSummary(
                         Spacer(Modifier.width(6.dp))
                         Text(
                             date,
-                            style = MaterialTheme.typography.bodyMedium,
+                            style = MaterialTheme.typography.bodyLarge,
                             fontWeight = FontWeight.Bold,
                             color = MaterialTheme.colorScheme.primary,
                             maxLines = 1,
@@ -1481,7 +1528,7 @@ fun ReservationSummary(
                         Column(modifier = Modifier.padding(bottom = 8.dp)) {
                             Text(
                                 "اتاق ${res.roomNumber} — ${room?.guestName ?: "نامعلوم"}",
-                                style = MaterialTheme.typography.bodySmall,
+                                style = MaterialTheme.typography.bodyMedium,
                                 fontWeight = FontWeight.Bold,
                                 maxLines = 1,
                                 overflow = TextOverflow.Ellipsis
@@ -1495,7 +1542,7 @@ fun ReservationSummary(
                                     Text(
                                         text = "مهمان ${selection.guestIndex + 1} :",
                                         modifier = Modifier.width(60.dp),
-                                        style = MaterialTheme.typography.labelSmall,
+                                        style = MaterialTheme.typography.labelMedium,
                                         color = MaterialTheme.colorScheme.onSurfaceVariant,
                                         maxLines = 1,
                                         overflow = TextOverflow.Ellipsis
@@ -1576,7 +1623,7 @@ fun TodayReservationDetail(state: AdminState) {
                 Spacer(Modifier.width(10.dp))
                 Text(
                     "کل سفارشات امروز ($today)",
-                    style = MaterialTheme.typography.titleMedium,
+                    style = MaterialTheme.typography.titleLarge,
                     fontWeight = FontWeight.Bold,
                     maxLines = 1,
                     overflow = TextOverflow.Ellipsis
@@ -1610,7 +1657,7 @@ fun MealSummaryBox(
         Column(modifier = Modifier.padding(12.dp)) {
             Text(
                 label,
-                style = MaterialTheme.typography.labelMedium,
+                style = MaterialTheme.typography.labelLarge,
                 fontWeight = FontWeight.Bold,
                 color = MaterialTheme.colorScheme.primary,
                 maxLines = 1,
@@ -1620,7 +1667,7 @@ fun MealSummaryBox(
             if (foodIds.isEmpty()) {
                 Text(
                     "سفارشی نیست",
-                    style = MaterialTheme.typography.labelSmall,
+                    style = MaterialTheme.typography.labelMedium,
                     color = MaterialTheme.colorScheme.outline,
                     maxLines = 1
                 )
@@ -1632,14 +1679,14 @@ fun MealSummaryBox(
                     ) {
                         Text(
                             foodMap[id]?.name ?: id,
-                            style = MaterialTheme.typography.labelSmall,
+                            style = MaterialTheme.typography.labelMedium,
                             maxLines = 1,
                             overflow = TextOverflow.Ellipsis,
                             modifier = Modifier.weight(1f)
                         ); Text(
                         "${list.size}",
                         fontWeight = FontWeight.Bold,
-                        style = MaterialTheme.typography.labelSmall,
+                        style = MaterialTheme.typography.labelMedium,
                         maxLines = 1
                     )
                     }
@@ -1656,13 +1703,13 @@ fun MealSummaryBox(
                     Text(
                         "مجموع",
                         fontWeight = FontWeight.Bold,
-                        style = MaterialTheme.typography.labelSmall,
+                        style = MaterialTheme.typography.labelMedium,
                         maxLines = 1
                     ); Text(
                     "${foodIds.size} پرس",
                     fontWeight = FontWeight.ExtraBold,
                     color = MaterialTheme.colorScheme.primary,
-                    style = MaterialTheme.typography.labelSmall,
+                    style = MaterialTheme.typography.labelMedium,
                     maxLines = 1
                 )
                 }
@@ -1680,7 +1727,7 @@ fun TodayReservationDetailByRoom(state: AdminState, onIntent: (AdminIntent) -> U
     Column(Modifier.padding(top = 10.dp)) {
         Text(
             "تحویل غذای امروز",
-            style = MaterialTheme.typography.titleMedium,
+            style = MaterialTheme.typography.titleLarge,
             fontWeight = FontWeight.Bold,
             color = MaterialTheme.colorScheme.primary,
             maxLines = 1,
@@ -1688,7 +1735,7 @@ fun TodayReservationDetailByRoom(state: AdminState, onIntent: (AdminIntent) -> U
         )
         Text(
             "وضعیت توزیع وعده‌ها",
-            style = MaterialTheme.typography.labelSmall,
+            style = MaterialTheme.typography.labelMedium,
             color = MaterialTheme.colorScheme.onSurfaceVariant,
             modifier = Modifier.padding(bottom = 12.dp),
             maxLines = 1,
@@ -1703,7 +1750,7 @@ fun TodayReservationDetailByRoom(state: AdminState, onIntent: (AdminIntent) -> U
                 Text(
                     "سفارشی برای امروز ثبت نشده است.",
                     modifier = Modifier.padding(16.dp),
-                    style = MaterialTheme.typography.bodySmall,
+                    style = MaterialTheme.typography.bodyMedium,
                     color = MaterialTheme.colorScheme.outline,
                     textAlign = TextAlign.Center,
                     maxLines = 1,
@@ -1755,7 +1802,7 @@ fun RoomDeliveryCard(
                     Spacer(Modifier.width(8.dp))
                     Text(
                         "اتاق ${res.roomNumber}",
-                        style = MaterialTheme.typography.titleMedium,
+                        style = MaterialTheme.typography.titleLarge,
                         fontWeight = FontWeight.ExtraBold,
                         color = MaterialTheme.colorScheme.primary,
                         maxLines = 1,
@@ -1825,7 +1872,7 @@ fun GuestDeliveryRow(
                         modifier = Modifier.size(14.dp)
                     ); Spacer(Modifier.width(4.dp)); Text(
                     "مهمان ${selection.guestIndex + 1}",
-                    style = MaterialTheme.typography.labelSmall,
+                    style = MaterialTheme.typography.labelMedium,
                     fontWeight = FontWeight.Bold,
                     maxLines = 1,
                     overflow = TextOverflow.Ellipsis
@@ -1918,7 +1965,7 @@ fun DeliveryChip(
         }
         Text(
             if (isDelivered) deliveredLabel else deliverLabel,
-            style = MaterialTheme.typography.labelSmall.copy(fontSize = 11.sp),
+            style = MaterialTheme.typography.labelMedium.copy(fontSize = 13.sp),
             fontWeight = FontWeight.Bold,
             maxLines = 1
         )
@@ -1990,7 +2037,7 @@ fun AddRoomDialog(onDismiss: () -> Unit, onConfirm: (Room) -> Unit) {
                             ) {
                                 Text(
                                     "تعداد مهمان: $guestCount",
-                                    style = MaterialTheme.typography.bodyMedium
+                                    style = MaterialTheme.typography.bodyLarge
                                 )
                                 Spacer(Modifier.weight(1f))
                                 Icon(Icons.Default.ArrowDropDown, null)
@@ -2069,7 +2116,7 @@ fun DatePickerField(
         Column(modifier = Modifier.padding(8.dp)) {
             Text(
                 label,
-                style = MaterialTheme.typography.labelSmall,
+                style = MaterialTheme.typography.labelMedium,
                 color = MaterialTheme.colorScheme.outline,
                 maxLines = 1
             )
@@ -2086,7 +2133,7 @@ fun DatePickerField(
                 Spacer(Modifier.width(6.dp))
                 Text(
                     value.ifBlank { "انتخاب" },
-                    style = MaterialTheme.typography.bodySmall,
+                    style = MaterialTheme.typography.bodyMedium,
                     fontWeight = FontWeight.Bold,
                     maxLines = 1
                 )
@@ -2117,7 +2164,7 @@ fun RoomHistoryContent(
         ) {
             Text(
                 text = "تاریخچه اتاق‌های ثبت شده",
-                style = MaterialTheme.typography.titleMedium,
+                style = MaterialTheme.typography.titleLarge,
                 fontWeight = FontWeight.Bold,
                 maxLines = 1,
                 overflow = TextOverflow.Ellipsis
@@ -2132,7 +2179,7 @@ fun RoomHistoryContent(
                     Text(
                         "${it.size} اتاق",
                         modifier = Modifier.padding(horizontal = 10.dp, vertical = 2.dp),
-                        style = MaterialTheme.typography.labelSmall,
+                        style = MaterialTheme.typography.labelMedium,
                         color = MaterialTheme.colorScheme.primary,
                         fontWeight = FontWeight.Bold
                     )
@@ -2161,12 +2208,12 @@ fun RoomHistoryContent(
                         Column(modifier = Modifier.width(55.dp)) {
                             Text(
                                 text = "اتاق",
-                                style = MaterialTheme.typography.labelSmall,
+                                style = MaterialTheme.typography.labelMedium,
                                 color = MaterialTheme.colorScheme.outline
                             )
                             Text(
                                 text = room.roomNumber,
-                                style = MaterialTheme.typography.titleMedium,
+                                style = MaterialTheme.typography.titleLarge,
                                 fontWeight = FontWeight.ExtraBold,
                                 color = MaterialTheme.colorScheme.primary,
                                 maxLines = 1,
@@ -2177,12 +2224,12 @@ fun RoomHistoryContent(
                         Column(modifier = Modifier.weight(1.2f)) {
                             Text(
                                 text = "نام مهمان",
-                                style = MaterialTheme.typography.labelSmall,
+                                style = MaterialTheme.typography.labelMedium,
                                 color = MaterialTheme.colorScheme.outline
                             )
                             Text(
                                 text = room.guestName,
-                                style = MaterialTheme.typography.bodyMedium,
+                                style = MaterialTheme.typography.bodyLarge,
                                 fontWeight = FontWeight.Bold,
                                 maxLines = 1,
                                 overflow = TextOverflow.Ellipsis
@@ -2192,12 +2239,12 @@ fun RoomHistoryContent(
                         Column(modifier = Modifier.weight(1f)) {
                             Text(
                                 text = "شناسایی",
-                                style = MaterialTheme.typography.labelSmall,
+                                style = MaterialTheme.typography.labelMedium,
                                 color = MaterialTheme.colorScheme.outline
                             )
                             Text(
                                 text = room.identificationId.ifBlank { "0" },
-                                style = MaterialTheme.typography.bodyMedium,
+                                style = MaterialTheme.typography.bodyLarge,
                                 fontWeight = FontWeight.Bold,
                                 maxLines = 1,
                                 overflow = TextOverflow.Ellipsis
@@ -2210,12 +2257,12 @@ fun RoomHistoryContent(
                         Column(modifier = Modifier.width(75.dp)) {
                             Text(
                                 text = "تعداد",
-                                style = MaterialTheme.typography.labelSmall,
+                                style = MaterialTheme.typography.labelMedium,
                                 color = MaterialTheme.colorScheme.outline
                             )
                             Text(
                                 text = room.guestCount.toString(),
-                                style = MaterialTheme.typography.labelSmall,
+                                style = MaterialTheme.typography.labelMedium,
                                 color = MaterialTheme.colorScheme.outline
                             )
                         }
@@ -2224,25 +2271,25 @@ fun RoomHistoryContent(
                         Column(modifier = Modifier.weight(1.4f)) {
                             Text(
                                 "بازه اقامت",
-                                style = MaterialTheme.typography.labelSmall,
+                                style = MaterialTheme.typography.labelMedium,
                                 color = MaterialTheme.colorScheme.outline
                             )
                             Row(verticalAlignment = Alignment.CenterVertically) {
                                 Text(
                                     text = room.checkInDate,
-                                    style = MaterialTheme.typography.bodySmall,
+                                    style = MaterialTheme.typography.bodyMedium,
                                     color = MaterialTheme.colorScheme.outline,
                                     modifier = Modifier.padding(horizontal = 2.dp)
                                 )
                                 Text(
                                     text = "-",
-                                    style = MaterialTheme.typography.bodySmall,
+                                    style = MaterialTheme.typography.bodyMedium,
                                     color = MaterialTheme.colorScheme.outline,
                                     modifier = Modifier.padding(horizontal = 2.dp)
                                 )
                                 Text(
                                     text = room.checkOutDate,
-                                    style = MaterialTheme.typography.bodySmall,
+                                    style = MaterialTheme.typography.bodyMedium,
                                     color = MaterialTheme.colorScheme.outline,
                                     modifier = Modifier.padding(horizontal = 2.dp)
                                 )
@@ -2259,12 +2306,12 @@ fun RoomHistoryContent(
 
                             Text(
                                 "ناهار: $totalLunch",
-                                style = MaterialTheme.typography.labelSmall,
+                                style = MaterialTheme.typography.labelMedium,
                                 color = MaterialTheme.colorScheme.outline
                             )
                             Text(
                                 "شام: $totalDinner",
-                                style = MaterialTheme.typography.labelSmall,
+                                style = MaterialTheme.typography.labelMedium,
                                 color = MaterialTheme.colorScheme.outline
                             )
                         }
