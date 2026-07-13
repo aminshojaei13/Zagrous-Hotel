@@ -1591,7 +1591,11 @@ fun ReservationSummary(
 
     summaryByDate.forEach { (date, dailyResList) ->
         val validRes =
-            dailyResList.filter { res -> res.guestMealSelections.any { it.lunchFoodId != null || it.dinnerFoodId != null } }
+            dailyResList.filter { res ->
+                res.guestMealSelections.any { it.lunchFoodId != null || it.dinnerFoodId != null}
+                res.breakfastCount > 0
+            }
+        println("vr $validRes")
         if (validRes.isNotEmpty()) {
             Surface(
                 modifier = Modifier.fillMaxWidth().padding(vertical = 6.dp),
@@ -2196,46 +2200,6 @@ fun AddRoomDialog(onDismiss: () -> Unit, onConfirm: (Room) -> Unit) {
                                         if (breakfastCount > num) breakfastCount = num
                                         expandedGuest = false
                                     })
-                            }
-                        }
-                    }
-                }
-
-                Row(
-                    modifier = Modifier.fillMaxWidth(),
-                    verticalAlignment = Alignment.CenterVertically
-                ) {
-                    Checkbox(checked = hasBreakfast, onCheckedChange = { 
-                        hasBreakfast = it
-                        if (it) breakfastCount = guestCount
-                    })
-                    Text("دارای صبحانه (سلف سرویس)")
-                    if (hasBreakfast) {
-                        Spacer(Modifier.width(8.dp))
-                        Box {
-                            Surface(
-                                onClick = { expandedBreakfast = true },
-                                modifier = Modifier.width(100.dp).height(40.dp),
-                                shape = MaterialTheme.shapes.medium,
-                                border = BorderStroke(1.dp, MaterialTheme.colorScheme.outline),
-                                color = Color.Transparent
-                            ) {
-                                Row(
-                                    modifier = Modifier.padding(horizontal = 8.dp),
-                                    verticalAlignment = Alignment.CenterVertically
-                                ) {
-                                    Text("$breakfastCount نفر")
-                                    Spacer(Modifier.weight(1f))
-                                    Icon(Icons.Default.ArrowDropDown, null)
-                                }
-                            }
-                            DropdownMenu(expanded = expandedBreakfast, onDismissRequest = { expandedBreakfast = false }) {
-                                (1..guestCount).forEach { num ->
-                                    DropdownMenuItem(text = { Text("$num نفر") }, onClick = {
-                                        breakfastCount = num
-                                        expandedBreakfast = false
-                                    })
-                                }
                             }
                         }
                     }
