@@ -2,18 +2,12 @@ package com.braveboy.hotelzagrous.app.shared.features.reservation
 
 import com.braveboy.hotelzagrous.app.shared.data.HotelRepository
 import com.braveboy.hotelzagrous.app.shared.mvi.BaseViewModel
-import com.braveboy.hotelzagrous.core.DateUtils
-import com.braveboy.hotelzagrous.core.DayType
-import com.braveboy.hotelzagrous.core.FoodItem
 import com.braveboy.hotelzagrous.core.FoodReservation
 import com.braveboy.hotelzagrous.core.FoodType
 import com.braveboy.hotelzagrous.core.GuestMealSelection
-import com.braveboy.hotelzagrous.core.MenuConfig
 import com.braveboy.hotelzagrous.core.normalizeDigits
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.launch
-import hotelzagrous.app.shared.generated.resources.Res
-import hotelzagrous.app.shared.generated.resources.*
 
 class ReservationViewModel(
     private val repository: HotelRepository,
@@ -45,6 +39,7 @@ class ReservationViewModel(
             is ReservationIntent.UpdateIdentificationId -> updateState { it.copy(identificationId = intent.identificationId) }
             is ReservationIntent.Login -> login()
             is ReservationIntent.ChangeFood -> updateFoodSelection(intent)
+            is ReservationIntent.ChangeBreakfastCount -> updateBreakfastCount(intent)
             is ReservationIntent.ConfirmReservation -> submit()
             is ReservationIntent.ToggleLanguage -> updateState { it.copy(isArabic = !it.isArabic) }
         }
@@ -63,18 +58,21 @@ class ReservationViewModel(
             updateState { it.copy(isLoading = true, error = null) }
             runCatching {
                 val room = repository.getRoom(currentRoomNumber)
-                val reservations = if (room != null) repository.getReservationsForRoom(room.roomNumber) else emptyList()
+                val reservations =
+                    if (room != null) repository.getReservationsForRoom(room.roomNumber) else emptyList()
                 room to reservations
             }.onSuccess { (room, reservations) ->
                 if (room != null) {
                     if (room.identificationId == currentIdentificationId) {
-                        updateState { it.copy(
-                            room = room,
-                            tempReservations = reservations,
-                            isLoggedIn = true,
-                            isLoading = false,
-                            error = null
-                        ) }
+                        updateState {
+                            it.copy(
+                                room = room,
+                                tempReservations = reservations,
+                                isLoggedIn = true,
+                                isLoading = false,
+                                error = null
+                            )
+                        }
                     } else {
                         updateState { it.copy(isLoading = false, error = "error_id_mismatch") }
                     }
@@ -82,7 +80,7 @@ class ReservationViewModel(
                     updateState { it.copy(isLoading = false, error = "error_room_not_found") }
                 }
             }.onFailure { e ->
-                updateState { it.copy(isLoading = false, error = "error_connection") }
+                updateState { it.copy(isLoading = false, error = "error_connection -> ${e.message}") }
             }
         }
     }
@@ -104,7 +102,23 @@ class ReservationViewModel(
             }
             updatedSelections.add(newSelection)
 
-            val newRes = existingRes.copy(guestMealSelections = updatedSelections.sortedBy { it.guestIndex })
+            val newRes =
+                existingRes.copy(guestMealSelections = updatedSelections.sortedBy { it.guestIndex })
+
+            updatedTemp.removeAll { it.date == intent.date }
+            updatedTemp.add(newRes)
+
+            currentState.copy(tempReservations = updatedTemp)
+        }
+    }
+
+    private fun updateBreakfastCount(intent: ReservationIntent.ChangeBreakfastCount) {
+        updateState { currentState ->
+            val updatedTemp = currentState.tempReservations.toMutableList()
+            val existingRes = updatedTemp.find { it.date == intent.date }
+                ?: FoodReservation(currentState.roomNumber, intent.date)
+
+            val newRes = existingRes.copy(breakfastCount = intent.count)
 
             updatedTemp.removeAll { it.date == intent.date }
             updatedTemp.add(newRes)

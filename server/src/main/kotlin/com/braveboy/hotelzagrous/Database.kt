@@ -17,6 +17,10 @@ class HotelDatabase(
     databasePath: String = "hotel-zagrous.sqlite"
 ) {
     private val connection: Connection = DriverManager.getConnection("jdbc:sqlite:$databasePath")
+    private val json = Json { 
+        ignoreUnknownKeys = true 
+        encodeDefaults = true
+    }
 
     init {
         createTables()
@@ -307,7 +311,7 @@ class HotelDatabase(
 
     fun getReservations(): List<FoodReservation> = connection.prepareStatement(
         """
-        SELECT room_number, date, guest_meal_selections
+        SELECT room_number, date, guest_meal_selections, breakfast_count
         FROM food_reservations
         ORDER BY date, room_number
         """.trimIndent()
@@ -317,15 +321,17 @@ class HotelDatabase(
                 while (rows.next()) {
                     val selectionsJson = rows.getString("guest_meal_selections")
                     val selections = try {
-                        Json.decodeFromString<List<GuestMealSelection>>(selectionsJson)
+                        json.decodeFromString<List<GuestMealSelection>>(selectionsJson)
                     } catch (e: Exception) {
+                        println("list empty with error -> ${e.message}")
                         emptyList()
                     }
                     add(
                         FoodReservation(
                             roomNumber = rows.getString("room_number"),
                             date = rows.getString("date"),
-                            guestMealSelections = selections
+                            guestMealSelections = selections,
+                            breakfastCount = rows.getInt("breakfast_count")
                         )
                     )
                 }
@@ -336,7 +342,7 @@ class HotelDatabase(
     fun getReservationsForRoom(roomNumber: String): List<FoodReservation> =
         connection.prepareStatement(
             """
-        SELECT room_number, date, guest_meal_selections
+        SELECT room_number, date, guest_meal_selections, breakfast_count
         FROM food_reservations
         WHERE room_number = ?
         ORDER BY date
@@ -350,13 +356,15 @@ class HotelDatabase(
                         val selections = try {
                             Json.decodeFromString<List<GuestMealSelection>>(selectionsJson)
                         } catch (e: Exception) {
+                            println("list empty with error -> ${e.message}")
                             emptyList()
                         }
                         add(
                             FoodReservation(
                                 roomNumber = rows.getString("room_number"),
                                 date = rows.getString("date"),
-                                guestMealSelections = selections
+                                guestMealSelections = selections,
+                                breakfastCount = rows.getInt("breakfast_count")
                             )
                         )
                     }
@@ -367,15 +375,17 @@ class HotelDatabase(
     fun saveReservation(reservation: FoodReservation) {
         connection.prepareStatement(
             """
-            INSERT INTO food_reservations(room_number, date, guest_meal_selections)
-            VALUES(?, ?, ?)
+            INSERT INTO food_reservations(room_number, date, guest_meal_selections, breakfast_count)
+            VALUES(?, ?, ?, ?)
             ON CONFLICT(room_number, date) DO UPDATE SET
-                guest_meal_selections = excluded.guest_meal_selections
+                guest_meal_selections = excluded.guest_meal_selections,
+                breakfast_count = excluded.breakfast_count
             """.trimIndent()
         ).use { statement ->
             statement.setString(1, reservation.roomNumber)
             statement.setString(2, reservation.date)
-            statement.setString(3, Json.encodeToString(reservation.guestMealSelections))
+            statement.setString(3, json.encodeToString(reservation.guestMealSelections))
+            statement.setInt(4, reservation.breakfastCount)
             statement.executeUpdate()
         }
     }
@@ -432,6 +442,7 @@ class HotelDatabase(
                     room_number TEXT NOT NULL,
                     date TEXT NOT NULL,
                     guest_meal_selections TEXT NOT NULL,
+                    breakfast_count INTEGER NOT NULL DEFAULT 0,
                     PRIMARY KEY(room_number, date),
                     FOREIGN KEY(room_number) REFERENCES rooms(room_number)
                 )
@@ -441,6 +452,16 @@ class HotelDatabase(
     }
 
     private fun migrateIfNeeded() {
+        val resColumns = mutableSetOf<String>()
+        connection.metaData.getColumns(null, null, "food_reservations", null).use { rs ->
+            while (rs.next()) {
+                resColumns.add(rs.getString("COLUMN_NAME"))
+            }
+        }
+        if (!resColumns.contains("breakfast_count")) {
+            connection.createStatement().use { it.executeUpdate("ALTER TABLE food_reservations ADD COLUMN breakfast_count INTEGER NOT NULL DEFAULT 0") }
+        }
+
         val roomColumns = mutableSetOf<String>()
         connection.metaData.getColumns(null, null, "rooms", null).use { rs ->
             while (rs.next()) {

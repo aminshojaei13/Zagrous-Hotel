@@ -69,6 +69,7 @@ import androidx.compose.ui.unit.dp
 import com.braveboy.hotelzagrous.core.DateUtils
 import com.braveboy.hotelzagrous.core.DayType
 import com.braveboy.hotelzagrous.core.FoodItem
+import com.braveboy.hotelzagrous.core.FoodReservation
 import com.braveboy.hotelzagrous.core.FoodType
 import kotlin.time.Clock
 
@@ -535,6 +536,20 @@ fun FoodCard(
 
             Spacer(Modifier.height(20.dp))
 
+            // Daily Breakfast Selection
+            DailyBreakfastRow(
+                reservation = reservation,
+                guestCount = guestCount,
+                strings = strings,
+                onCountChange = { viewModel.onIntent(ReservationIntent.ChangeBreakfastCount(date, it)) }
+            )
+
+            HorizontalDivider(
+                modifier = Modifier.padding(vertical = 16.dp),
+                thickness = 1.dp,
+                color = MaterialTheme.colorScheme.primary.copy(alpha = 0.1f)
+            )
+
             repeat(guestCount) { index ->
                 val guestSelection =
                     reservation?.guestMealSelections?.find { it.guestIndex == index }
@@ -630,6 +645,97 @@ fun FoodCard(
                         modifier = Modifier.padding(vertical = 12.dp),
                         thickness = 0.5.dp,
                         color = MaterialTheme.colorScheme.surfaceVariant
+                    )
+                }
+            }
+        }
+    }
+}
+
+@Composable
+fun DailyBreakfastRow(
+    reservation: FoodReservation?,
+    guestCount: Int,
+    strings: AppStrings,
+    onCountChange: (Int) -> Unit
+) {
+    var expanded by remember { mutableStateOf(false) }
+    val currentCount = reservation?.breakfastCount ?: 0
+
+    Row(
+        modifier = Modifier.fillMaxWidth(),
+        verticalAlignment = Alignment.CenterVertically,
+        horizontalArrangement = Arrangement.SpaceBetween
+    ) {
+        Row(verticalAlignment = Alignment.CenterVertically, modifier = Modifier.weight(1f)) {
+            Surface(
+                color = if (currentCount > 0) MaterialTheme.colorScheme.primaryContainer else MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.5f),
+                shape = CircleShape,
+                modifier = Modifier.size(32.dp)
+            ) {
+                Box(contentAlignment = Alignment.Center) {
+                    Icon(
+                        Icons.Default.WbSunny,
+                        null,
+                        tint = if (currentCount > 0) MaterialTheme.colorScheme.primary else MaterialTheme.colorScheme.outline,
+                        modifier = Modifier.size(16.dp)
+                    )
+                }
+            }
+            Spacer(Modifier.width(12.dp))
+            Column {
+                Text(
+                    strings.breakfast,
+                    style = MaterialTheme.typography.titleSmall,
+                    fontWeight = FontWeight.Bold,
+                    color = if (currentCount > 0) MaterialTheme.colorScheme.primary else MaterialTheme.colorScheme.onSurface
+                )
+                Text(
+                    "سلف سرویس",
+                    style = MaterialTheme.typography.labelSmall,
+                    color = MaterialTheme.colorScheme.outline
+                )
+            }
+        }
+
+        Box {
+            Surface(
+                onClick = { expanded = true },
+                shape = MaterialTheme.shapes.medium,
+                color = if (currentCount > 0) MaterialTheme.colorScheme.primary else MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.5f),
+                border = BorderStroke(1.dp, if (currentCount > 0) MaterialTheme.colorScheme.primary else MaterialTheme.colorScheme.outlineVariant)
+            ) {
+                Row(
+                    modifier = Modifier.padding(horizontal = 12.dp, vertical = 6.dp),
+                    verticalAlignment = Alignment.CenterVertically
+                ) {
+                    Text(
+                        text = if (currentCount == 0) "بدون صبحانه" else "$currentCount نفر",
+                        style = MaterialTheme.typography.bodyMedium,
+                        fontWeight = FontWeight.Bold,
+                        color = if (currentCount > 0) MaterialTheme.colorScheme.onPrimary else MaterialTheme.colorScheme.onSurfaceVariant
+                    )
+                    Spacer(Modifier.width(4.dp))
+                    Icon(
+                        Icons.Default.ArrowDropDown,
+                        null,
+                        tint = if (currentCount > 0) MaterialTheme.colorScheme.onPrimary else MaterialTheme.colorScheme.outline,
+                        modifier = Modifier.size(18.dp)
+                    )
+                }
+            }
+
+            DropdownMenu(expanded = expanded, onDismissRequest = { expanded = false }) {
+                DropdownMenuItem(
+                    text = { Text("بدون صبحانه") },
+                    onClick = { onCountChange(0); expanded = false },
+                    leadingIcon = { Icon(Icons.Default.Block, null, modifier = Modifier.size(18.dp)) }
+                )
+                (1..guestCount).forEach { num ->
+                    DropdownMenuItem(
+                        text = { Text("$num نفر") },
+                        onClick = { onCountChange(num); expanded = false },
+                        trailingIcon = { if (currentCount == num) Icon(Icons.Default.Check, null, tint = MaterialTheme.colorScheme.primary) }
                     )
                 }
             }
@@ -783,6 +889,7 @@ interface AppStrings {
     val guestSelection: (Int) -> String
     val lunch: String
     val dinner: String
+    val breakfast: String
     val noSelection: String
     val notSelected: String
     val switchLanguage: String
@@ -807,6 +914,7 @@ object FarsiStrings : AppStrings {
     override val guestSelection: (Int) -> String = { "انتخاب مهمان $it:" }
     override val lunch = "وعده ناهار"
     override val dinner = "وعده شام"
+    override val breakfast = "صبحانه سلف"
     override val noSelection = "عدم انتخاب (هیچکدام)"
     override val notSelected = "انتخاب نشده"
     override val switchLanguage = "تغییر زبان"
@@ -831,6 +939,7 @@ object ArabicStrings : AppStrings {
     override val guestSelection: (Int) -> String = { "اختيار الضيف $it:" }
     override val lunch = "وجبة الغداء"
     override val dinner = "وجبة العشاء"
+    override val breakfast = "إفطار سلف"
     override val noSelection = "عدم الاختيار (لا شيء)"
     override val notSelected = "لم يتم الاختيار"
     override val switchLanguage = "تغيير اللغة"

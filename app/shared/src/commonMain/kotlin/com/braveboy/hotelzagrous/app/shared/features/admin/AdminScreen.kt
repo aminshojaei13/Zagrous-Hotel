@@ -361,7 +361,8 @@ fun RoomAdminCard(
     reservations: List<FoodReservation>,
     onUpdate: (String, String, String, String, String, Long, Long, Int, Boolean, Int) -> Unit,
     onDelete: () -> Unit,
-    onFoodChange: (String, Int, String?, com.braveboy.hotelzagrous.core.FoodType) -> Unit
+    onFoodChange: (String, Int, String?, FoodType) -> Unit,
+    onBreakfastChange: (String, Int) -> Unit
 ) {
     var roomNumber by remember(room) { mutableStateOf(room.roomNumber) }
     var guestName by remember(room) { mutableStateOf(room.guestName) }
@@ -753,7 +754,8 @@ fun RoomAdminCard(
             availableFoods = availableFoods,
             reservations = reservations.filter { it.roomNumber == room.roomNumber },
             onDismiss = { showFoodDialog = false },
-            onFoodChange = onFoodChange
+            onFoodChange = onFoodChange,
+            onBreakfastChange = onBreakfastChange
         )
     }
 
@@ -847,6 +849,15 @@ fun RoomManagementContent(state: AdminState, viewModel: AdminViewModel) {
                                 idx,
                                 fId,
                                 fType
+                            )
+                        )
+                    },
+                    onBreakfastChange = { d, count ->
+                        viewModel.onIntent(
+                            AdminIntent.ChangeBreakfastCount(
+                                room.roomNumber,
+                                d,
+                                count
                             )
                         )
                     },
@@ -1323,7 +1334,8 @@ fun RoomFoodReservationsDialog(
     availableFoods: List<FoodItem>,
     reservations: List<FoodReservation>,
     onDismiss: () -> Unit,
-    onFoodChange: (String, Int, String?, com.braveboy.hotelzagrous.core.FoodType) -> Unit
+    onFoodChange: (String, Int, String?, FoodType) -> Unit,
+    onBreakfastChange: (String, Int) -> Unit
 ) {
     val stayDays = remember(room) {
         if (room.checkInEpochMillis != 0L && room.checkOutEpochMillis != 0L) {
@@ -1366,6 +1378,18 @@ fun RoomFoodReservationsDialog(
                                     style = MaterialTheme.typography.bodyMedium,
                                     maxLines = 1
                                 )
+                                Row(
+                                    modifier = Modifier.fillMaxWidth().padding(vertical = 4.dp),
+                                    verticalAlignment = Alignment.CenterVertically,
+                                    horizontalArrangement = Arrangement.SpaceBetween
+                                ) {
+                                    Text("تعداد صبحانه امروز:", style = MaterialTheme.typography.labelMedium)
+                                    AdminBreakfastCountSelection(
+                                        currentCount = reservation?.breakfastCount ?: 0,
+                                        guestCount = room.guestCount,
+                                        onCountChange = { onBreakfastChange(date, it) }
+                                    )
+                                }
                                 HorizontalDivider(modifier = Modifier.padding(vertical = 6.dp))
                                 repeat(room.guestCount) { index ->
                                     val selection =
@@ -1411,6 +1435,47 @@ fun RoomFoodReservationsDialog(
         confirmButton = { Button(onClick = onDismiss) { Text("بستن") } },
         shape = MaterialTheme.shapes.large
     )
+}
+
+@Composable
+fun AdminBreakfastCountSelection(
+    currentCount: Int,
+    guestCount: Int,
+    onCountChange: (Int) -> Unit
+) {
+    var expanded by remember { mutableStateOf(false) }
+    Box {
+        Surface(
+            onClick = { expanded = true },
+            color = if (currentCount > 0) MaterialTheme.colorScheme.primary.copy(alpha = 0.1f) else MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.5f),
+            shape = MaterialTheme.shapes.small,
+            border = BorderStroke(1.dp, if (currentCount > 0) MaterialTheme.colorScheme.primary else MaterialTheme.colorScheme.outlineVariant)
+        ) {
+            Row(
+                modifier = Modifier.padding(horizontal = 8.dp, vertical = 4.dp),
+                verticalAlignment = Alignment.CenterVertically
+            ) {
+                Text(
+                    text = if (currentCount == 0) "بدون صبحانه" else "$currentCount نفر",
+                    style = MaterialTheme.typography.labelMedium,
+                    fontWeight = FontWeight.Bold
+                )
+                Icon(Icons.Default.ArrowDropDown, null, modifier = Modifier.size(14.dp))
+            }
+        }
+        DropdownMenu(expanded = expanded, onDismissRequest = { expanded = false }) {
+            DropdownMenuItem(
+                text = { Text("بدون صبحانه") },
+                onClick = { onCountChange(0); expanded = false }
+            )
+            (1..guestCount).forEach { num ->
+                DropdownMenuItem(
+                    text = { Text("$num نفر") },
+                    onClick = { onCountChange(num); expanded = false }
+                )
+            }
+        }
+    }
 }
 
 @Composable
@@ -1606,6 +1671,22 @@ fun ReservationSummary(
                                 maxLines = 1,
                                 overflow = TextOverflow.Ellipsis
                             )
+                            Row(
+                                modifier = Modifier.padding(top = 4.dp, start = 8.dp),
+                                verticalAlignment = Alignment.CenterVertically,
+                                horizontalArrangement = Arrangement.spacedBy(8.dp)
+                            ) {
+                                Text(
+                                    "صبحانه:",
+                                    style = MaterialTheme.typography.labelMedium,
+                                    modifier = Modifier.width(60.dp)
+                                )
+                                AdminBreakfastCountSelection(
+                                    currentCount = res.breakfastCount,
+                                    guestCount = room?.guestCount ?: 7,
+                                    onCountChange = { onIntent(AdminIntent.ChangeBreakfastCount(res.roomNumber, date, it)) }
+                                )
+                            }
                             res.guestMealSelections.forEach { selection ->
                                 Row(
                                     modifier = Modifier.padding(top = 4.dp, start = 8.dp),
@@ -1673,10 +1754,7 @@ fun TodayReservationDetail(state: AdminState) {
     val allLunch = todayResList.flatMap { it.guestMealSelections }.mapNotNull { it.lunchFoodId }
     val allDinner = todayResList.flatMap { it.guestMealSelections }.mapNotNull { it.dinnerFoodId }
 
-    val activeRooms = state.rooms.filter {
-        it.checkInEpochMillis <= todayMillis && it.checkOutEpochMillis >= todayMillis
-    }
-    val buffetBreakfastCount = activeRooms.filter { it.hasBreakfast }.sumOf { it.breakfastCount }
+    val buffetBreakfastCount = todayResList.sumOf { it.breakfastCount }
 
     Surface(
         modifier = Modifier.fillMaxWidth(),

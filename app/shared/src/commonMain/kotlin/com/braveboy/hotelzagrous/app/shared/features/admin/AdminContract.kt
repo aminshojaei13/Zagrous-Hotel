@@ -59,6 +59,12 @@ sealed class AdminIntent {
         val foodType: com.braveboy.hotelzagrous.core.FoodType
     ) : AdminIntent()
 
+    data class ChangeBreakfastCount(
+        val roomNumber: String,
+        val date: String,
+        val count: Int
+    ) : AdminIntent()
+
     data class SelectRoomForFood(val room: Room?) : AdminIntent()
     data class SelectReportDate(val date: String) : AdminIntent()
 

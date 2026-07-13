@@ -46,7 +46,8 @@ data class MenuConfig(
 data class FoodReservation(
     val roomNumber: String,
     val date: String,
-    val guestMealSelections: List<GuestMealSelection> = emptyList()
+    val guestMealSelections: List<GuestMealSelection> = emptyList(),
+    val breakfastCount: Int = 0
 )
 
 @Serializable

@@ -31,6 +31,7 @@ class AdminViewModel(
             is AdminIntent.MarkLunchDelivered -> markLunchDelivered(intent)
             is AdminIntent.MarkDinnerDelivered -> markDinnerDelivered(intent)
             is AdminIntent.ChangeFood -> updateFoodSelection(intent)
+            is AdminIntent.ChangeBreakfastCount -> updateBreakfastCount(intent)
             is AdminIntent.SelectRoomForFood -> updateState { it.copy(selectedRoom = intent.room) }
             is AdminIntent.SelectReportDate -> updateState { it.copy(selectedReportDate = intent.date) }
             is AdminIntent.UpsertFood -> upsertFood(intent.food)
@@ -253,16 +254,45 @@ class AdminViewModel(
         }
     }
 
+    private fun updateBreakfastCount(intent: AdminIntent.ChangeBreakfastCount) {
+        scope.launch(Dispatchers.Main) {
+            val reservation =
+                state.value.reservations.find { it.roomNumber == intent.roomNumber && it.date == intent.date }
+                    ?: FoodReservation(intent.roomNumber, intent.date)
+
+            val updatedRes = reservation.copy(breakfastCount = intent.count)
+
+            runCatching {
+                repository.saveReservation(updatedRes)
+            }.onSuccess {
+                loadData()
+            }.onFailure { e ->
+                updateState { it.copy(error = "تغییر تعداد صبحانه با خطا مواجه شد: ${e.message}") }
+            }
+        }
+    }
+
     private fun exportToPdf() {
     }
 
     private fun printBreakfastBuffetReport(date: String, rooms: List<Room>) {
-        // Find rooms that are active on this date
-        // Note: date format is Jalali "1402/08/01"
-        // For simplicity, we filter rooms where hasBreakfast is true and they are currently in the state
-        // (The state usually has active rooms or we can check date range if needed)
-        val breakfastRooms = rooms.filter { it.hasBreakfast }.sortedBy { it.roomNumber }
-        if (breakfastRooms.isEmpty()) return
+        val reservations = state.value.reservations.filter { it.date == date }.associateBy { it.roomNumber }
+        val dateMillis = com.braveboy.hotelzagrous.core.DateUtils.convertDateToTimeMillis(date)
+        
+        // Filter rooms active on this date
+        val activeRooms = rooms.filter { room ->
+            dateMillis >= room.checkInEpochMillis && dateMillis <= room.checkOutEpochMillis
+        }.sortedBy { it.roomNumber }
+
+        val breakfastData = activeRooms.mapNotNull { room ->
+            val res = reservations[room.roomNumber]
+            val count = res?.breakfastCount ?: if (room.hasBreakfast) room.breakfastCount else 0
+            if (count > 0) {
+                Triple(room.roomNumber, room.guestName, count)
+            } else null
+        }
+
+        if (breakfastData.isEmpty()) return
 
         val html = buildString {
             append("<!DOCTYPE html><html><head><meta charset='UTF-8'><style>")
@@ -282,15 +312,15 @@ class AdminViewModel(
             append("<tbody>")
 
             var totalBreakfasts = 0
-            breakfastRooms.forEachIndexed { index, room ->
+            breakfastData.forEachIndexed { index, data ->
                 append("<tr>")
                 append("<td>${index + 1}</td>")
-                append("<td>${room.roomNumber}</td>")
-                append("<td>${room.guestName}</td>")
-                append("<td>${room.breakfastCount}</td>")
+                append("<td>${data.first}</td>")
+                append("<td>${data.second}</td>")
+                append("<td>${data.third}</td>")
                 append("<td></td>")
                 append("</tr>")
-                totalBreakfasts += room.breakfastCount
+                totalBreakfasts += data.third
             }
             append("</tbody>")
             append("<tfoot><tr class='total-row'>")

@@ -28,6 +28,7 @@ sealed class ReservationIntent {
         val foodId: String?,
         val foodType: com.braveboy.hotelzagrous.core.FoodType
     ) : ReservationIntent()
+    data class ChangeBreakfastCount(val date: String, val count: Int) : ReservationIntent()
     object ConfirmReservation : ReservationIntent()
     object ToggleLanguage : ReservationIntent()
 }
