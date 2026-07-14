@@ -7,6 +7,7 @@ import com.braveboy.hotelzagrous.core.FoodType
 import com.braveboy.hotelzagrous.core.Room
 import com.braveboy.hotelzagrous.core.GuestMealSelection
 import com.braveboy.hotelzagrous.core.MenuConfig
+import com.braveboy.hotelzagrous.core.PhysicalRoom
 import com.braveboy.hotelzagrous.core.normalizeDigits
 import java.sql.Connection
 import java.sql.DriverManager
@@ -62,6 +63,55 @@ class HotelDatabase(
                     )
                 }
             }
+        }
+    }
+
+    fun getPhysicalRooms(): List<PhysicalRoom> = connection.prepareStatement(
+        "SELECT id, room_number, bed_count, capacity, type FROM physical_rooms ORDER BY room_number"
+    ).use { statement ->
+        statement.executeQuery().use { rows ->
+            buildList {
+                while (rows.next()) {
+                    add(
+                        PhysicalRoom(
+                            id = rows.getString("id"),
+                            roomNumber = rows.getString("room_number"),
+                            bedCount = rows.getInt("bed_count"),
+                            capacity = rows.getInt("capacity"),
+                            type = rows.getString("type")
+                        )
+                    )
+                }
+            }
+        }
+    }
+
+    fun upsertPhysicalRoom(room: PhysicalRoom) {
+        val id = room.id.ifBlank { UUID.randomUUID().toString() }
+        connection.prepareStatement(
+            """
+            INSERT INTO physical_rooms(id, room_number, bed_count, capacity, type)
+            VALUES(?, ?, ?, ?, ?)
+            ON CONFLICT(id) DO UPDATE SET
+                room_number = excluded.room_number,
+                bed_count = excluded.bed_count,
+                capacity = excluded.capacity,
+                type = excluded.type
+            """.trimIndent()
+        ).use { statement ->
+            statement.setString(1, id)
+            statement.setString(2, room.roomNumber)
+            statement.setInt(3, room.bedCount)
+            statement.setInt(4, room.capacity)
+            statement.setString(5, room.type)
+            statement.executeUpdate()
+        }
+    }
+
+    fun deletePhysicalRoom(id: String) {
+        connection.prepareStatement("DELETE FROM physical_rooms WHERE id = ?").use { statement ->
+            statement.setString(1, id)
+            statement.executeUpdate()
         }
     }
 
@@ -446,6 +496,18 @@ class HotelDatabase(
                     breakfast_count INTEGER NOT NULL DEFAULT 0,
                     PRIMARY KEY(room_number, date),
                     FOREIGN KEY(room_number) REFERENCES rooms(room_number)
+                )
+                """.trimIndent()
+            )
+
+            statement.executeUpdate(
+                """
+                CREATE TABLE IF NOT EXISTS physical_rooms(
+                    id TEXT PRIMARY KEY,
+                    room_number TEXT NOT NULL,
+                    bed_count INTEGER NOT NULL DEFAULT 1,
+                    capacity INTEGER NOT NULL DEFAULT 1,
+                    type TEXT NOT NULL DEFAULT 'STANDARD'
                 )
                 """.trimIndent()
             )

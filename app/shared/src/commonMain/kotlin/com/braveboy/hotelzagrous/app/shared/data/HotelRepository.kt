@@ -3,6 +3,7 @@ package com.braveboy.hotelzagrous.app.shared.data
 import com.braveboy.hotelzagrous.core.FoodItem
 import com.braveboy.hotelzagrous.core.FoodReservation
 import com.braveboy.hotelzagrous.core.MenuConfig
+import com.braveboy.hotelzagrous.core.PhysicalRoom
 import com.braveboy.hotelzagrous.core.Room
 import com.braveboy.hotelzagrous.core.UpdateRoomStayRequest
 import com.braveboy.hotelzagrous.core.normalizeDigits
@@ -60,6 +61,24 @@ class HotelRepository(
         if (response.status.isSuccess()) response.body() else emptyList()
     } catch (e: Throwable) {
         emptyList()
+    }
+
+    suspend fun getPhysicalRooms(): List<PhysicalRoom> = try {
+        val response: HttpResponse = client.get("$apiBaseUrl/physical-rooms")
+        if (response.status.isSuccess()) response.body() else emptyList()
+    } catch (e: Throwable) {
+        emptyList()
+    }
+
+    suspend fun upsertPhysicalRoom(room: PhysicalRoom) {
+        client.post("$apiBaseUrl/physical-rooms") {
+            contentType(ContentType.Application.Json)
+            setBody(room)
+        }
+    }
+
+    suspend fun deletePhysicalRoom(id: String) {
+        client.delete("$apiBaseUrl/physical-rooms/$id")
     }
 
     suspend fun getAvailableFoods(): List<FoodItem> = try {

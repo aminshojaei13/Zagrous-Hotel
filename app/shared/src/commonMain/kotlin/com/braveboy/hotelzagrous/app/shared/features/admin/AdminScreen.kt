@@ -2,7 +2,9 @@ package com.braveboy.hotelzagrous.app.shared.features.admin
 
 import androidx.compose.foundation.BorderStroke
 import androidx.compose.foundation.background
+import androidx.compose.foundation.border
 import androidx.compose.foundation.clickable
+import androidx.compose.foundation.horizontalScroll
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
@@ -13,14 +15,17 @@ import androidx.compose.foundation.layout.fillMaxHeight
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
+import androidx.compose.foundation.layout.offset
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.layout.widthIn
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
+import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
+import androidx.compose.foundation.verticalScroll
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.filled.Assignment
 import androidx.compose.material.icons.filled.Add
@@ -149,6 +154,12 @@ fun AdminScreen(viewModel: AdminViewModel) {
                     onClick = { currentTab = "rooms" })
                 Spacer(Modifier.height(4.dp))
                 NavigationItem(
+                    label = "تقویم وضعیت اتاق‌ها",
+                    icon = Icons.Default.CalendarToday,
+                    selected = currentTab == "timeline",
+                    onClick = { currentTab = "timeline" })
+                Spacer(Modifier.height(4.dp))
+                NavigationItem(
                     label = "گزارش رزرو غذا",
                     icon = Icons.Default.Restaurant,
                     selected = currentTab == "reservations",
@@ -209,6 +220,7 @@ fun AdminScreen(viewModel: AdminViewModel) {
                 Column {
                     val title = when (currentTab) {
                         "rooms" -> "مدیریت اتاق‌ها"
+                        "timeline" -> "تقویم وضعیت اتاق‌ها"
                         "menu" -> "مدیریت منو غذا"
                         "daily_report" -> "مشاهده و چاپ غذا"
                         "history" -> "تاریخچه اتاق‌های ثبت شده"
@@ -275,6 +287,7 @@ fun AdminScreen(viewModel: AdminViewModel) {
                 } else {
                     when (currentTab) {
                         "rooms" -> RoomManagementContent(state, viewModel)
+                        "timeline" -> RoomTimelineContent(state, viewModel)
                         "menu" -> MenuManagementContent(state, viewModel)
                         "reservations" -> ReservationSummaryContent(state, viewModel)
                         "daily_report" -> DailyDetailedReportContent(state, viewModel)
@@ -288,7 +301,9 @@ fun AdminScreen(viewModel: AdminViewModel) {
     if (showAddRoomDialog) {
         AddRoomDialog(
             onDismiss = { showAddRoomDialog = false },
-            onConfirm = { viewModel.onIntent(AdminIntent.AddRoom(it)); showAddRoomDialog = false })
+            onConfirm = { viewModel.onIntent(AdminIntent.AddRoom(it)); showAddRoomDialog = false },
+            physicalRooms = state.physicalRooms
+        )
     }
 
     if (showClearDataDialog) {
@@ -310,6 +325,260 @@ fun AdminScreen(viewModel: AdminViewModel) {
                 }) { Text("انصراف") }
             },
             shape = MaterialTheme.shapes.large
+        )
+    }
+}
+
+@Composable
+fun AddPhysicalRoomDialog(onDismiss: () -> Unit, onConfirm: (com.braveboy.hotelzagrous.core.PhysicalRoom) -> Unit) {
+    var roomNumber by remember { mutableStateOf("") }
+    var bedCount by remember { mutableStateOf("1") }
+    var capacity by remember { mutableStateOf("1") }
+
+    AlertDialog(
+        onDismissRequest = onDismiss,
+        title = { Text("تعریف اتاق جدید", fontWeight = FontWeight.Bold) },
+        text = {
+            Column(verticalArrangement = Arrangement.spacedBy(12.dp)) {
+                OutlinedTextField(
+                    value = roomNumber,
+                    onValueChange = { roomNumber = it },
+                    label = { Text("شماره اتاق") },
+                    modifier = Modifier.fillMaxWidth()
+                )
+                OutlinedTextField(
+                    value = bedCount,
+                    onValueChange = { bedCount = it },
+                    label = { Text("تعداد تخت") },
+                    modifier = Modifier.fillMaxWidth()
+                )
+                OutlinedTextField(
+                    value = capacity,
+                    onValueChange = { capacity = it },
+                    label = { Text("تعداد نفرات (ظرفیت)") },
+                    modifier = Modifier.fillMaxWidth()
+                )
+            }
+        },
+        confirmButton = {
+            Button(onClick = {
+                onConfirm(
+                    com.braveboy.hotelzagrous.core.PhysicalRoom(
+                        roomNumber = roomNumber,
+                        bedCount = bedCount.toIntOrNull() ?: 1,
+                        capacity = capacity.toIntOrNull() ?: 1
+                    )
+                )
+            }) { Text("تایید") }
+        },
+        dismissButton = { TextButton(onClick = onDismiss) { Text("انصراف") } }
+    )
+}
+
+@Composable
+fun RoomTimelineContent(state: AdminState, viewModel: AdminViewModel) {
+    var showAddDialog by remember { mutableStateOf(false) }
+    val todayMillis = Clock.System.now().toEpochMilliseconds()
+    val todayJalali = DateUtils.convertMillisToJalaliString(todayMillis)
+    val parts = todayJalali.split("/")
+    val currentYear = parts[0].toIntOrNull() ?: 1402
+    val currentMonth = parts[1].toIntOrNull() ?: 1
+    val currentDay = parts[2].toIntOrNull() ?: 1
+
+    val daysInMonth = DateUtils.getDaysInJalaliMonth(currentYear, currentMonth)
+    val monthName = DateUtils.getJalaliMonthNames()[currentMonth - 1]
+
+    Column(modifier = Modifier.fillMaxSize().background(MaterialTheme.colorScheme.surface)) {
+        Row(
+            modifier = Modifier.fillMaxWidth().padding(16.dp),
+            horizontalArrangement = Arrangement.SpaceBetween,
+            verticalAlignment = Alignment.CenterVertically
+        ) {
+            Column {
+                Text(
+                    "وضعیت اتاق‌ها",
+                    style = MaterialTheme.typography.headlineSmall,
+                    fontWeight = FontWeight.Bold
+                )
+                Text(
+                    "$monthName $currentYear",
+                    style = MaterialTheme.typography.bodyMedium,
+                    color = MaterialTheme.colorScheme.outline
+                )
+            }
+            Button(
+                onClick = { showAddDialog = true },
+                shape = RoundedCornerShape(8.dp)
+            ) {
+                Icon(Icons.Default.Add, null, modifier = Modifier.size(18.dp))
+                Spacer(Modifier.width(8.dp))
+                Text("افزودن اتاق")
+            }
+        }
+
+        Box(modifier = Modifier.fillMaxSize().padding(horizontal = 16.dp)) {
+            val horizontalScrollState = rememberScrollState()
+            val verticalScrollState = rememberScrollState()
+
+            Row(modifier = Modifier.fillMaxSize()) {
+                // Left side: Room list
+                Column(
+                    modifier = Modifier
+                        .width(200.dp)
+                        .padding(top = 50.dp)
+                        .verticalScroll(verticalScrollState)
+                ) {
+                    Text(
+                        "STANDARD ROOMS",
+                        modifier = Modifier.padding(vertical = 12.dp, horizontal = 8.dp),
+                        style = MaterialTheme.typography.labelLarge,
+                        color = MaterialTheme.colorScheme.primary,
+                        fontWeight = FontWeight.Bold
+                    )
+                    state.physicalRooms.forEach { physicalRoom ->
+                        Box(
+                            modifier = Modifier
+                                .fillMaxWidth()
+                                .height(60.dp)
+                                .padding(horizontal = 8.dp),
+                            contentAlignment = Alignment.CenterStart
+                        ) {
+                            Text(
+                                "Standard Room - ${physicalRoom.roomNumber}",
+                                style = MaterialTheme.typography.bodyMedium,
+                                fontWeight = FontWeight.SemiBold
+                            )
+                        }
+                        HorizontalDivider(thickness = 0.5.dp, color = MaterialTheme.colorScheme.outlineVariant)
+                    }
+                }
+
+                // Right side: Timeline
+                Column(
+                    modifier = Modifier
+                        .weight(1f)
+                        .horizontalScroll(horizontalScrollState)
+                ) {
+                    // Days Header
+                    Row(
+                        modifier = Modifier
+                            .height(50.dp)
+                            .background(MaterialTheme.colorScheme.surface)
+                    ) {
+                        (1..daysInMonth).forEach { day ->
+                            Box(
+                                modifier = Modifier
+                                    .width(50.dp)
+                                    .fillMaxHeight(),
+                                contentAlignment = Alignment.Center
+                            ) {
+                                Column(horizontalAlignment = Alignment.CenterHorizontally) {
+                                    Text(
+                                        day.toString().padStart(2, '0'),
+                                        style = MaterialTheme.typography.titleMedium,
+                                        fontWeight = if (day == currentDay) FontWeight.Bold else FontWeight.Normal,
+                                        color = if (day == currentDay) MaterialTheme.colorScheme.primary else MaterialTheme.colorScheme.onSurface
+                                    )
+                                }
+                            }
+                        }
+                    }
+
+                    // Main Timeline Area
+                    Box(
+                        modifier = Modifier
+                            .weight(1f)
+                            .verticalScroll(verticalScrollState)
+                    ) {
+                        // Grid lines
+                        Row {
+                            (1..daysInMonth).forEach { _ ->
+                                Box(
+                                    modifier = Modifier
+                                        .width(50.dp)
+                                        .fillMaxHeight()
+                                        .border(0.2.dp, MaterialTheme.colorScheme.outlineVariant)
+                                )
+                            }
+                        }
+
+                        // Today marker
+                        Box(
+                            modifier = Modifier
+                                .offset(x = ((currentDay - 1) * 50 + 24).dp)
+                                .width(2.dp)
+                                .fillMaxHeight()
+                                .background(MaterialTheme.colorScheme.primary.copy(alpha = 0.5f))
+                        )
+
+                        // Bookings
+                        Column(modifier = Modifier.padding(top = 52.dp)) { // Adjust for "STANDARD ROOMS" header
+                            state.physicalRooms.forEach { physicalRoom ->
+                                Box(modifier = Modifier.height(60.dp).fillMaxWidth()) {
+                                    val roomBookings = state.rooms.filter { it.roomNumber == physicalRoom.roomNumber }
+                                    roomBookings.forEach { booking ->
+                                        val startParts = booking.checkInDate.split("/")
+                                        val endParts = booking.checkOutDate.split("/")
+                                        
+                                        if (startParts.size == 3 && endParts.size == 3 && 
+                                            startParts[0].toIntOrNull() == currentYear && startParts[1].toIntOrNull() == currentMonth) {
+                                            
+                                            val startDay = startParts[2].toIntOrNull() ?: 1
+                                            val endDay = if (endParts[0].toIntOrNull() == currentYear && endParts[1].toIntOrNull() == currentMonth) {
+                                                endParts[2].toIntOrNull() ?: daysInMonth
+                                            } else {
+                                                daysInMonth
+                                            }
+                                            
+                                            val duration = (endDay - startDay).coerceAtLeast(0) + 1
+                                            
+                                            Row(
+                                                modifier = Modifier
+                                                    .offset(x = ((startDay - 1) * 50 + 4).dp)
+                                                    .padding(vertical = 12.dp)
+                                                    .height(36.dp),
+                                                verticalAlignment = Alignment.CenterVertically
+                                            ) {
+                                                Surface(
+                                                    modifier = Modifier
+                                                        .width((duration * 50 - 8).dp)
+                                                        .fillMaxHeight(),
+                                                    color = MaterialTheme.colorScheme.primaryContainer,
+                                                    shape = RoundedCornerShape(8.dp),
+                                                    tonalElevation = 2.dp
+                                                ) {
+                                                    Box(
+                                                        modifier = Modifier.fillMaxSize().padding(horizontal = 8.dp),
+                                                        contentAlignment = Alignment.CenterStart
+                                                    ) {
+                                                        Text(
+                                                            booking.guestName,
+                                                            style = MaterialTheme.typography.labelMedium,
+                                                            maxLines = 1,
+                                                            overflow = TextOverflow.Ellipsis
+                                                        )
+                                                    }
+                                                }
+                                            }
+                                        }
+                                    }
+                                }
+                                HorizontalDivider(thickness = 0.5.dp, color = MaterialTheme.colorScheme.outlineVariant)
+                            }
+                        }
+                    }
+                }
+            }
+        }
+    }
+
+    if (showAddDialog) {
+        AddPhysicalRoomDialog(
+            onDismiss = { showAddDialog = false },
+            onConfirm = {
+                viewModel.onIntent(AdminIntent.UpsertPhysicalRoom(it))
+                showAddDialog = false
+            }
         )
     }
 }
@@ -375,7 +644,6 @@ fun RoomAdminCard(
     var hasBreakfast by remember(room) { mutableStateOf(room.hasBreakfast) }
     var breakfastCount by remember(room) { mutableIntStateOf(room.breakfastCount) }
     var expandedGuestCount by remember { mutableStateOf(false) }
-    var expandedBreakfastCount by remember { mutableStateOf(false) }
     var showFoodDialog by remember { mutableStateOf(false) }
     var showDeleteConfirm by remember { mutableStateOf(false) }
     var changeRoomNumber by remember { mutableStateOf(false) }
@@ -2116,7 +2384,8 @@ fun DeliveryChip(
 }
 
 @Composable
-fun AddRoomDialog(onDismiss: () -> Unit, onConfirm: (Room) -> Unit) {
+fun AddRoomDialog(onDismiss: () -> Unit, onConfirm: (Room) -> Unit, physicalRooms: List<com.braveboy.hotelzagrous.core.PhysicalRoom>) {
+    var selectedPhysicalRoom by remember { mutableStateOf<com.braveboy.hotelzagrous.core.PhysicalRoom?>(null) }
     var roomNumber by remember { mutableStateOf("") }
     var guestName by remember { mutableStateOf("") }
     var identificationId by remember { mutableStateOf("") }
@@ -2128,7 +2397,7 @@ fun AddRoomDialog(onDismiss: () -> Unit, onConfirm: (Room) -> Unit) {
     var checkInMillis by remember { mutableLongStateOf(0L) }
     var checkOutMillis by remember { mutableLongStateOf(0L) }
     var expandedGuest by remember { mutableStateOf(false) }
-    var expandedBreakfast by remember { mutableStateOf(false) }
+    var expandedRoom by remember { mutableStateOf(false) }
 
     AlertDialog(
         onDismissRequest = onDismiss,
@@ -2138,14 +2407,33 @@ fun AddRoomDialog(onDismiss: () -> Unit, onConfirm: (Room) -> Unit) {
                 verticalArrangement = Arrangement.spacedBy(12.dp),
                 modifier = Modifier.padding(top = 8.dp)
             ) {
-                OutlinedTextField(
-                    value = roomNumber,
-                    onValueChange = { roomNumber = it },
-                    label = { Text("شماره اتاق") },
-                    modifier = Modifier.fillMaxWidth(),
-                    shape = MaterialTheme.shapes.medium,
-                    singleLine = true
-                )
+                Box(modifier = Modifier.fillMaxWidth()) {
+                    OutlinedTextField(
+                        value = selectedPhysicalRoom?.roomNumber ?: roomNumber,
+                        onValueChange = { roomNumber = it },
+                        label = { Text("شماره اتاق") },
+                        modifier = Modifier.fillMaxWidth(),
+                        shape = MaterialTheme.shapes.medium,
+                        singleLine = true,
+                        trailingIcon = {
+                            IconButton(onClick = { expandedRoom = true }) {
+                                Icon(Icons.Default.ArrowDropDown, null)
+                            }
+                        }
+                    )
+                    DropdownMenu(expanded = expandedRoom, onDismissRequest = { expandedRoom = false }) {
+                        physicalRooms.forEach { room ->
+                            DropdownMenuItem(
+                                text = { Text("اتاق ${room.roomNumber} (تخت: ${room.bedCount})") },
+                                onClick = {
+                                    selectedPhysicalRoom = room
+                                    roomNumber = room.roomNumber
+                                    expandedRoom = false
+                                }
+                            )
+                        }
+                    }
+                }
 
                 OutlinedTextField(
                     value = guestName,

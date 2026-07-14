@@ -40,6 +40,8 @@ class AdminViewModel(
             is AdminIntent.PrintDailyBreakfastReport -> printBreakfastBuffetReport(intent.date, state.value.rooms)
             is AdminIntent.PrintDailyDinnerReport -> printDailyReport(intent.date, com.braveboy.hotelzagrous.core.FoodType.DINNER)
             is AdminIntent.PrintDailyLaunchReport -> printDailyReport(intent.date, com.braveboy.hotelzagrous.core.FoodType.LUNCH)
+            is AdminIntent.UpsertPhysicalRoom -> upsertPhysicalRoom(intent.room)
+            is AdminIntent.DeletePhysicalRoom -> deletePhysicalRoom(intent.id)
         }
     }
 
@@ -50,16 +52,18 @@ class AdminViewModel(
         scope.launch(Dispatchers.Main) {
             runCatching {
                 val rooms = repository.getRooms()
+                val physicalRooms = repository.getPhysicalRooms()
                 val reservations = repository.getAllReservations()
                 val foods = repository.getAvailableFoods()
                 val menuConfigs = repository.getMenuConfigs()
-                Triple(rooms, Triple(reservations, foods, menuConfigs), Unit)
-            }.onSuccess { (rooms, data, _) ->
+                Triple(rooms, physicalRooms, Triple(reservations, foods, menuConfigs))
+            }.onSuccess { (rooms, physicalRooms, data) ->
                 val (reservations, foods, menuConfigs) = data
                 updateState { current ->
                     current.copy(
                         isLoading = false,
                         rooms = rooms,
+                        physicalRooms = physicalRooms,
                         reservations = reservations,
                         foods = foods,
                         menuConfigs = menuConfigs,
@@ -110,6 +114,30 @@ class AdminViewModel(
                 loadData()
             }.onFailure { e ->
                 updateState { it.copy(error = "خطا در تنظیمات منو: ${e.message}") }
+            }
+        }
+    }
+
+    private fun upsertPhysicalRoom(room: com.braveboy.hotelzagrous.core.PhysicalRoom) {
+        scope.launch(Dispatchers.Main) {
+            runCatching {
+                repository.upsertPhysicalRoom(room)
+            }.onSuccess {
+                loadData()
+            }.onFailure { e ->
+                updateState { it.copy(error = "خطا در ذخیره اتاق: ${e.message}") }
+            }
+        }
+    }
+
+    private fun deletePhysicalRoom(id: String) {
+        scope.launch(Dispatchers.Main) {
+            runCatching {
+                repository.deletePhysicalRoom(id)
+            }.onSuccess {
+                loadData()
+            }.onFailure { e ->
+                updateState { it.copy(error = "خطا در حذف اتاق: ${e.message}") }
             }
         }
     }

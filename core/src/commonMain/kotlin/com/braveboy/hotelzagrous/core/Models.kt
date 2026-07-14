@@ -3,6 +3,15 @@ package com.braveboy.hotelzagrous.core
 import kotlinx.serialization.Serializable
 
 @Serializable
+data class PhysicalRoom(
+    val id: String = "",
+    val roomNumber: String,
+    val bedCount: Int = 1,
+    val capacity: Int = 1,
+    val type: String = "STANDARD"
+)
+
+@Serializable
 data class Room(
     val id: String = "",
     val roomNumber: String,

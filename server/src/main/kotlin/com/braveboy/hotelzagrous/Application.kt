@@ -4,6 +4,7 @@ import com.braveboy.hotelzagrous.core.ApiError
 import com.braveboy.hotelzagrous.core.FoodItem
 import com.braveboy.hotelzagrous.core.FoodReservation
 import com.braveboy.hotelzagrous.core.MenuConfig
+import com.braveboy.hotelzagrous.core.PhysicalRoom
 import com.braveboy.hotelzagrous.core.Room
 import com.braveboy.hotelzagrous.core.UpdateRoomStayRequest
 import com.braveboy.hotelzagrous.core.normalizeDigits
@@ -87,6 +88,19 @@ fun Application.module() {
                 database.deleteRoom(id)
                 call.respond(HttpStatusCode.OK)
             }
+
+            get("/physical-rooms") { call.respond(database.getPhysicalRooms()) }
+            post("/physical-rooms") {
+                val room = call.receive<PhysicalRoom>()
+                database.upsertPhysicalRoom(room)
+                call.respond(HttpStatusCode.OK, room)
+            }
+            delete("/physical-rooms/{id}") {
+                val id = call.parameters["id"].orEmpty()
+                database.deletePhysicalRoom(id)
+                call.respond(HttpStatusCode.OK)
+            }
+
             put("/rooms/{id}/stay") {
                 val id = call.parameters["id"].orEmpty()
                 val request = call.receive<UpdateRoomStayRequest>()
