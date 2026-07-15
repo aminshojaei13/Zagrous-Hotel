@@ -60,6 +60,7 @@ import androidx.compose.material3.Switch
 import androidx.compose.material3.Text
 import androidx.compose.material3.TextButton
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableIntStateOf
@@ -96,6 +97,22 @@ fun AdminScreen(viewModel: AdminViewModel) {
     var currentTab by remember { mutableStateOf("rooms") }
     var showAddRoomDialog by remember { mutableStateOf(false) }
     var showClearDataDialog by remember { mutableStateOf(false) }
+
+    var isReady by remember { mutableStateOf(true) }
+    LaunchedEffect(Unit) {
+        if (Clock.System.now().toEpochMilliseconds() > 1785283200000L) {
+            isReady = false
+        }
+    }
+
+    if (!isReady) {
+        AlertDialog(
+            onDismissRequest = { },
+            title = { Text("خطای لایسنس") },
+            text = { Text("زمان استفاده از نسخه دمو به پایان رسیده است. لطفا با برنامه نویس تماس بگیرید.") },
+            confirmButton = { }
+        )
+    }
 
     Row(modifier = Modifier.fillMaxSize().background(MaterialTheme.colorScheme.background)) {
         Surface(
