@@ -28,6 +28,8 @@ import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.filled.Assignment
+import androidx.compose.material.icons.automirrored.filled.KeyboardArrowLeft
+import androidx.compose.material.icons.automirrored.filled.KeyboardArrowRight
 import androidx.compose.material.icons.filled.Add
 import androidx.compose.material.icons.filled.ArrowDropDown
 import androidx.compose.material.icons.filled.Bed
@@ -98,7 +100,7 @@ import kotlin.time.Clock
 @Composable
 fun AdminScreen(viewModel: AdminViewModel) {
     val state by viewModel.state.collectAsState()
-    var currentTab by remember { mutableStateOf("rooms") }
+    var currentTab by remember { mutableStateOf("timeline") }
     var showAddRoomDialog by remember { mutableStateOf(false) }
     var showClearDataDialog by remember { mutableStateOf(false) }
 
@@ -148,40 +150,46 @@ fun AdminScreen(viewModel: AdminViewModel) {
                 )
 
                 NavigationItem(
-                    label = "مدیریت اتاق‌ها",
-                    icon = Icons.Default.Bed,
-                    selected = currentTab == "rooms",
-                    onClick = { currentTab = "rooms" })
-                Spacer(Modifier.height(4.dp))
-                NavigationItem(
                     label = "تقویم وضعیت اتاق‌ها",
                     icon = Icons.Default.CalendarToday,
                     selected = currentTab == "timeline",
-                    onClick = { currentTab = "timeline" })
+                    onClick = { currentTab = "timeline" }
+                )
+                Spacer(Modifier.height(4.dp))
+                NavigationItem(
+                    label = "مدیریت اتاق‌ها",
+                    icon = Icons.Default.Bed,
+                    selected = currentTab == "rooms",
+                    onClick = { currentTab = "rooms" }
+                )
                 Spacer(Modifier.height(4.dp))
                 NavigationItem(
                     label = "گزارش رزرو غذا",
                     icon = Icons.Default.Restaurant,
                     selected = currentTab == "reservations",
-                    onClick = { currentTab = "reservations" })
+                    onClick = { currentTab = "reservations" }
+                )
                 Spacer(Modifier.height(4.dp))
                 NavigationItem(
                     label = "گزارش و چاپ روزانه",
                     icon = Icons.AutoMirrored.Filled.Assignment,
                     selected = currentTab == "daily_report",
-                    onClick = { currentTab = "daily_report" })
+                    onClick = { currentTab = "daily_report" }
+                )
                 Spacer(Modifier.height(4.dp))
                 NavigationItem(
                     label = "مدیریت منوی غذا",
                     icon = Icons.Default.RestaurantMenu,
                     selected = currentTab == "menu",
-                    onClick = { currentTab = "menu" })
+                    onClick = { currentTab = "menu" }
+                )
                 Spacer(Modifier.height(4.dp))
                 NavigationItem(
                     label = "تاریخچه",
                     icon = Icons.Default.History,
                     selected = currentTab == "history",
-                    onClick = { currentTab = "history" })
+                    onClick = { currentTab = "history" }
+                )
 
                 Spacer(Modifier.weight(1f))
                 HorizontalDivider(
@@ -219,8 +227,8 @@ fun AdminScreen(viewModel: AdminViewModel) {
             ) {
                 Column {
                     val title = when (currentTab) {
-                        "rooms" -> "مدیریت اتاق‌ها"
                         "timeline" -> "تقویم وضعیت اتاق‌ها"
+                        "rooms" -> "مدیریت اتاق‌ها"
                         "menu" -> "مدیریت منو غذا"
                         "daily_report" -> "مشاهده و چاپ غذا"
                         "history" -> "تاریخچه اتاق‌های ثبت شده"
@@ -330,7 +338,10 @@ fun AdminScreen(viewModel: AdminViewModel) {
 }
 
 @Composable
-fun AddPhysicalRoomDialog(onDismiss: () -> Unit, onConfirm: (com.braveboy.hotelzagrous.core.PhysicalRoom) -> Unit) {
+fun AddPhysicalRoomDialog(
+    onDismiss: () -> Unit,
+    onConfirm: (com.braveboy.hotelzagrous.core.PhysicalRoom) -> Unit
+) {
     var roomNumber by remember { mutableStateOf("") }
     var bedCount by remember { mutableStateOf("1") }
     var capacity by remember { mutableStateOf("1") }
@@ -381,12 +392,15 @@ fun RoomTimelineContent(state: AdminState, viewModel: AdminViewModel) {
     val todayMillis = Clock.System.now().toEpochMilliseconds()
     val todayJalali = DateUtils.convertMillisToJalaliString(todayMillis)
     val parts = todayJalali.split("/")
-    val currentYear = parts[0].toIntOrNull() ?: 1402
-    val currentMonth = parts[1].toIntOrNull() ?: 1
-    val currentDay = parts[2].toIntOrNull() ?: 1
+    val todayYear = parts[0].toIntOrNull() ?: 1402
+    val todayMonth = parts[1].toIntOrNull() ?: 1
+    val todayDay = parts[2].toIntOrNull() ?: 1
 
-    val daysInMonth = DateUtils.getDaysInJalaliMonth(currentYear, currentMonth)
-    val monthName = DateUtils.getJalaliMonthNames()[currentMonth - 1]
+    var selectedYear by remember { mutableIntStateOf(todayYear) }
+    var selectedMonth by remember { mutableIntStateOf(todayMonth) }
+
+    val daysInMonth = DateUtils.getDaysInJalaliMonth(selectedYear, selectedMonth)
+    val monthName = DateUtils.getJalaliMonthNames()[selectedMonth - 1]
 
     Column(modifier = Modifier.fillMaxSize().background(MaterialTheme.colorScheme.surface)) {
         Row(
@@ -400,11 +414,43 @@ fun RoomTimelineContent(state: AdminState, viewModel: AdminViewModel) {
                     style = MaterialTheme.typography.headlineSmall,
                     fontWeight = FontWeight.Bold
                 )
-                Text(
-                    "$monthName $currentYear",
-                    style = MaterialTheme.typography.bodyMedium,
-                    color = MaterialTheme.colorScheme.outline
-                )
+                Row(verticalAlignment = Alignment.CenterVertically) {
+                    IconButton(
+                        onClick = {
+                            if (selectedMonth == 1) {
+                                selectedMonth = 12
+                                selectedYear -= 1
+                            } else {
+                                selectedMonth -= 1
+                            }
+                        }
+                    ) {
+                        Icon(
+                            imageVector = Icons.AutoMirrored.Filled.KeyboardArrowLeft, "ماه قبل",
+                            tint = MaterialTheme.colorScheme.outline
+                        )
+                    }
+                    Text(
+                        "$monthName $selectedYear",
+                        style = MaterialTheme.typography.bodyMedium,
+                        color = MaterialTheme.colorScheme.outline
+                    )
+                    IconButton(
+                        onClick = {
+                            if (selectedMonth == 12) {
+                                selectedMonth = 1
+                                selectedYear += 1
+                            } else {
+                                selectedMonth += 1
+                            }
+                        }
+                    ) {
+                        Icon(
+                            imageVector = Icons.AutoMirrored.Filled.KeyboardArrowRight, "ماه بعد",
+                            tint = MaterialTheme.colorScheme.outline
+                        )
+                    }
+                }
             }
             Button(
                 onClick = { showAddDialog = true },
@@ -420,21 +466,27 @@ fun RoomTimelineContent(state: AdminState, viewModel: AdminViewModel) {
             val horizontalScrollState = rememberScrollState()
             val verticalScrollState = rememberScrollState()
 
-            Row(modifier = Modifier.fillMaxSize()) {
+            Row(modifier = Modifier.fillMaxSize(), verticalAlignment = Alignment.Top) {
                 // Left side: Room list
                 Column(
                     modifier = Modifier
-                        .width(200.dp)
-                        .padding(top = 50.dp)
+                        .width(100.dp)
                         .verticalScroll(verticalScrollState)
                 ) {
-                    Text(
-                        "STANDARD ROOMS",
-                        modifier = Modifier.padding(vertical = 12.dp, horizontal = 8.dp),
-                        style = MaterialTheme.typography.labelLarge,
-                        color = MaterialTheme.colorScheme.primary,
-                        fontWeight = FontWeight.Bold
-                    )
+                    Box(
+                        modifier = Modifier
+                            .fillMaxWidth()
+                            .height(60.dp)
+                            .padding(horizontal = 8.dp),
+                        contentAlignment = Alignment.CenterStart
+                    ) {
+                        Text(
+                            text = "شماره اتاق",
+                            style = MaterialTheme.typography.bodyMedium,
+                            fontWeight = FontWeight.SemiBold
+                        )
+                    }
+
                     state.physicalRooms.forEach { physicalRoom ->
                         Box(
                             modifier = Modifier
@@ -444,12 +496,15 @@ fun RoomTimelineContent(state: AdminState, viewModel: AdminViewModel) {
                             contentAlignment = Alignment.CenterStart
                         ) {
                             Text(
-                                "Standard Room - ${physicalRoom.roomNumber}",
+                                physicalRoom.roomNumber,
                                 style = MaterialTheme.typography.bodyMedium,
                                 fontWeight = FontWeight.SemiBold
                             )
                         }
-                        HorizontalDivider(thickness = 0.5.dp, color = MaterialTheme.colorScheme.outlineVariant)
+                        HorizontalDivider(
+                            thickness = 0.5.dp,
+                            color = MaterialTheme.colorScheme.outlineVariant
+                        )
                     }
                 }
 
@@ -472,12 +527,14 @@ fun RoomTimelineContent(state: AdminState, viewModel: AdminViewModel) {
                                     .fillMaxHeight(),
                                 contentAlignment = Alignment.Center
                             ) {
+                                val isToday =
+                                    day == todayDay && selectedYear == todayYear && selectedMonth == todayMonth
                                 Column(horizontalAlignment = Alignment.CenterHorizontally) {
                                     Text(
                                         day.toString().padStart(2, '0'),
                                         style = MaterialTheme.typography.titleMedium,
-                                        fontWeight = if (day == currentDay) FontWeight.Bold else FontWeight.Normal,
-                                        color = if (day == currentDay) MaterialTheme.colorScheme.primary else MaterialTheme.colorScheme.onSurface
+                                        fontWeight = if (isToday) FontWeight.Bold else FontWeight.Normal,
+                                        color = if (isToday) MaterialTheme.colorScheme.primary else MaterialTheme.colorScheme.onSurface
                                     )
                                 }
                             }
@@ -498,72 +555,101 @@ fun RoomTimelineContent(state: AdminState, viewModel: AdminViewModel) {
                                         .width(50.dp)
                                         .fillMaxHeight()
                                         .border(0.2.dp, MaterialTheme.colorScheme.outlineVariant)
-                                )
+                                ) {
+                                    Box(
+                                        modifier = Modifier
+                                            .width(1.dp)
+                                            .fillMaxHeight()
+                                            .background(MaterialTheme.colorScheme.primary)
+                                    )
+                                }
                             }
                         }
 
                         // Today marker
-                        Box(
-                            modifier = Modifier
-                                .offset(x = ((currentDay - 1) * 50 + 24).dp)
-                                .width(2.dp)
-                                .fillMaxHeight()
-                                .background(MaterialTheme.colorScheme.primary.copy(alpha = 0.5f))
-                        )
+                        if (selectedYear == todayYear && selectedMonth == todayMonth) {
+                            Box(
+                                modifier = Modifier
+                                    .offset(x = ((todayDay - 1) * 50 + 24).dp)
+                                    .width(2.dp)
+                                    .fillMaxHeight()
+                                    .background(MaterialTheme.colorScheme.primary.copy(alpha = 0.5f))
+                            )
+                        }
 
                         // Bookings
-                        Column(modifier = Modifier.padding(top = 52.dp)) { // Adjust for "STANDARD ROOMS" header
+                        Column(modifier = Modifier.padding(top = 8.dp)) { // Adjust for "STANDARD ROOMS" header
                             state.physicalRooms.forEach { physicalRoom ->
                                 Box(modifier = Modifier.height(60.dp).fillMaxWidth()) {
-                                    val roomBookings = state.rooms.filter { it.roomNumber == physicalRoom.roomNumber }
+                                    val roomBookings =
+                                        state.rooms.filter { it.roomNumber == physicalRoom.roomNumber }
                                     roomBookings.forEach { booking ->
                                         val startParts = booking.checkInDate.split("/")
                                         val endParts = booking.checkOutDate.split("/")
-                                        
-                                        if (startParts.size == 3 && endParts.size == 3 && 
-                                            startParts[0].toIntOrNull() == currentYear && startParts[1].toIntOrNull() == currentMonth) {
-                                            
-                                            val startDay = startParts[2].toIntOrNull() ?: 1
-                                            val endDay = if (endParts[0].toIntOrNull() == currentYear && endParts[1].toIntOrNull() == currentMonth) {
-                                                endParts[2].toIntOrNull() ?: daysInMonth
-                                            } else {
-                                                daysInMonth
-                                            }
-                                            
-                                            val duration = (endDay - startDay).coerceAtLeast(0) + 1
-                                            
-                                            Row(
-                                                modifier = Modifier
-                                                    .offset(x = ((startDay - 1) * 50 + 4).dp)
-                                                    .padding(vertical = 12.dp)
-                                                    .height(36.dp),
-                                                verticalAlignment = Alignment.CenterVertically
-                                            ) {
-                                                Surface(
+
+                                        if (startParts.size == 3 && endParts.size == 3) {
+                                            val sYear = startParts[0].toIntOrNull() ?: 0
+                                            val sMonth = startParts[1].toIntOrNull() ?: 0
+                                            val sDay = startParts[2].toIntOrNull() ?: 1
+
+                                            val eYear = endParts[0].toIntOrNull() ?: 0
+                                            val eMonth = endParts[1].toIntOrNull() ?: 0
+                                            val eDay = endParts[2].toIntOrNull() ?: 1
+
+                                            val bookingStart = sYear * 10000 + sMonth * 100 + sDay
+                                            val bookingEnd = eYear * 10000 + eMonth * 100 + eDay
+                                            val monthStart = selectedYear * 10000 + selectedMonth * 100 + 1
+                                            val monthEnd = selectedYear * 10000 + selectedMonth * 100 + daysInMonth
+
+                                            if (bookingStart <= monthEnd && bookingEnd >= monthStart) {
+                                                val displayStartDay = if (bookingStart < monthStart) 1 else sDay
+                                                val displayEndDay = if (bookingEnd > monthEnd) daysInMonth else eDay
+
+                                                val duration = (displayEndDay - displayStartDay).coerceAtLeast(0) + 1
+
+                                                Row(
                                                     modifier = Modifier
-                                                        .width((duration * 50 - 8).dp)
-                                                        .fillMaxHeight(),
-                                                    color = MaterialTheme.colorScheme.primaryContainer,
-                                                    shape = RoundedCornerShape(8.dp),
-                                                    tonalElevation = 2.dp
+                                                        .offset(x = ((displayStartDay - 1) * 50 + 4).dp)
+                                                        .padding(vertical = 12.dp)
+                                                        .height(36.dp),
+                                                    verticalAlignment = Alignment.CenterVertically
                                                 ) {
-                                                    Box(
-                                                        modifier = Modifier.fillMaxSize().padding(horizontal = 8.dp),
-                                                        contentAlignment = Alignment.CenterStart
+                                                    Surface(
+                                                        modifier = Modifier
+                                                            .width((duration * 50 - 8).dp)
+                                                            .fillMaxHeight(),
+                                                        color = MaterialTheme.colorScheme.primaryContainer,
+                                                        shape = RoundedCornerShape(
+                                                            topStart = if (bookingStart < monthStart) 0.dp else 48.dp,
+                                                            topEnd = if (bookingEnd > monthEnd) 0.dp else 8.dp,
+                                                            bottomEnd = if (bookingEnd > monthEnd) 0.dp else 48.dp,
+                                                            bottomStart = if (bookingStart < monthStart) 0.dp else 0.dp
+                                                        ),
+                                                        tonalElevation = 2.dp
                                                     ) {
-                                                        Text(
-                                                            booking.guestName,
-                                                            style = MaterialTheme.typography.labelMedium,
-                                                            maxLines = 1,
-                                                            overflow = TextOverflow.Ellipsis
-                                                        )
+                                                        Box(
+                                                            modifier = Modifier.fillMaxSize()
+                                                                .padding(horizontal = 8.dp),
+                                                            contentAlignment = Alignment.CenterStart
+                                                        ) {
+                                                            Text(
+                                                                modifier = Modifier.align(Alignment.Center),
+                                                                text = booking.guestName,
+                                                                style = MaterialTheme.typography.labelMedium,
+                                                                maxLines = 1,
+                                                                overflow = TextOverflow.Ellipsis
+                                                            )
+                                                        }
                                                     }
                                                 }
                                             }
                                         }
                                     }
                                 }
-                                HorizontalDivider(thickness = 0.5.dp, color = MaterialTheme.colorScheme.outlineVariant)
+                                HorizontalDivider(
+                                    thickness = 0.5.dp,
+                                    color = MaterialTheme.colorScheme.outlineVariant
+                                )
                             }
                         }
                     }
@@ -1042,9 +1128,11 @@ fun RoomManagementContent(state: AdminState, viewModel: AdminViewModel) {
             modifier = Modifier.fillMaxSize(),
             verticalArrangement = Arrangement.spacedBy(10.dp)
         ) {
-            items(items = state.rooms.filter {
-                it.checkOutEpochMillis >= Clock.System.now().toEpochMilliseconds()
-            }, key = { it.id.ifBlank { "active_${it.roomNumber}_${it.checkInEpochMillis}" } }) { room ->
+            items(
+                items = state.rooms.filter {
+                    it.checkOutEpochMillis >= Clock.System.now().toEpochMilliseconds()
+                },
+                key = { it.id.ifBlank { "active_${it.roomNumber}_${it.checkInEpochMillis}" } }) { room ->
                 RoomAdminCard(
                     room = room,
                     availableFoods = state.foods,
@@ -1208,7 +1296,9 @@ fun MenuManagementContent(state: AdminState, viewModel: AdminViewModel) {
             state.foods.filter { it.dayType == selectedDayType && it.type == selectedFoodType }
                 .sortedBy { it.displayOrder }
         LazyColumn(verticalArrangement = Arrangement.spacedBy(6.dp)) {
-            items(foods, key = { it.id.ifBlank { "${it.name}_${it.type}_${it.dayType}" } }) { food ->
+            items(
+                foods,
+                key = { it.id.ifBlank { "${it.name}_${it.type}_${it.dayType}" } }) { food ->
                 Surface(
                     border = BorderStroke(1.dp, MaterialTheme.colorScheme.outlineVariant),
                     shape = MaterialTheme.shapes.medium
@@ -1611,8 +1701,12 @@ fun RoomFoodReservationsDialog(
                                     verticalAlignment = Alignment.CenterVertically,
                                     horizontalArrangement = Arrangement.SpaceBetween
                                 ) {
-                                    val currentBreakfastCount = reservation?.breakfastCount ?: if (room.hasBreakfast) room.breakfastCount else 0
-                                    Text("تعداد صبحانه امروز:", style = MaterialTheme.typography.labelMedium)
+                                    val currentBreakfastCount = reservation?.breakfastCount
+                                        ?: if (room.hasBreakfast) room.breakfastCount else 0
+                                    Text(
+                                        "تعداد صبحانه امروز:",
+                                        style = MaterialTheme.typography.labelMedium
+                                    )
                                     AdminBreakfastCountSelection(
                                         currentCount = currentBreakfastCount,
                                         guestCount = room.guestCount,
@@ -1646,13 +1740,27 @@ fun RoomFoodReservationsDialog(
                                             foods = menu.filter { it.type == FoodType.LUNCH },
                                             selectedId = selection?.lunchFoodId,
                                             modifier = Modifier.weight(1f),
-                                            onSelect = { onFoodChange(date, index, it, FoodType.LUNCH) })
+                                            onSelect = {
+                                                onFoodChange(
+                                                    date,
+                                                    index,
+                                                    it,
+                                                    FoodType.LUNCH
+                                                )
+                                            })
                                         AdminFoodSelectionItem(
                                             label = "شام",
                                             foods = menu.filter { it.type == FoodType.DINNER },
                                             selectedId = selection?.dinnerFoodId,
                                             modifier = Modifier.weight(1f),
-                                            onSelect = { onFoodChange(date, index, it, FoodType.DINNER) })
+                                            onSelect = {
+                                                onFoodChange(
+                                                    date,
+                                                    index,
+                                                    it,
+                                                    FoodType.DINNER
+                                                )
+                                            })
                                     }
                                 }
                             }
@@ -1676,9 +1784,14 @@ fun AdminBreakfastCountSelection(
     Box {
         Surface(
             onClick = { expanded = true },
-            color = if (currentCount > 0) MaterialTheme.colorScheme.primary.copy(alpha = 0.1f) else MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.5f),
+            color = if (currentCount > 0) MaterialTheme.colorScheme.primary.copy(alpha = 0.1f) else MaterialTheme.colorScheme.surfaceVariant.copy(
+                alpha = 0.5f
+            ),
             shape = MaterialTheme.shapes.small,
-            border = BorderStroke(1.dp, if (currentCount > 0) MaterialTheme.colorScheme.primary else MaterialTheme.colorScheme.outlineVariant)
+            border = BorderStroke(
+                1.dp,
+                if (currentCount > 0) MaterialTheme.colorScheme.primary else MaterialTheme.colorScheme.outlineVariant
+            )
         ) {
             Row(
                 modifier = Modifier.padding(horizontal = 8.dp, vertical = 4.dp),
@@ -1722,7 +1835,7 @@ fun AdminFoodSelectionItem(
     Box(modifier = modifier) {
         if (selectedFood == null) {
             Text(
-                modifier = Modifier.clickable{ expanded = true },
+                modifier = Modifier.clickable { expanded = true },
                 text = "عدم رزرو $label",
                 style = MaterialTheme.typography.labelMedium.copy(fontSize = 14.sp),
                 maxLines = 1,
@@ -1860,7 +1973,7 @@ fun ReservationSummary(
     summaryByDate.forEach { (date, dailyResList) ->
         val validRes =
             dailyResList.filter { res ->
-                res.guestMealSelections.any { it.lunchFoodId != null || it.dinnerFoodId != null}
+                res.guestMealSelections.any { it.lunchFoodId != null || it.dinnerFoodId != null }
                 res.breakfastCount > 0
             }
         println("vr $validRes")
@@ -1917,7 +2030,15 @@ fun ReservationSummary(
                                 AdminBreakfastCountSelection(
                                     currentCount = res.breakfastCount,
                                     guestCount = room?.guestCount ?: 7,
-                                    onCountChange = { onIntent(AdminIntent.ChangeBreakfastCount(res.roomNumber, date, it)) }
+                                    onCountChange = {
+                                        onIntent(
+                                            AdminIntent.ChangeBreakfastCount(
+                                                res.roomNumber,
+                                                date,
+                                                it
+                                            )
+                                        )
+                                    }
                                 )
                             }
                             res.guestMealSelections.forEach { selection ->
@@ -2037,11 +2158,31 @@ fun TodayReservationDetail(state: AdminState) {
                             color = MaterialTheme.colorScheme.primary
                         )
                         Spacer(Modifier.height(8.dp))
-                        Text("سلف سرویس", style = MaterialTheme.typography.labelMedium, color = MaterialTheme.colorScheme.outline)
-                        HorizontalDivider(Modifier.padding(vertical = 6.dp), thickness = 0.5.dp, color = MaterialTheme.colorScheme.surfaceVariant)
-                        Row(modifier = Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.SpaceBetween) {
-                            Text("مجموع", fontWeight = FontWeight.Bold, style = MaterialTheme.typography.labelMedium)
-                            Text("$buffetBreakfastCount پرس", fontWeight = FontWeight.ExtraBold, color = MaterialTheme.colorScheme.primary, style = MaterialTheme.typography.labelMedium)
+                        Text(
+                            "سلف سرویس",
+                            style = MaterialTheme.typography.labelMedium,
+                            color = MaterialTheme.colorScheme.outline
+                        )
+                        HorizontalDivider(
+                            Modifier.padding(vertical = 6.dp),
+                            thickness = 0.5.dp,
+                            color = MaterialTheme.colorScheme.surfaceVariant
+                        )
+                        Row(
+                            modifier = Modifier.fillMaxWidth(),
+                            horizontalArrangement = Arrangement.SpaceBetween
+                        ) {
+                            Text(
+                                "مجموع",
+                                fontWeight = FontWeight.Bold,
+                                style = MaterialTheme.typography.labelMedium
+                            )
+                            Text(
+                                "$buffetBreakfastCount پرس",
+                                fontWeight = FontWeight.ExtraBold,
+                                color = MaterialTheme.colorScheme.primary,
+                                style = MaterialTheme.typography.labelMedium
+                            )
                         }
                     }
                 }
@@ -2384,8 +2525,16 @@ fun DeliveryChip(
 }
 
 @Composable
-fun AddRoomDialog(onDismiss: () -> Unit, onConfirm: (Room) -> Unit, physicalRooms: List<com.braveboy.hotelzagrous.core.PhysicalRoom>) {
-    var selectedPhysicalRoom by remember { mutableStateOf<com.braveboy.hotelzagrous.core.PhysicalRoom?>(null) }
+fun AddRoomDialog(
+    onDismiss: () -> Unit,
+    onConfirm: (Room) -> Unit,
+    physicalRooms: List<com.braveboy.hotelzagrous.core.PhysicalRoom>
+) {
+    var selectedPhysicalRoom by remember {
+        mutableStateOf<com.braveboy.hotelzagrous.core.PhysicalRoom?>(
+            null
+        )
+    }
     var roomNumber by remember { mutableStateOf("") }
     var guestName by remember { mutableStateOf("") }
     var identificationId by remember { mutableStateOf("") }
@@ -2421,7 +2570,9 @@ fun AddRoomDialog(onDismiss: () -> Unit, onConfirm: (Room) -> Unit, physicalRoom
                             }
                         }
                     )
-                    DropdownMenu(expanded = expandedRoom, onDismissRequest = { expandedRoom = false }) {
+                    DropdownMenu(
+                        expanded = expandedRoom,
+                        onDismissRequest = { expandedRoom = false }) {
                         physicalRooms.forEach { room ->
                             DropdownMenuItem(
                                 text = { Text("اتاق ${room.roomNumber} (تخت: ${room.bedCount})") },
