@@ -51,7 +51,7 @@ fun App(isAdmin: Boolean = false) {
             ) {
                 if (isAdmin) {
                     val adminViewModel = remember { AdminViewModel(repository, scope) }
-                    AdminScreen(adminViewModel)
+                    AdminScreen(adminViewModel, repository, scope)
                 } else {
                     val resViewModel = remember { ReservationViewModel(repository, scope) }
                     ReservationScreen(resViewModel)

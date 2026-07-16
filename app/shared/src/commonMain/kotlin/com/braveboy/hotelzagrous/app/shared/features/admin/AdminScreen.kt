@@ -42,6 +42,7 @@ import androidx.compose.material.icons.filled.Edit
 import androidx.compose.material.icons.filled.Event
 import androidx.compose.material.icons.filled.History
 import androidx.compose.material.icons.filled.Hotel
+import androidx.compose.material.icons.filled.MonetizationOn
 import androidx.compose.material.icons.filled.Person
 import androidx.compose.material.icons.filled.Print
 import androidx.compose.material.icons.filled.Refresh
@@ -85,6 +86,8 @@ import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import com.braveboy.hotelzagrous.app.shared.features.PersianDatePickerDialog
+import com.braveboy.hotelzagrous.app.shared.features.finance.FinanceScreen
+import com.braveboy.hotelzagrous.app.shared.features.finance.FinanceViewModel
 import com.braveboy.hotelzagrous.core.DateUtils
 import com.braveboy.hotelzagrous.core.DayType
 import com.braveboy.hotelzagrous.core.FoodItem
@@ -95,14 +98,17 @@ import com.braveboy.hotelzagrous.core.MenuConfig
 import com.braveboy.hotelzagrous.core.Room
 import com.braveboy.hotelzagrous.core.normalizeDigits
 import kotlin.time.Clock
+import kotlinx.coroutines.CoroutineScope
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
-fun AdminScreen(viewModel: AdminViewModel) {
+fun AdminScreen(viewModel: AdminViewModel, repository: com.braveboy.hotelzagrous.app.shared.data.HotelRepository, scope: CoroutineScope) {
     val state by viewModel.state.collectAsState()
     var currentTab by remember { mutableStateOf("timeline") }
     var showAddRoomDialog by remember { mutableStateOf(false) }
     var showClearDataDialog by remember { mutableStateOf(false) }
+
+    val financeViewModel = remember { FinanceViewModel(repository, scope) }
 
     Row(modifier = Modifier.fillMaxSize().background(MaterialTheme.colorScheme.background)) {
         Surface(
@@ -190,6 +196,13 @@ fun AdminScreen(viewModel: AdminViewModel) {
                     selected = currentTab == "history",
                     onClick = { currentTab = "history" }
                 )
+                Spacer(Modifier.height(4.dp))
+                NavigationItem(
+                    label = "مدیریت مالی",
+                    icon = Icons.Default.MonetizationOn,
+                    selected = currentTab == "finance",
+                    onClick = { currentTab = "finance" }
+                )
 
                 Spacer(Modifier.weight(1f))
                 HorizontalDivider(
@@ -232,6 +245,7 @@ fun AdminScreen(viewModel: AdminViewModel) {
                         "menu" -> "مدیریت منو غذا"
                         "daily_report" -> "مشاهده و چاپ غذا"
                         "history" -> "تاریخچه اتاق‌های ثبت شده"
+                        "finance" -> "مدیریت مالی هتل"
                         else -> "گزارش رزرو غذا"
                     }
                     Text(
@@ -300,6 +314,7 @@ fun AdminScreen(viewModel: AdminViewModel) {
                         "reservations" -> ReservationSummaryContent(state, viewModel)
                         "daily_report" -> DailyDetailedReportContent(state, viewModel)
                         "history" -> RoomHistoryContent(state)
+                        "finance" -> FinanceScreen(financeViewModel)
                     }
                 }
             }
@@ -714,7 +729,7 @@ fun RoomAdminCard(
     room: Room,
     availableFoods: List<FoodItem>,
     reservations: List<FoodReservation>,
-    onUpdate: (String, String, String, String, String, Long, Long, Int, Boolean, Int) -> Unit,
+    onUpdate: (String, String, String, String, String, Long, Long, Int, Boolean, Int, Long) -> Unit,
     onDelete: () -> Unit,
     onFoodChange: (String, Int, String?, FoodType) -> Unit,
     onBreakfastChange: (String, Int) -> Unit
@@ -729,6 +744,7 @@ fun RoomAdminCard(
     var guestCount by remember(room) { mutableIntStateOf(room.guestCount) }
     var hasBreakfast by remember(room) { mutableStateOf(room.hasBreakfast) }
     var breakfastCount by remember(room) { mutableIntStateOf(room.breakfastCount) }
+    var contractAmount by remember(room) { mutableLongStateOf(room.contractAmount) }
     var expandedGuestCount by remember { mutableStateOf(false) }
     var showFoodDialog by remember { mutableStateOf(false) }
     var showDeleteConfirm by remember { mutableStateOf(false) }
@@ -774,7 +790,8 @@ fun RoomAdminCard(
                                     checkOutMillis,
                                     guestCount,
                                     hasBreakfast,
-                                    breakfastCount
+                                    breakfastCount,
+                                    contractAmount
                                 )
                                 changeRoomNumber = false
                             }
@@ -832,7 +849,8 @@ fun RoomAdminCard(
                                     checkOutMillis,
                                     guestCount,
                                     hasBreakfast,
-                                    breakfastCount
+                                    breakfastCount,
+                                    contractAmount
                                 )
                                 changeName = false
                             }
@@ -889,7 +907,8 @@ fun RoomAdminCard(
                                     checkOutMillis,
                                     guestCount,
                                     hasBreakfast,
-                                    breakfastCount
+                                    breakfastCount,
+                                    contractAmount
                                 )
                                 changeId = false
                             }
@@ -972,7 +991,8 @@ fun RoomAdminCard(
                                         checkOutMillis,
                                         guestCount,
                                         hasBreakfast,
-                                        breakfastCount
+                                        breakfastCount,
+                                        contractAmount
                                     )
                                     expandedGuestCount = false
                                 }
@@ -1003,7 +1023,8 @@ fun RoomAdminCard(
                             checkOutMillis,
                             guestCount,
                             hasBreakfast,
-                            breakfastCount
+                            breakfastCount,
+                            contractAmount
                         )
                     }
                     Text(
@@ -1025,7 +1046,8 @@ fun RoomAdminCard(
                             checkOutMillis,
                             guestCount,
                             hasBreakfast,
-                            breakfastCount
+                            breakfastCount,
+                            contractAmount
                         )
                     }
                 }
@@ -1137,7 +1159,7 @@ fun RoomManagementContent(state: AdminState, viewModel: AdminViewModel) {
                     room = room,
                     availableFoods = state.foods,
                     reservations = state.reservations,
-                    onUpdate = { rNum, name, idId, inD, outD, inM, outM, count, hasB, bCount ->
+                    onUpdate = { rNum, name, idId, inD, outD, inM, outM, count, hasB, bCount, cAmt ->
                         val effectiveId = room.id.ifBlank { room.roomNumber }
                         println("id s is $effectiveId")
                         viewModel.onIntent(
@@ -1152,7 +1174,8 @@ fun RoomManagementContent(state: AdminState, viewModel: AdminViewModel) {
                                 checkOutMillis = outM,
                                 guestCount = count,
                                 hasBreakfast = hasB,
-                                breakfastCount = bCount
+                                breakfastCount = bCount,
+                                contractAmount = cAmt
                             )
                         )
                     },
@@ -2545,6 +2568,7 @@ fun AddRoomDialog(
     var checkOut by remember { mutableStateOf("") }
     var checkInMillis by remember { mutableLongStateOf(0L) }
     var checkOutMillis by remember { mutableLongStateOf(0L) }
+    var contractAmount by remember { mutableStateOf("") }
     var expandedGuest by remember { mutableStateOf(false) }
     var expandedRoom by remember { mutableStateOf(false) }
 
@@ -2598,6 +2622,14 @@ fun AddRoomDialog(
                     value = identificationId,
                     onValueChange = { identificationId = it },
                     label = { Text("کد شناسایی") },
+                    modifier = Modifier.fillMaxWidth(),
+                    shape = MaterialTheme.shapes.medium,
+                    singleLine = true
+                )
+                OutlinedTextField(
+                    value = contractAmount,
+                    onValueChange = { contractAmount = it },
+                    label = { Text("مبلغ قرارداد (ریال)") },
                     modifier = Modifier.fillMaxWidth(),
                     shape = MaterialTheme.shapes.medium,
                     singleLine = true
@@ -2676,7 +2708,8 @@ fun AddRoomDialog(
                                 checkInDate = checkIn,
                                 checkOutDate = checkOut,
                                 checkInEpochMillis = checkInMillis,
-                                checkOutEpochMillis = checkOutMillis
+                                checkOutEpochMillis = checkOutMillis,
+                                contractAmount = contractAmount.toLongOrNull() ?: 0
                             )
                         )
                     }

@@ -1,6 +1,9 @@
 package com.braveboy.hotelzagrous.app.shared.data
 
 import com.braveboy.hotelzagrous.core.FoodItem
+import com.braveboy.hotelzagrous.core.FinancialTransaction
+import com.braveboy.hotelzagrous.core.FinancialReport
+import com.braveboy.hotelzagrous.core.RoomFinancialSummary
 import com.braveboy.hotelzagrous.core.FoodReservation
 import com.braveboy.hotelzagrous.core.MenuConfig
 import com.braveboy.hotelzagrous.core.PhysicalRoom
@@ -169,7 +172,8 @@ class HotelRepository(
         checkOutMillis: Long,
         guestCount: Int,
         hasBreakfast: Boolean,
-        breakfastCount: Int
+        breakfastCount: Int,
+        contractAmount: Long
     ) {
         println("id is $id")
         val normalizedIdentificationId = identificationId.normalizeDigits()
@@ -186,7 +190,8 @@ class HotelRepository(
                     checkOutMillis = checkOutMillis,
                     guestCount = guestCount,
                     hasBreakfast = hasBreakfast,
-                    breakfastCount = breakfastCount
+                    breakfastCount = breakfastCount,
+                    contractAmount = contractAmount
                 )
             )
         }
@@ -194,5 +199,39 @@ class HotelRepository(
 
     suspend fun clearAllData() {
         client.delete("$apiBaseUrl/admin/clear-all")
+    }
+
+    // Financial Module
+    suspend fun getTransactions(): List<FinancialTransaction> = try {
+        val response: HttpResponse = client.get("$apiBaseUrl/transactions")
+        if (response.status.isSuccess()) response.body() else emptyList()
+    } catch (e: Throwable) {
+        emptyList()
+    }
+
+    suspend fun upsertTransaction(tx: FinancialTransaction) {
+        client.post("$apiBaseUrl/transactions") {
+            contentType(ContentType.Application.Json)
+            setBody(tx)
+        }
+    }
+
+    suspend fun deleteTransaction(id: String) {
+        client.delete("$apiBaseUrl/transactions/$id")
+    }
+
+    suspend fun getFinancialSummary(): Pair<FinancialReport, List<RoomFinancialSummary>> = try {
+        val response: HttpResponse = client.get("$apiBaseUrl/financial-summary")
+        if (response.status.isSuccess()) {
+            val body = response.body<Map<String, kotlinx.serialization.json.JsonElement>>()
+            val json = Json { ignoreUnknownKeys = true }
+            val report = json.decodeFromJsonElement(FinancialReport.serializer(), body["report"]!!)
+            val summaries = json.decodeFromJsonElement(kotlinx.serialization.builtins.ListSerializer(RoomFinancialSummary.serializer()), body["summaries"]!!)
+            report to summaries
+        } else {
+            FinancialReport(0, 0, 0, 0, 0) to emptyList()
+        }
+    } catch (e: Throwable) {
+        FinancialReport(0, 0, 0, 0, 0) to emptyList()
     }
 }

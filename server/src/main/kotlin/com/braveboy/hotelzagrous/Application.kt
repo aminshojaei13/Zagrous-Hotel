@@ -1,11 +1,15 @@
 package com.braveboy.hotelzagrous
 
 import com.braveboy.hotelzagrous.core.ApiError
+import com.braveboy.hotelzagrous.core.FinancialReport
+import com.braveboy.hotelzagrous.core.FinancialTransaction
 import com.braveboy.hotelzagrous.core.FoodItem
 import com.braveboy.hotelzagrous.core.FoodReservation
 import com.braveboy.hotelzagrous.core.MenuConfig
 import com.braveboy.hotelzagrous.core.PhysicalRoom
 import com.braveboy.hotelzagrous.core.Room
+import com.braveboy.hotelzagrous.core.RoomFinancialSummary
+import com.braveboy.hotelzagrous.core.TransactionType
 import com.braveboy.hotelzagrous.core.UpdateRoomStayRequest
 import com.braveboy.hotelzagrous.core.normalizeDigits
 import io.ktor.http.*
@@ -115,7 +119,8 @@ fun Application.module() {
                     request.checkOutMillis,
                     request.guestCount,
                     request.hasBreakfast,
-                    request.breakfastCount
+                    request.breakfastCount,
+                    request.contractAmount
                 )
                 if (updated) call.respond(HttpStatusCode.OK, database.getRoom(id)!!)
                 else call.respond(HttpStatusCode.NotFound, ApiError("شناسه اتاق یافت نشد"))
@@ -147,6 +152,59 @@ fun Application.module() {
                 val normalizedRes = reservation.copy(roomNumber = reservation.roomNumber.normalizeDigits())
                 database.saveReservation(normalizedRes)
                 call.respond(HttpStatusCode.Created, normalizedRes)
+            }
+
+            // Financial module
+            get("/transactions") {
+                call.respond(database.getTransactions())
+            }
+            post("/transactions") {
+                val tx = call.receive<FinancialTransaction>()
+                database.upsertTransaction(tx)
+                call.respond(HttpStatusCode.OK, tx)
+            }
+            delete("/transactions/{id}") {
+                val id = call.parameters["id"].orEmpty()
+                database.deleteTransaction(id)
+                call.respond(HttpStatusCode.OK)
+            }
+
+            get("/financial-summary") {
+                val rooms = database.getRooms()
+                val transactions = database.getTransactions()
+                
+                val summaries = rooms.map { room ->
+                    val roomTxs = transactions.filter { it.roomId == room.id }
+                    val deposits = roomTxs.filter { it.transactionType == TransactionType.DEPOSIT }.sumOf { it.amount }
+                    val expenses = roomTxs.filter { it.transactionType == TransactionType.EXPENSE }.sumOf { it.amount }
+                    val settlements = roomTxs.filter { it.transactionType == TransactionType.SETTLEMENT }.sumOf { it.amount }
+                    
+                    RoomFinancialSummary(
+                        roomId = room.id,
+                        roomNumber = room.roomNumber,
+                        guestName = room.guestName,
+                        totalContractAmount = room.contractAmount,
+                        totalDeposits = deposits,
+                        totalExpenses = expenses,
+                        remainingSettlement = room.contractAmount - deposits - settlements,
+                        profit = room.contractAmount - expenses
+                    )
+                }
+                
+                val totalExpenses = transactions.filter { it.transactionType == TransactionType.EXPENSE }.sumOf { it.amount }
+                val totalDeposits = transactions.filter { it.transactionType == TransactionType.DEPOSIT }.sumOf { it.amount }
+                val totalSettlements = transactions.filter { it.transactionType == TransactionType.SETTLEMENT }.sumOf { it.amount }
+                
+                val report = FinancialReport(
+                    totalExpenses = totalExpenses,
+                    totalDeposits = totalDeposits,
+                    totalSettlements = totalSettlements,
+                    remainingAmount = summaries.sumOf { it.remainingSettlement },
+                    netProfit = summaries.sumOf { it.profit },
+                    transactions = transactions
+                )
+                
+                call.respond(mapOf("report" to report, "summaries" to summaries))
             }
         }
     }

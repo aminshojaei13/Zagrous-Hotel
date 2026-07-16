@@ -23,7 +23,8 @@ data class Room(
     val checkInDate: String = "",
     val checkOutDate: String = "",
     val checkInEpochMillis: Long = 0,
-    val checkOutEpochMillis: Long = 0
+    val checkOutEpochMillis: Long = 0,
+    val contractAmount: Long = 0
 )
 
 @Serializable
@@ -79,8 +80,56 @@ data class UpdateRoomStayRequest(
     val checkOutMillis: Long,
     val guestCount: Int,
     val hasBreakfast: Boolean = false,
-    val breakfastCount: Int = 0
+    val breakfastCount: Int = 0,
+    val contractAmount: Long = 0
 )
 
 @Serializable
 data class ApiError(val message: String)
+
+@Serializable
+enum class TransactionType { EXPENSE, DEPOSIT, SETTLEMENT }
+
+@Serializable
+enum class PaymentMethod { CASH, CARD, BANK_TRANSFER }
+
+@Serializable
+enum class TransactionStatus { PAID, PENDING }
+
+@Serializable
+data class FinancialTransaction(
+    val id: String = "",
+    val roomId: String, // Related to Room.id
+    val title: String,
+    val description: String = "",
+    val amount: Long,
+    val transactionType: TransactionType,
+    val paymentDate: String, // Jalali date format: yyyy/MM/dd
+    val createdAt: Long = 0,
+    val updatedAt: Long = 0,
+    val notes: String = "",
+    val paymentMethod: PaymentMethod = PaymentMethod.CASH,
+    val status: TransactionStatus = TransactionStatus.PAID
+)
+
+@Serializable
+data class RoomFinancialSummary(
+    val roomId: String,
+    val roomNumber: String,
+    val guestName: String,
+    val totalContractAmount: Long,
+    val totalDeposits: Long,
+    val totalExpenses: Long,
+    val remainingSettlement: Long,
+    val profit: Long
+)
+
+@Serializable
+data class FinancialReport(
+    val totalExpenses: Long,
+    val totalDeposits: Long,
+    val totalSettlements: Long,
+    val remainingAmount: Long,
+    val netProfit: Long,
+    val transactions: List<FinancialTransaction> = emptyList()
+)

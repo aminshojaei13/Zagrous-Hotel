@@ -30,7 +30,8 @@ sealed class AdminIntent {
         val checkOutMillis: Long,
         val guestCount: Int,
         val hasBreakfast: Boolean,
-        val breakfastCount: Int
+        val breakfastCount: Int,
+        val contractAmount: Long = 0
     ) : AdminIntent()
     data class AddRoom(val room: Room) : AdminIntent()
     data class DeleteRoom(val id: String) : AdminIntent()

@@ -1,13 +1,17 @@
 package com.braveboy.hotelzagrous
 
 import com.braveboy.hotelzagrous.core.DayType
+import com.braveboy.hotelzagrous.core.FinancialTransaction
 import com.braveboy.hotelzagrous.core.FoodItem
 import com.braveboy.hotelzagrous.core.FoodReservation
 import com.braveboy.hotelzagrous.core.FoodType
 import com.braveboy.hotelzagrous.core.Room
 import com.braveboy.hotelzagrous.core.GuestMealSelection
 import com.braveboy.hotelzagrous.core.MenuConfig
+import com.braveboy.hotelzagrous.core.PaymentMethod
 import com.braveboy.hotelzagrous.core.PhysicalRoom
+import com.braveboy.hotelzagrous.core.TransactionStatus
+import com.braveboy.hotelzagrous.core.TransactionType
 import com.braveboy.hotelzagrous.core.normalizeDigits
 import java.sql.Connection
 import java.sql.DriverManager
@@ -32,13 +36,89 @@ class HotelDatabase(
     fun clearAllData() {
         connection.createStatement().use { statement ->
             statement.executeUpdate("DELETE FROM food_reservations")
+            statement.executeUpdate("DELETE FROM financial_transactions")
             statement.executeUpdate("DELETE FROM rooms")
+        }
+    }
+
+    // Financial Transactions
+    fun getTransactions(): List<FinancialTransaction> = connection.prepareStatement(
+        """
+        SELECT id, room_id, title, description, amount, transaction_type, payment_date, created_at, updated_at, notes, payment_method, status
+        FROM financial_transactions
+        ORDER BY payment_date DESC
+        """.trimIndent()
+    ).use { statement ->
+        statement.executeQuery().use { rows ->
+            buildList {
+                while (rows.next()) {
+                    add(
+                        FinancialTransaction(
+                            id = rows.getString("id"),
+                            roomId = rows.getString("room_id"),
+                            title = rows.getString("title"),
+                            description = rows.getString("description"),
+                            amount = rows.getLong("amount"),
+                            transactionType = TransactionType.valueOf(rows.getString("transaction_type")),
+                            paymentDate = rows.getString("payment_date"),
+                            createdAt = rows.getLong("created_at"),
+                            updatedAt = rows.getLong("updated_at"),
+                            notes = rows.getString("notes"),
+                            paymentMethod = PaymentMethod.valueOf(rows.getString("payment_method")),
+                            status = TransactionStatus.valueOf(rows.getString("status"))
+                        )
+                    )
+                }
+            }
+        }
+    }
+
+    fun upsertTransaction(tx: FinancialTransaction) {
+        val id = tx.id.ifBlank { UUID.randomUUID().toString() }
+        val now = System.currentTimeMillis()
+        connection.prepareStatement(
+            """
+            INSERT INTO financial_transactions(id, room_id, title, description, amount, transaction_type, payment_date, created_at, updated_at, notes, payment_method, status)
+            VALUES(?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+            ON CONFLICT(id) DO UPDATE SET
+                room_id = excluded.room_id,
+                title = excluded.title,
+                description = excluded.description,
+                amount = excluded.amount,
+                transaction_type = excluded.transaction_type,
+                payment_date = excluded.payment_date,
+                updated_at = excluded.updated_at,
+                notes = excluded.notes,
+                payment_method = excluded.payment_method,
+                status = excluded.status
+            """.trimIndent()
+        ).use { statement ->
+            statement.setString(1, id)
+            statement.setString(2, tx.roomId)
+            statement.setString(3, tx.title)
+            statement.setString(4, tx.description)
+            statement.setLong(5, tx.amount)
+            statement.setString(6, tx.transactionType.name)
+            statement.setString(7, tx.paymentDate)
+            statement.setLong(8, if (tx.createdAt == 0L) now else tx.createdAt)
+            statement.setLong(9, now)
+            statement.setString(10, tx.notes)
+            statement.setString(11, tx.paymentMethod.name)
+            statement.setString(12, tx.status.name)
+            statement.executeUpdate()
+        }
+    }
+
+    fun deleteTransaction(id: String) {
+        connection.prepareStatement("DELETE FROM financial_transactions WHERE id = ?").use { statement ->
+            statement.setString(1, id)
+            statement.executeUpdate()
         }
     }
 
     fun getRooms(): List<Room> = connection.prepareStatement(
         """
-        SELECT id, room_number, guest_name, identification_id, guest_count, has_breakfast, breakfast_count, check_in_date, check_out_date, check_in_epoch_millis, check_out_epoch_millis
+        SELECT id, room_number, guest_name, identification_id, guest_count, has_breakfast, breakfast_count, check_in_date, check_out_date, check_in_epoch_millis, check_out_epoch_millis, contract_amount
         FROM rooms
         ORDER BY room_number
         """.trimIndent()
@@ -58,7 +138,8 @@ class HotelDatabase(
                             checkInDate = rows.getString("check_in_date"),
                             checkOutDate = rows.getString("check_out_date"),
                             checkInEpochMillis = rows.getLong("check_in_epoch_millis"),
-                            checkOutEpochMillis = rows.getLong("check_out_epoch_millis")
+                            checkOutEpochMillis = rows.getLong("check_out_epoch_millis"),
+                            contractAmount = rows.getLong("contract_amount")
                         )
                     )
                 }
@@ -117,7 +198,7 @@ class HotelDatabase(
 
     fun getRoom(id: String): Room? = connection.prepareStatement(
         """
-        SELECT id, room_number, guest_name, identification_id, guest_count, has_breakfast, breakfast_count, check_in_date, check_out_date, check_in_epoch_millis, check_out_epoch_millis
+        SELECT id, room_number, guest_name, identification_id, guest_count, has_breakfast, breakfast_count, check_in_date, check_out_date, check_in_epoch_millis, check_out_epoch_millis, contract_amount
         FROM rooms
         WHERE id = ?
         """.trimIndent()
@@ -138,7 +219,8 @@ class HotelDatabase(
                     checkInDate = rows.getString("check_in_date"),
                     checkOutDate = rows.getString("check_out_date"),
                     checkInEpochMillis = rows.getLong("check_in_epoch_millis"),
-                    checkOutEpochMillis = rows.getLong("check_out_epoch_millis")
+                    checkOutEpochMillis = rows.getLong("check_out_epoch_millis"),
+                    contractAmount = rows.getLong("contract_amount")
                 )
             }
         }
@@ -148,7 +230,7 @@ class HotelDatabase(
         val normalized = roomNumber.normalizeDigits()
         return connection.prepareStatement(
             """
-            SELECT id, room_number, guest_name, identification_id, guest_count, has_breakfast, breakfast_count, check_in_date, check_out_date, check_in_epoch_millis, check_out_epoch_millis
+            SELECT id, room_number, guest_name, identification_id, guest_count, has_breakfast, breakfast_count, check_in_date, check_out_date, check_in_epoch_millis, check_out_epoch_millis, contract_amount
             FROM rooms
             WHERE room_number = ?
             ORDER BY check_out_epoch_millis DESC
@@ -171,7 +253,8 @@ class HotelDatabase(
                         checkInDate = rows.getString("check_in_date"),
                         checkOutDate = rows.getString("check_out_date"),
                         checkInEpochMillis = rows.getLong("check_in_epoch_millis"),
-                        checkOutEpochMillis = rows.getLong("check_out_epoch_millis")
+                        checkOutEpochMillis = rows.getLong("check_out_epoch_millis"),
+                        contractAmount = rows.getLong("contract_amount")
                     )
                 }
             }
@@ -182,8 +265,8 @@ class HotelDatabase(
         val id = room.id.ifBlank { UUID.randomUUID().toString() }
         connection.prepareStatement(
             """
-            INSERT INTO rooms(id, room_number, guest_name, identification_id, guest_count, has_breakfast, breakfast_count, check_in_date, check_out_date, check_in_epoch_millis, check_out_epoch_millis)
-            VALUES(?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+            INSERT INTO rooms(id, room_number, guest_name, identification_id, guest_count, has_breakfast, breakfast_count, check_in_date, check_out_date, check_in_epoch_millis, check_out_epoch_millis, contract_amount)
+            VALUES(?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
             ON CONFLICT(id) DO UPDATE SET
                 room_number = excluded.room_number,
                 guest_name = excluded.guest_name,
@@ -194,7 +277,8 @@ class HotelDatabase(
                 check_in_date = excluded.check_in_date,
                 check_out_date = excluded.check_out_date,
                 check_in_epoch_millis = excluded.check_in_epoch_millis,
-                check_out_epoch_millis = excluded.check_out_epoch_millis
+                check_out_epoch_millis = excluded.check_out_epoch_millis,
+                contract_amount = excluded.contract_amount
             """.trimIndent()
         ).use { statement ->
             statement.setString(1, id)
@@ -208,6 +292,7 @@ class HotelDatabase(
             statement.setString(9, room.checkOutDate)
             statement.setLong(10, room.checkInEpochMillis)
             statement.setLong(11, room.checkOutEpochMillis)
+            statement.setLong(12, room.contractAmount)
             statement.executeUpdate()
         }
         return id
@@ -224,7 +309,8 @@ class HotelDatabase(
         checkOutMillis: Long,
         guestCount: Int,
         hasBreakfast: Boolean,
-        breakfastCount: Int
+        breakfastCount: Int,
+        contractAmount: Long
     ): Boolean {
         val oldRoom = getRoom(id) ?: return false
         val newRoomNumber = roomNumber.normalizeDigits()
@@ -240,7 +326,7 @@ class HotelDatabase(
         return connection.prepareStatement(
             """
             UPDATE rooms
-            SET room_number = ?, guest_name = ?, identification_id = ?, check_in_date = ?, check_out_date = ?, check_in_epoch_millis = ?, check_out_epoch_millis = ?, guest_count = ?, has_breakfast = ?, breakfast_count = ?
+            SET room_number = ?, guest_name = ?, identification_id = ?, check_in_date = ?, check_out_date = ?, check_in_epoch_millis = ?, check_out_epoch_millis = ?, guest_count = ?, has_breakfast = ?, breakfast_count = ?, contract_amount = ?
             WHERE id = ?
             """.trimIndent()
         ).use { statement ->
@@ -254,7 +340,8 @@ class HotelDatabase(
             statement.setInt(8, guestCount)
             statement.setInt(9, if (hasBreakfast) 1 else 0)
             statement.setInt(10, breakfastCount)
-            statement.setString(11, id)
+            statement.setLong(11, contractAmount)
+            statement.setString(12, id)
             statement.executeUpdate() > 0
         }
     }
@@ -457,7 +544,28 @@ class HotelDatabase(
                     check_in_date TEXT NOT NULL,
                     check_out_date TEXT NOT NULL,
                     check_in_epoch_millis INTEGER NOT NULL,
-                    check_out_epoch_millis INTEGER NOT NULL
+                    check_out_epoch_millis INTEGER NOT NULL,
+                    contract_amount INTEGER NOT NULL DEFAULT 0
+                )
+                """.trimIndent()
+            )
+
+            statement.executeUpdate(
+                """
+                CREATE TABLE IF NOT EXISTS financial_transactions(
+                    id TEXT PRIMARY KEY,
+                    room_id TEXT NOT NULL,
+                    title TEXT NOT NULL,
+                    description TEXT,
+                    amount INTEGER NOT NULL,
+                    transaction_type TEXT NOT NULL,
+                    payment_date TEXT NOT NULL,
+                    created_at INTEGER NOT NULL,
+                    updated_at INTEGER NOT NULL,
+                    notes TEXT,
+                    payment_method TEXT NOT NULL,
+                    status TEXT NOT NULL,
+                    FOREIGN KEY(room_id) REFERENCES rooms(id)
                 )
                 """.trimIndent()
             )
@@ -582,6 +690,9 @@ class HotelDatabase(
             }
             if (!roomColumns.contains("capacity")) {
                 statement.executeUpdate("ALTER TABLE rooms ADD COLUMN capacity INTEGER NOT NULL DEFAULT 1")
+            }
+            if (!roomColumns.contains("contract_amount")) {
+                statement.executeUpdate("ALTER TABLE rooms ADD COLUMN contract_amount INTEGER NOT NULL DEFAULT 0")
             }
         }
 

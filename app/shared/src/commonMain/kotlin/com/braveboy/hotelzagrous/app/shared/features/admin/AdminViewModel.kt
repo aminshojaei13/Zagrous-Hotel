@@ -157,7 +157,8 @@ class AdminViewModel(
                     intent.checkOutMillis,
                     intent.guestCount,
                     intent.hasBreakfast,
-                    intent.breakfastCount
+                    intent.breakfastCount,
+                    intent.contractAmount
                 )
             }.onSuccess {
                 loadData()
