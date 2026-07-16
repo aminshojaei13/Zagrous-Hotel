@@ -1182,6 +1182,15 @@ fun DailyDetailedReportContent(state: AdminState, viewModel: AdminViewModel) {
                 verticalAlignment = Alignment.CenterVertically,
                 horizontalArrangement = Arrangement.spacedBy(6.dp)
             ) {
+                IconButton(
+                    onClick = {
+                        val today = DateUtils.convertMillisToJalaliString(Clock.System.now().toEpochMilliseconds())
+                        viewModel.onIntent(AdminIntent.SelectReportDate(today))
+                    }
+                ) {
+                    Icon(Icons.Default.Today, null, tint = MaterialTheme.colorScheme.primary, modifier = Modifier.size(20.dp))
+                }
+
                 DatePickerFieldSmall(reportDate) { date, _ ->
                     viewModel.onIntent(
                         AdminIntent.SelectReportDate(
