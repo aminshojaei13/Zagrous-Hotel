@@ -33,6 +33,9 @@ import androidx.compose.material.icons.filled.Delete
 import androidx.compose.material.icons.filled.DeleteForever
 import androidx.compose.material.icons.filled.Edit
 import androidx.compose.material.icons.filled.Event
+import androidx.compose.material.icons.filled.Close
+import androidx.compose.material.icons.filled.ExpandLess
+import androidx.compose.material.icons.filled.ExpandMore
 import androidx.compose.material.icons.filled.History
 import androidx.compose.material.icons.filled.Hotel
 import androidx.compose.material.icons.filled.Person
@@ -40,6 +43,7 @@ import androidx.compose.material.icons.filled.Print
 import androidx.compose.material.icons.filled.Refresh
 import androidx.compose.material.icons.filled.Restaurant
 import androidx.compose.material.icons.filled.RestaurantMenu
+import androidx.compose.material.icons.filled.Search
 import androidx.compose.material.icons.filled.Today
 import androidx.compose.material3.AlertDialog
 import androidx.compose.material3.Button
@@ -65,6 +69,7 @@ import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableIntStateOf
 import androidx.compose.runtime.mutableLongStateOf
+import androidx.compose.runtime.mutableStateMapOf
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
@@ -853,19 +858,120 @@ fun RoomManagementContent(state: AdminState, viewModel: AdminViewModel) {
 
 @Composable
 fun ReservationSummaryContent(state: AdminState, viewModel: AdminViewModel) {
-    LazyColumn(
-        modifier = Modifier.fillMaxSize().padding(16.dp),
-        verticalArrangement = Arrangement.spacedBy(16.dp)
-    ) {
-        item { TodayReservationDetail(state) }
-        item { TodayReservationDetailByRoom(state, viewModel::onIntent) }
-        item {
-            ReservationSummary(
-                state.reservations,
-                state.rooms,
-                state.foods,
-                viewModel::onIntent
+    var searchQuery by remember { mutableStateOf("") }
+    val expandedDates = remember { mutableStateMapOf<String, Boolean>() }
+    var deliveryExpanded by remember { mutableStateOf(true) }
+
+    Column(modifier = Modifier.fillMaxSize().padding(16.dp)) {
+        Row(
+            modifier = Modifier.fillMaxWidth().padding(bottom = 12.dp),
+            verticalAlignment = Alignment.CenterVertically,
+            horizontalArrangement = Arrangement.spacedBy(12.dp)
+        ) {
+            OutlinedTextField(
+                value = searchQuery,
+                onValueChange = { searchQuery = it.normalizeDigits() },
+                modifier = Modifier.weight(1f),
+                placeholder = { Text("جستجو بر اساس شماره اتاق یا نام مهمان...") },
+                leadingIcon = { Icon(Icons.Default.Search, null) },
+                trailingIcon = {
+                    if (searchQuery.isNotEmpty()) {
+                        IconButton(onClick = { searchQuery = "" }) {
+                            Icon(Icons.Default.Close, null)
+                        }
+                    }
+                },
+                shape = MaterialTheme.shapes.medium,
+                singleLine = true
             )
+
+            if (searchQuery.isEmpty()) {
+                TextButton(
+                    onClick = {
+                        val today = DateUtils.convertMillisToJalaliString(Clock.System.now().toEpochMilliseconds())
+                        val allFutureDates = state.reservations.filter { it.date > today }.map { it.date }.distinct()
+                        val anyCollapsed = allFutureDates.any { expandedDates[it] != true }
+                        allFutureDates.forEach { expandedDates[it] = anyCollapsed }
+                    }
+                ) {
+                    val today = DateUtils.convertMillisToJalaliString(Clock.System.now().toEpochMilliseconds())
+                    val allFutureDates = state.reservations.filter { it.date > today }.map { it.date }.distinct()
+                    val anyCollapsed = allFutureDates.any { expandedDates[it] != true }
+                    Text(if (anyCollapsed) "باز کردن همه" else "بستن همه")
+                }
+            }
+        }
+
+        LazyColumn(
+            modifier = Modifier.fillMaxSize(),
+            verticalArrangement = Arrangement.spacedBy(16.dp)
+        ) {
+            if (searchQuery.isEmpty()) {
+                item { TodayReservationDetail(state = state) }
+            }
+
+            item {
+                TodayReservationDetailByRoom(
+                    state = state,
+                    searchQuery = searchQuery,
+                    isExpanded = deliveryExpanded,
+                    onToggle = { deliveryExpanded = !deliveryExpanded },
+                    onIntent = viewModel::onIntent
+                )
+            }
+
+            val roomMap = state.rooms.associateBy { it.roomNumber }
+            val todayMillis = Clock.System.now().toEpochMilliseconds()
+            val today = DateUtils.convertMillisToJalaliString(todayMillis)
+            val summaryByDate = state.reservations
+                .filter { it.date > today }
+                .groupBy { it.date }
+                .toList()
+                .sortedBy { it.first }
+
+            if (summaryByDate.isEmpty() && searchQuery.isEmpty()) {
+                item {
+                    Surface(
+                        modifier = Modifier.fillMaxWidth(),
+                        color = MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.3f),
+                        shape = MaterialTheme.shapes.medium
+                    ) {
+                        Text(
+                            "رزروی برای تاریخ‌های آینده ثبت نشده است.",
+                            modifier = Modifier.padding(16.dp),
+                            style = MaterialTheme.typography.bodyMedium,
+                            color = MaterialTheme.colorScheme.outline,
+                            textAlign = TextAlign.Center
+                        )
+                    }
+                }
+            } else {
+                summaryByDate.forEach { (date, dailyResList) ->
+                    val filteredRes = dailyResList.filter { res ->
+                        val room = roomMap[res.roomNumber]
+                        (res.guestMealSelections.any { it.lunchFoodId != null || it.dinnerFoodId != null } || res.breakfastCount > 0) &&
+                                (searchQuery.isEmpty() || res.roomNumber.contains(searchQuery) || room?.guestName?.contains(
+                                    searchQuery,
+                                    ignoreCase = true
+                                ) == true)
+                    }
+
+                    if (filteredRes.isNotEmpty()) {
+                        item(key = "summary_$date") {
+                            val isExpanded = expandedDates[date] ?: searchQuery.isNotEmpty()
+                            DateReservationGroup(
+                                date = date,
+                                reservations = filteredRes,
+                                roomMap = roomMap,
+                                foods = state.foods,
+                                isExpanded = isExpanded,
+                                onToggle = { expandedDates[date] = !isExpanded },
+                                onIntent = viewModel::onIntent
+                            )
+                        }
+                    }
+                }
+            }
         }
     }
 }
@@ -1576,85 +1682,80 @@ fun DatePickerFieldSmall(value: String, onDateSelected: (String, Long) -> Unit) 
 }
 
 @Composable
-fun ReservationSummary(
+fun DateReservationGroup(
+    date: String,
     reservations: List<FoodReservation>,
-    rooms: List<Room>,
+    roomMap: Map<String, Room>,
     foods: List<FoodItem>,
+    isExpanded: Boolean,
+    onToggle: () -> Unit,
     onIntent: (AdminIntent) -> Unit
 ) {
-    val roomMap = rooms.associateBy { it.roomNumber }
-    val todayMillis = Clock.System.now().toEpochMilliseconds()
-    val today = DateUtils.convertMillisToJalaliString(todayMillis)
-    val summaryByDate =
-        reservations.filter { it.date > today }.groupBy { it.date }.toList().sortedBy { it.first }
-
-    if (summaryByDate.isEmpty()) {
-        Surface(
-            modifier = Modifier.fillMaxWidth(),
-            color = MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.3f),
-            shape = MaterialTheme.shapes.medium
-        ) {
-            Text(
-                "رزروی برای تاریخ‌های آینده ثبت نشده است.",
-                modifier = Modifier.padding(16.dp),
-                style = MaterialTheme.typography.bodyMedium,
-                color = MaterialTheme.colorScheme.outline,
-                maxLines = 1,
-                overflow = TextOverflow.Ellipsis
-            )
-        }
-        return
-    }
-
-    summaryByDate.forEach { (date, dailyResList) ->
-        val validRes =
-            dailyResList.filter { res ->
-                res.guestMealSelections.any { it.lunchFoodId != null || it.dinnerFoodId != null}
-                res.breakfastCount > 0
-            }
-        println("vr $validRes")
-        if (validRes.isNotEmpty()) {
-            Surface(
-                modifier = Modifier.fillMaxWidth().padding(vertical = 6.dp),
-                shape = MaterialTheme.shapes.medium,
-                color = MaterialTheme.colorScheme.surface,
-                border = BorderStroke(1.dp, MaterialTheme.colorScheme.surfaceVariant)
+    Surface(
+        modifier = Modifier.fillMaxWidth(),
+        shape = MaterialTheme.shapes.medium,
+        color = MaterialTheme.colorScheme.surface,
+        border = BorderStroke(1.dp, MaterialTheme.colorScheme.surfaceVariant),
+        onClick = onToggle
+    ) {
+        Column(modifier = Modifier.padding(12.dp)) {
+            Row(
+                verticalAlignment = Alignment.CenterVertically,
+                horizontalArrangement = Arrangement.SpaceBetween,
+                modifier = Modifier.fillMaxWidth()
             ) {
-                Column(modifier = Modifier.padding(12.dp)) {
-                    Row(verticalAlignment = Alignment.CenterVertically) {
-                        Icon(
-                            Icons.Default.Event,
-                            null,
-                            tint = MaterialTheme.colorScheme.primary,
-                            modifier = Modifier.size(16.dp)
-                        )
-                        Spacer(Modifier.width(6.dp))
+                Row(verticalAlignment = Alignment.CenterVertically) {
+                    Icon(
+                        Icons.Default.Event,
+                        null,
+                        tint = MaterialTheme.colorScheme.primary,
+                        modifier = Modifier.size(18.dp)
+                    )
+                    Spacer(Modifier.width(8.dp))
+                    Text(
+                        date,
+                        style = MaterialTheme.typography.titleMedium,
+                        fontWeight = FontWeight.Bold,
+                        color = MaterialTheme.colorScheme.primary
+                    )
+                    Spacer(Modifier.width(12.dp))
+                    Surface(
+                        color = MaterialTheme.colorScheme.primary.copy(alpha = 0.1f),
+                        shape = CircleShape
+                    ) {
                         Text(
-                            date,
-                            style = MaterialTheme.typography.bodyLarge,
-                            fontWeight = FontWeight.Bold,
+                            "${reservations.size} اتاق",
+                            modifier = Modifier.padding(horizontal = 8.dp, vertical = 2.dp),
+                            style = MaterialTheme.typography.labelSmall,
                             color = MaterialTheme.colorScheme.primary,
-                            maxLines = 1,
-                            overflow = TextOverflow.Ellipsis
+                            fontWeight = FontWeight.Bold
                         )
                     }
-                    HorizontalDivider(
-                        modifier = Modifier.padding(vertical = 10.dp),
-                        thickness = 0.5.dp,
-                        color = MaterialTheme.colorScheme.surfaceVariant
-                    )
-                    validRes.forEach { res ->
+                }
+                Icon(
+                    if (isExpanded) Icons.Default.ExpandLess else Icons.Default.ExpandMore,
+                    null,
+                    tint = MaterialTheme.colorScheme.outline
+                )
+            }
+
+            if (isExpanded) {
+                HorizontalDivider(
+                    modifier = Modifier.padding(vertical = 10.dp),
+                    thickness = 0.5.dp,
+                    color = MaterialTheme.colorScheme.surfaceVariant
+                )
+                Column(verticalArrangement = Arrangement.spacedBy(16.dp)) {
+                    reservations.forEach { res ->
                         val room = roomMap[res.roomNumber]
-                        Column(modifier = Modifier.padding(bottom = 8.dp)) {
+                        Column {
                             Text(
                                 "اتاق ${res.roomNumber} — ${room?.guestName ?: "نامعلوم"}",
                                 style = MaterialTheme.typography.bodyMedium,
-                                fontWeight = FontWeight.Bold,
-                                maxLines = 1,
-                                overflow = TextOverflow.Ellipsis
+                                fontWeight = FontWeight.Bold
                             )
                             Row(
-                                modifier = Modifier.padding(top = 4.dp, start = 8.dp),
+                                modifier = Modifier.padding(top = 8.dp, start = 8.dp),
                                 verticalAlignment = Alignment.CenterVertically,
                                 horizontalArrangement = Arrangement.spacedBy(8.dp)
                             ) {
@@ -1666,12 +1767,20 @@ fun ReservationSummary(
                                 AdminBreakfastCountSelection(
                                     currentCount = res.breakfastCount,
                                     guestCount = room?.guestCount ?: 7,
-                                    onCountChange = { onIntent(AdminIntent.ChangeBreakfastCount(res.roomNumber, date, it)) }
+                                    onCountChange = {
+                                        onIntent(
+                                            AdminIntent.ChangeBreakfastCount(
+                                                res.roomNumber,
+                                                date,
+                                                it
+                                            )
+                                        )
+                                    }
                                 )
                             }
                             res.guestMealSelections.forEach { selection ->
                                 Row(
-                                    modifier = Modifier.padding(top = 4.dp, start = 8.dp),
+                                    modifier = Modifier.padding(top = 8.dp, start = 8.dp),
                                     verticalAlignment = Alignment.CenterVertically,
                                     horizontalArrangement = Arrangement.spacedBy(8.dp)
                                 ) {
@@ -1679,9 +1788,7 @@ fun ReservationSummary(
                                         text = "مهمان ${selection.guestIndex + 1} :",
                                         modifier = Modifier.width(60.dp),
                                         style = MaterialTheme.typography.labelMedium,
-                                        color = MaterialTheme.colorScheme.onSurfaceVariant,
-                                        maxLines = 1,
-                                        overflow = TextOverflow.Ellipsis
+                                        color = MaterialTheme.colorScheme.onSurfaceVariant
                                     )
                                     val filteredFoods =
                                         foods.filter { it.isActive }.sortedBy { it.displayOrder }
@@ -1786,11 +1893,31 @@ fun TodayReservationDetail(state: AdminState) {
                             color = MaterialTheme.colorScheme.primary
                         )
                         Spacer(Modifier.height(8.dp))
-                        Text("سلف سرویس", style = MaterialTheme.typography.labelMedium, color = MaterialTheme.colorScheme.outline)
-                        HorizontalDivider(Modifier.padding(vertical = 6.dp), thickness = 0.5.dp, color = MaterialTheme.colorScheme.surfaceVariant)
-                        Row(modifier = Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.SpaceBetween) {
-                            Text("مجموع", fontWeight = FontWeight.Bold, style = MaterialTheme.typography.labelMedium)
-                            Text("$buffetBreakfastCount پرس", fontWeight = FontWeight.ExtraBold, color = MaterialTheme.colorScheme.primary, style = MaterialTheme.typography.labelMedium)
+                        Text(
+                            "سلف سرویس",
+                            style = MaterialTheme.typography.labelMedium,
+                            color = MaterialTheme.colorScheme.outline
+                        )
+                        HorizontalDivider(
+                            Modifier.padding(vertical = 6.dp),
+                            thickness = 0.5.dp,
+                            color = MaterialTheme.colorScheme.surfaceVariant
+                        )
+                        Row(
+                            modifier = Modifier.fillMaxWidth(),
+                            horizontalArrangement = Arrangement.SpaceBetween
+                        ) {
+                            Text(
+                                "مجموع",
+                                fontWeight = FontWeight.Bold,
+                                style = MaterialTheme.typography.labelMedium
+                            )
+                            Text(
+                                "$buffetBreakfastCount پرس",
+                                fontWeight = FontWeight.ExtraBold,
+                                color = MaterialTheme.colorScheme.primary,
+                                style = MaterialTheme.typography.labelMedium
+                            )
                         }
                     }
                 }
@@ -1879,52 +2006,90 @@ fun MealSummaryBox(
 }
 
 @Composable
-fun TodayReservationDetailByRoom(state: AdminState, onIntent: (AdminIntent) -> Unit) {
+fun TodayReservationDetailByRoom(
+    state: AdminState,
+    searchQuery: String = "",
+    isExpanded: Boolean,
+    onToggle: () -> Unit,
+    onIntent: (AdminIntent) -> Unit
+) {
     val todayMillis = Clock.System.now().toEpochMilliseconds()
     val today = DateUtils.convertMillisToJalaliString(todayMillis)
-    val todayResList = state.reservations.filter { it.date == today }
+    val roomMap = state.rooms.associateBy { it.roomNumber }
+    val todayResList = state.reservations
+        .filter { it.date == today }
+        .filter { res ->
+            val room = roomMap[res.roomNumber]
+            searchQuery.isEmpty() || res.roomNumber.contains(searchQuery) || room?.guestName?.contains(
+                searchQuery,
+                ignoreCase = true
+            ) == true
+        }
 
     Column(Modifier.padding(top = 10.dp)) {
-        Text(
-            "تحویل غذای امروز",
-            style = MaterialTheme.typography.titleLarge,
-            fontWeight = FontWeight.Bold,
-            color = MaterialTheme.colorScheme.primary,
-            maxLines = 1,
-            overflow = TextOverflow.Ellipsis
-        )
-        Text(
-            "وضعیت توزیع وعده‌ها",
-            style = MaterialTheme.typography.labelMedium,
-            color = MaterialTheme.colorScheme.onSurfaceVariant,
-            modifier = Modifier.padding(bottom = 12.dp),
-            maxLines = 1,
-            overflow = TextOverflow.Ellipsis
-        )
-        if (todayResList.isEmpty()) {
-            Surface(
+        Surface(
+            onClick = onToggle,
+            color = Color.Transparent,
+            modifier = Modifier.fillMaxWidth()
+        ) {
+            Row(
                 modifier = Modifier.fillMaxWidth(),
-                color = MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.3f),
-                shape = MaterialTheme.shapes.medium
+                verticalAlignment = Alignment.CenterVertically,
+                horizontalArrangement = Arrangement.SpaceBetween
             ) {
-                Text(
-                    "سفارشی برای امروز ثبت نشده است.",
-                    modifier = Modifier.padding(16.dp),
-                    style = MaterialTheme.typography.bodyMedium,
-                    color = MaterialTheme.colorScheme.outline,
-                    textAlign = TextAlign.Center,
-                    maxLines = 1,
-                    overflow = TextOverflow.Ellipsis
+                Column {
+                    Text(
+                        "تحویل غذای امروز",
+                        style = MaterialTheme.typography.titleLarge,
+                        fontWeight = FontWeight.Bold,
+                        color = MaterialTheme.colorScheme.primary,
+                        maxLines = 1,
+                        overflow = TextOverflow.Ellipsis
+                    )
+                    Text(
+                        "وضعیت توزیع وعده‌ها",
+                        style = MaterialTheme.typography.labelMedium,
+                        color = MaterialTheme.colorScheme.onSurfaceVariant,
+                        maxLines = 1,
+                        overflow = TextOverflow.Ellipsis
+                    )
+                }
+                Icon(
+                    if (isExpanded) Icons.Default.ExpandLess else Icons.Default.ExpandMore,
+                    null,
+                    tint = MaterialTheme.colorScheme.primary
                 )
             }
         }
-        todayResList.forEach { res ->
-            RoomDeliveryCard(
-                res = res,
-                availableFoods = state.foods,
-                onIntent = onIntent,
-                today = today
-            ); Spacer(Modifier.height(12.dp))
+
+        if (isExpanded || searchQuery.isNotEmpty()) {
+            Spacer(Modifier.height(12.dp))
+            if (todayResList.isEmpty()) {
+                Surface(
+                    modifier = Modifier.fillMaxWidth(),
+                    color = MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.3f),
+                    shape = MaterialTheme.shapes.medium
+                ) {
+                    Text(
+                        "سفارشی برای امروز ثبت نشده است.",
+                        modifier = Modifier.padding(16.dp),
+                        style = MaterialTheme.typography.bodyMedium,
+                        color = MaterialTheme.colorScheme.outline,
+                        textAlign = TextAlign.Center,
+                        maxLines = 1,
+                        overflow = TextOverflow.Ellipsis
+                    )
+                }
+            }
+            todayResList.forEach { res ->
+                RoomDeliveryCard(
+                    res = res,
+                    availableFoods = state.foods,
+                    onIntent = onIntent,
+                    today = today
+                )
+                Spacer(Modifier.height(12.dp))
+            }
         }
     }
 }
