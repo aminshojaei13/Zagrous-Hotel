@@ -309,6 +309,7 @@ fun AdminScreen(viewModel: AdminViewModel) {
 
     if (showAddRoomDialog) {
         AddRoomDialog(
+            existingRooms = state.rooms,
             onDismiss = { showAddRoomDialog = false },
             onConfirm = { viewModel.onIntent(AdminIntent.AddRoom(it)); showAddRoomDialog = false })
     }
@@ -397,7 +398,6 @@ fun RoomAdminCard(
     var hasBreakfast by remember(room) { mutableStateOf(room.hasBreakfast) }
     var breakfastCount by remember(room) { mutableIntStateOf(room.breakfastCount) }
     var expandedGuestCount by remember { mutableStateOf(false) }
-    var expandedBreakfastCount by remember { mutableStateOf(false) }
     var showFoodDialog by remember { mutableStateOf(false) }
     var showDeleteConfirm by remember { mutableStateOf(false) }
     var changeRoomNumber by remember { mutableStateOf(false) }
@@ -2298,7 +2298,7 @@ fun DeliveryChip(
 }
 
 @Composable
-fun AddRoomDialog(onDismiss: () -> Unit, onConfirm: (Room) -> Unit) {
+fun AddRoomDialog(existingRooms: List<Room>, onDismiss: () -> Unit, onConfirm: (Room) -> Unit) {
     var roomNumber by remember { mutableStateOf("") }
     var guestName by remember { mutableStateOf("") }
     var identificationId by remember { mutableStateOf("") }
@@ -2310,7 +2310,9 @@ fun AddRoomDialog(onDismiss: () -> Unit, onConfirm: (Room) -> Unit) {
     var checkInMillis by remember { mutableLongStateOf(0L) }
     var checkOutMillis by remember { mutableLongStateOf(0L) }
     var expandedGuest by remember { mutableStateOf(false) }
-    var expandedBreakfast by remember { mutableStateOf(false) }
+    var errorMessage by remember { mutableStateOf<String?>(null) }
+
+    val today = remember { DateUtils.convertMillisToJalaliString(Clock.System.now().toEpochMilliseconds()) }
 
     AlertDialog(
         onDismissRequest = onDismiss,
@@ -2322,12 +2324,25 @@ fun AddRoomDialog(onDismiss: () -> Unit, onConfirm: (Room) -> Unit) {
             ) {
                 OutlinedTextField(
                     value = roomNumber,
-                    onValueChange = { roomNumber = it },
+                    onValueChange = { 
+                        roomNumber = it
+                        errorMessage = null 
+                    },
                     label = { Text("شماره اتاق") },
                     modifier = Modifier.fillMaxWidth(),
                     shape = MaterialTheme.shapes.medium,
-                    singleLine = true
+                    singleLine = true,
+                    isError = errorMessage != null
                 )
+                
+                if (errorMessage != null) {
+                    Text(
+                        text = errorMessage!!,
+                        color = MaterialTheme.colorScheme.error,
+                        style = MaterialTheme.typography.labelSmall,
+                        modifier = Modifier.padding(start = 8.dp)
+                    )
+                }
 
                 OutlinedTextField(
                     value = guestName,
@@ -2407,10 +2422,19 @@ fun AddRoomDialog(onDismiss: () -> Unit, onConfirm: (Room) -> Unit) {
         confirmButton = {
             Button(
                 onClick = {
-                    if (roomNumber.isNotBlank()) {
+                    val normalizedNum = roomNumber.normalizeDigits()
+                    val activeRoom = existingRooms.find { 
+                        it.roomNumber.normalizeDigits() == normalizedNum && it.checkOutDate > today 
+                    }
+                    
+                    if (roomNumber.isBlank()) {
+                        errorMessage = "لطفا شماره اتاق را وارد کنید"
+                    } else if (activeRoom != null) {
+                        errorMessage = "این اتاق در حال حاضر توسط ${activeRoom.guestName} اشغال شده است (تا تاریخ ${activeRoom.checkOutDate})"
+                    } else {
                         onConfirm(
                             Room(
-                                roomNumber = roomNumber.normalizeDigits(),
+                                roomNumber = normalizedNum,
                                 guestName = guestName,
                                 identificationId = identificationId.normalizeDigits(),
                                 guestCount = guestCount,
