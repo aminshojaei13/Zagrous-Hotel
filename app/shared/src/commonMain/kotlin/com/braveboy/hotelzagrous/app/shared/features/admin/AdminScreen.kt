@@ -1384,6 +1384,7 @@ fun AddEditFoodDialog(
     onConfirm: (FoodItem) -> Unit
 ) {
     var name by remember { mutableStateOf(food?.name ?: "") }
+    var nameAr by remember { mutableStateOf(food?.nameAr ?: "") }
     var order by remember { mutableStateOf(food?.displayOrder?.toString() ?: "0") }
     AlertDialog(
         onDismissRequest = onDismiss,
@@ -1393,14 +1394,21 @@ fun AddEditFoodDialog(
                 OutlinedTextField(
                     value = name,
                     onValueChange = { name = it },
-                    label = { Text("نام غذا") },
+                    label = { Text("نام غذا (فارسی)") },
                     singleLine = true
-                ); OutlinedTextField(
-                value = order,
-                onValueChange = { order = it },
-                label = { Text("ترتیب نمایش") },
-                singleLine = true
-            )
+                )
+                OutlinedTextField(
+                    value = nameAr,
+                    onValueChange = { nameAr = it },
+                    label = { Text("نام غذا (عربی)") },
+                    singleLine = true
+                )
+                OutlinedTextField(
+                    value = order,
+                    onValueChange = { order = it },
+                    label = { Text("ترتیب نمایش") },
+                    singleLine = true
+                )
             }
         },
         confirmButton = {
@@ -1408,9 +1416,11 @@ fun AddEditFoodDialog(
                 onConfirm(
                     food?.copy(
                         name = name,
+                        nameAr = nameAr,
                         displayOrder = order.toIntOrNull() ?: 0
                     ) ?: FoodItem(
                         name = name,
+                        nameAr = nameAr,
                         type = foodType,
                         dayType = dayType,
                         displayOrder = order.toIntOrNull() ?: 0

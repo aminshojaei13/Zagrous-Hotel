@@ -222,7 +222,7 @@ class HotelDatabase(
     }
 
     fun getFoods(): List<FoodItem> = connection.prepareStatement(
-        "SELECT id, name, type, day_type, is_active, is_visible_to_users, display_order FROM food_items ORDER BY day_type, type, display_order"
+        "SELECT id, name, name_ar, type, day_type, is_active, is_visible_to_users, display_order FROM food_items ORDER BY day_type, type, display_order"
     ).use { statement ->
         statement.executeQuery().use { rows ->
             buildList {
@@ -231,6 +231,7 @@ class HotelDatabase(
                         FoodItem(
                             id = rows.getString("id"),
                             name = rows.getString("name"),
+                            nameAr = rows.getString("name_ar"),
                             type = FoodType.valueOf(rows.getString("type")),
                             dayType = DayType.valueOf(rows.getString("day_type")),
                             isActive = rows.getInt("is_active") == 1,
@@ -247,10 +248,11 @@ class HotelDatabase(
         val id = food.id.ifBlank { UUID.randomUUID().toString() }
         connection.prepareStatement(
             """
-            INSERT INTO food_items(id, name, type, day_type, is_active, is_visible_to_users, display_order)
-            VALUES(?, ?, ?, ?, ?, ?, ?)
+            INSERT INTO food_items(id, name, name_ar, type, day_type, is_active, is_visible_to_users, display_order)
+            VALUES(?, ?, ?, ?, ?, ?, ?, ?)
             ON CONFLICT(id) DO UPDATE SET
                 name = excluded.name,
+                name_ar = excluded.name_ar,
                 type = excluded.type,
                 day_type = excluded.day_type,
                 is_active = excluded.is_active,
@@ -260,11 +262,12 @@ class HotelDatabase(
         ).use { statement ->
             statement.setString(1, id)
             statement.setString(2, food.name)
-            statement.setString(3, food.type.name)
-            statement.setString(4, food.dayType.name)
-            statement.setInt(5, if (food.isActive) 1 else 0)
-            statement.setInt(6, if (food.isVisibleToUsers) 1 else 0)
-            statement.setInt(7, food.displayOrder)
+            statement.setString(3, food.nameAr)
+            statement.setString(4, food.type.name)
+            statement.setString(5, food.dayType.name)
+            statement.setInt(6, if (food.isActive) 1 else 0)
+            statement.setInt(7, if (food.isVisibleToUsers) 1 else 0)
+            statement.setInt(8, food.displayOrder)
             statement.executeUpdate()
         }
     }
@@ -417,6 +420,7 @@ class HotelDatabase(
                 CREATE TABLE IF NOT EXISTS food_items(
                     id TEXT PRIMARY KEY,
                     name TEXT NOT NULL,
+                    name_ar TEXT,
                     type TEXT NOT NULL,
                     day_type TEXT NOT NULL DEFAULT 'EVEN',
                     is_active INTEGER NOT NULL DEFAULT 1,
@@ -542,6 +546,9 @@ class HotelDatabase(
             }
             if (!foodColumns.contains("display_order")) {
                 statement.executeUpdate("ALTER TABLE food_items ADD COLUMN display_order INTEGER NOT NULL DEFAULT 0")
+            }
+            if (!foodColumns.contains("name_ar")) {
+                statement.executeUpdate("ALTER TABLE food_items ADD COLUMN name_ar TEXT")
             }
         }
     }
@@ -753,7 +760,7 @@ class HotelDatabase(
             }
         }
 
-        if (getRooms().isEmpty()) {
+        /*if (getRooms().isEmpty()) {
             listOf(
                 Room(
                     id = UUID.randomUUID().toString(),
@@ -789,6 +796,6 @@ class HotelDatabase(
                     checkOutEpochMillis = 1699601400000L
                 )
             ).forEach(::upsertRoom)
-        }
+        }*/
     }
 }
