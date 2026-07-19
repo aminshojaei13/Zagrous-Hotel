@@ -993,7 +993,7 @@ fun MenuManagementContent(state: AdminState, viewModel: AdminViewModel) {
                     label = {
                         Text(
                             when (it) {
-                                DayType.EVEN -> "زوج"; DayType.ODD -> " فرد"; else -> "جمعه"
+                                DayType.EVEN -> "زوج"; DayType.ODD -> "فرد"; else -> "جمعه"
                             }, style = MaterialTheme.typography.labelMedium
                         )
                     })
