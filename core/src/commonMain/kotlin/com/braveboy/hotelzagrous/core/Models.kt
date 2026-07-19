@@ -4,10 +4,13 @@ import kotlinx.serialization.Serializable
 
 @Serializable
 data class Room(
+    val id: String = "",
     val roomNumber: String,
     val guestName: String = "",
     val identificationId: String = "",
     val guestCount: Int = 1,
+    val hasBreakfast: Boolean = false,
+    val breakfastCount: Int = 0,
     val checkInDate: String = "",
     val checkOutDate: String = "",
     val checkInEpochMillis: Long = 0,
@@ -43,7 +46,8 @@ data class MenuConfig(
 data class FoodReservation(
     val roomNumber: String,
     val date: String,
-    val guestMealSelections: List<GuestMealSelection> = emptyList()
+    val guestMealSelections: List<GuestMealSelection> = emptyList(),
+    val breakfastCount: Int = 0
 )
 
 @Serializable
@@ -57,13 +61,16 @@ data class GuestMealSelection(
 
 @Serializable
 data class UpdateRoomStayRequest(
+    val roomNumber: String,
     val guestName: String,
     val identificationId: String,
     val checkIn: String,
     val checkOut: String,
     val checkInMillis: Long,
     val checkOutMillis: Long,
-    val guestCount: Int
+    val guestCount: Int,
+    val hasBreakfast: Boolean = false,
+    val breakfastCount: Int = 0
 )
 
 @Serializable

@@ -7,16 +7,20 @@ import com.braveboy.hotelzagrous.core.FoodType
 import com.braveboy.hotelzagrous.core.Room
 import com.braveboy.hotelzagrous.core.GuestMealSelection
 import com.braveboy.hotelzagrous.core.MenuConfig
+import com.braveboy.hotelzagrous.core.normalizeDigits
 import java.sql.Connection
 import java.sql.DriverManager
 import java.util.UUID
 import kotlinx.serialization.json.Json
-import kotlinx.serialization.encodeToString
 
 class HotelDatabase(
     databasePath: String = "hotel-zagrous.sqlite"
 ) {
     private val connection: Connection = DriverManager.getConnection("jdbc:sqlite:$databasePath")
+    private val json = Json { 
+        ignoreUnknownKeys = true 
+        encodeDefaults = true
+    }
 
     init {
         createTables()
@@ -33,7 +37,7 @@ class HotelDatabase(
 
     fun getRooms(): List<Room> = connection.prepareStatement(
         """
-        SELECT room_number, guest_name, identification_id, guest_count, check_in_date, check_out_date, check_in_epoch_millis, check_out_epoch_millis
+        SELECT id, room_number, guest_name, identification_id, guest_count, has_breakfast, breakfast_count, check_in_date, check_out_date, check_in_epoch_millis, check_out_epoch_millis
         FROM rooms
         ORDER BY room_number
         """.trimIndent()
@@ -43,10 +47,13 @@ class HotelDatabase(
                 while (rows.next()) {
                     add(
                         Room(
+                            id = rows.getString("id"),
                             roomNumber = rows.getString("room_number"),
                             guestName = rows.getString("guest_name"),
                             identificationId = rows.getString("identification_id") ?: "",
                             guestCount = rows.getInt("guest_count"),
+                            hasBreakfast = rows.getInt("has_breakfast") == 1,
+                            breakfastCount = rows.getInt("breakfast_count"),
                             checkInDate = rows.getString("check_in_date"),
                             checkOutDate = rows.getString("check_out_date"),
                             checkInEpochMillis = rows.getLong("check_in_epoch_millis"),
@@ -58,23 +65,26 @@ class HotelDatabase(
         }
     }
 
-    fun getRoom(roomNumber: String): Room? = connection.prepareStatement(
+    fun getRoom(id: String): Room? = connection.prepareStatement(
         """
-        SELECT room_number, guest_name, identification_id, guest_count, check_in_date, check_out_date, check_in_epoch_millis, check_out_epoch_millis
+        SELECT id, room_number, guest_name, identification_id, guest_count, has_breakfast, breakfast_count, check_in_date, check_out_date, check_in_epoch_millis, check_out_epoch_millis
         FROM rooms
-        WHERE room_number = ?
+        WHERE id = ?
         """.trimIndent()
     ).use { statement ->
-        statement.setString(1, roomNumber)
+        statement.setString(1, id)
         statement.executeQuery().use { rows ->
             if (!rows.next()) {
                 null
             } else {
                 Room(
+                    id = rows.getString("id"),
                     roomNumber = rows.getString("room_number"),
                     guestName = rows.getString("guest_name"),
                     identificationId = rows.getString("identification_id") ?: "",
                     guestCount = rows.getInt("guest_count"),
+                    hasBreakfast = rows.getInt("has_breakfast") == 1,
+                    breakfastCount = rows.getInt("breakfast_count"),
                     checkInDate = rows.getString("check_in_date"),
                     checkOutDate = rows.getString("check_out_date"),
                     checkInEpochMillis = rows.getLong("check_in_epoch_millis"),
@@ -84,34 +94,77 @@ class HotelDatabase(
         }
     }
 
-    fun upsertRoom(room: Room) {
+    fun getRoomByNumber(roomNumber: String): Room? {
+        val normalized = roomNumber.normalizeDigits()
+        return connection.prepareStatement(
+            """
+            SELECT id, room_number, guest_name, identification_id, guest_count, has_breakfast, breakfast_count, check_in_date, check_out_date, check_in_epoch_millis, check_out_epoch_millis
+            FROM rooms
+            WHERE room_number = ?
+            ORDER BY check_out_epoch_millis DESC
+            LIMIT 1
+            """.trimIndent()
+        ).use { statement ->
+            statement.setString(1, normalized)
+            statement.executeQuery().use { rows ->
+                if (!rows.next()) {
+                    null
+                } else {
+                    Room(
+                        id = rows.getString("id"),
+                        roomNumber = rows.getString("room_number"),
+                        guestName = rows.getString("guest_name"),
+                        identificationId = rows.getString("identification_id") ?: "",
+                        guestCount = rows.getInt("guest_count"),
+                        hasBreakfast = rows.getInt("has_breakfast") == 1,
+                        breakfastCount = rows.getInt("breakfast_count"),
+                        checkInDate = rows.getString("check_in_date"),
+                        checkOutDate = rows.getString("check_out_date"),
+                        checkInEpochMillis = rows.getLong("check_in_epoch_millis"),
+                        checkOutEpochMillis = rows.getLong("check_out_epoch_millis")
+                    )
+                }
+            }
+        }
+    }
+
+    fun upsertRoom(room: Room): String {
+        val id = room.id.ifBlank { UUID.randomUUID().toString() }
         connection.prepareStatement(
             """
-            INSERT INTO rooms(room_number, guest_name, identification_id, guest_count, check_in_date, check_out_date, check_in_epoch_millis, check_out_epoch_millis)
-            VALUES(?, ?, ?, ?, ?, ?, ?, ?)
-            ON CONFLICT(room_number) DO UPDATE SET
+            INSERT INTO rooms(id, room_number, guest_name, identification_id, guest_count, has_breakfast, breakfast_count, check_in_date, check_out_date, check_in_epoch_millis, check_out_epoch_millis)
+            VALUES(?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+            ON CONFLICT(id) DO UPDATE SET
+                room_number = excluded.room_number,
                 guest_name = excluded.guest_name,
                 identification_id = excluded.identification_id,
                 guest_count = excluded.guest_count,
+                has_breakfast = excluded.has_breakfast,
+                breakfast_count = excluded.breakfast_count,
                 check_in_date = excluded.check_in_date,
                 check_out_date = excluded.check_out_date,
                 check_in_epoch_millis = excluded.check_in_epoch_millis,
                 check_out_epoch_millis = excluded.check_out_epoch_millis
             """.trimIndent()
         ).use { statement ->
-            statement.setString(1, room.roomNumber)
-            statement.setString(2, room.guestName)
-            statement.setString(3, room.identificationId)
-            statement.setInt(4, room.guestCount)
-            statement.setString(5, room.checkInDate)
-            statement.setString(6, room.checkOutDate)
-            statement.setLong(7, room.checkInEpochMillis)
-            statement.setLong(8, room.checkOutEpochMillis)
+            statement.setString(1, id)
+            statement.setString(2, room.roomNumber)
+            statement.setString(3, room.guestName)
+            statement.setString(4, room.identificationId)
+            statement.setInt(5, room.guestCount)
+            statement.setInt(6, if (room.hasBreakfast) 1 else 0)
+            statement.setInt(7, room.breakfastCount)
+            statement.setString(8, room.checkInDate)
+            statement.setString(9, room.checkOutDate)
+            statement.setLong(10, room.checkInEpochMillis)
+            statement.setLong(11, room.checkOutEpochMillis)
             statement.executeUpdate()
         }
+        return id
     }
 
     fun updateRoomStay(
+        id: String,
         roomNumber: String,
         guestName: String,
         identificationId: String,
@@ -119,29 +172,57 @@ class HotelDatabase(
         checkOut: String,
         checkInMillis: Long,
         checkOutMillis: Long,
-        guestCount: Int
+        guestCount: Int,
+        hasBreakfast: Boolean,
+        breakfastCount: Int
     ): Boolean {
+        val oldRoom = getRoom(id) ?: return false
+        val newRoomNumber = roomNumber.normalizeDigits()
+
+        if (oldRoom.roomNumber != newRoomNumber) {
+            connection.prepareStatement("UPDATE food_reservations SET room_number = ? WHERE room_number = ?").use { statement ->
+                statement.setString(1, newRoomNumber)
+                statement.setString(2, oldRoom.roomNumber)
+                statement.executeUpdate()
+            }
+        }
+
         return connection.prepareStatement(
             """
             UPDATE rooms
-            SET guest_name = ?, identification_id = ?, check_in_date = ?, check_out_date = ?, check_in_epoch_millis = ?, check_out_epoch_millis = ?, guest_count = ?
-            WHERE room_number = ?
+            SET room_number = ?, guest_name = ?, identification_id = ?, check_in_date = ?, check_out_date = ?, check_in_epoch_millis = ?, check_out_epoch_millis = ?, guest_count = ?, has_breakfast = ?, breakfast_count = ?
+            WHERE id = ?
             """.trimIndent()
         ).use { statement ->
-            statement.setString(1, guestName)
-            statement.setString(2, identificationId)
-            statement.setString(3, checkIn)
-            statement.setString(4, checkOut)
-            statement.setLong(5, checkInMillis)
-            statement.setLong(6, checkOutMillis)
-            statement.setInt(7, guestCount)
-            statement.setString(8, roomNumber)
+            statement.setString(1, newRoomNumber)
+            statement.setString(2, guestName)
+            statement.setString(3, identificationId)
+            statement.setString(4, checkIn)
+            statement.setString(5, checkOut)
+            statement.setLong(6, checkInMillis)
+            statement.setLong(7, checkOutMillis)
+            statement.setInt(8, guestCount)
+            statement.setInt(9, if (hasBreakfast) 1 else 0)
+            statement.setInt(10, breakfastCount)
+            statement.setString(11, id)
             statement.executeUpdate() > 0
         }
     }
 
+    fun deleteRoom(id: String) {
+        val room = getRoom(id) ?: return
+        connection.prepareStatement("DELETE FROM food_reservations WHERE room_number = ?").use { statement ->
+            statement.setString(1, room.roomNumber)
+            statement.executeUpdate()
+        }
+        connection.prepareStatement("DELETE FROM rooms WHERE id = ?").use { statement ->
+            statement.setString(1, id)
+            statement.executeUpdate()
+        }
+    }
+
     fun getFoods(): List<FoodItem> = connection.prepareStatement(
-        "SELECT id, name, type, day_type, is_active, is_visible_to_users, display_order FROM food_items ORDER BY day_type, type, display_order"
+        "SELECT id, name, name_ar, type, day_type, is_active, is_visible_to_users, display_order FROM food_items ORDER BY day_type, type, display_order"
     ).use { statement ->
         statement.executeQuery().use { rows ->
             buildList {
@@ -150,6 +231,7 @@ class HotelDatabase(
                         FoodItem(
                             id = rows.getString("id"),
                             name = rows.getString("name"),
+                            nameAr = rows.getString("name_ar"),
                             type = FoodType.valueOf(rows.getString("type")),
                             dayType = DayType.valueOf(rows.getString("day_type")),
                             isActive = rows.getInt("is_active") == 1,
@@ -163,13 +245,14 @@ class HotelDatabase(
     }
 
     fun upsertFood(food: FoodItem) {
-        val id = if (food.id.isBlank()) UUID.randomUUID().toString() else food.id
+        val id = food.id.ifBlank { UUID.randomUUID().toString() }
         connection.prepareStatement(
             """
-            INSERT INTO food_items(id, name, type, day_type, is_active, is_visible_to_users, display_order)
-            VALUES(?, ?, ?, ?, ?, ?, ?)
+            INSERT INTO food_items(id, name, name_ar, type, day_type, is_active, is_visible_to_users, display_order)
+            VALUES(?, ?, ?, ?, ?, ?, ?, ?)
             ON CONFLICT(id) DO UPDATE SET
                 name = excluded.name,
+                name_ar = excluded.name_ar,
                 type = excluded.type,
                 day_type = excluded.day_type,
                 is_active = excluded.is_active,
@@ -179,11 +262,12 @@ class HotelDatabase(
         ).use { statement ->
             statement.setString(1, id)
             statement.setString(2, food.name)
-            statement.setString(3, food.type.name)
-            statement.setString(4, food.dayType.name)
-            statement.setInt(5, if (food.isActive) 1 else 0)
-            statement.setInt(6, if (food.isVisibleToUsers) 1 else 0)
-            statement.setInt(7, food.displayOrder)
+            statement.setString(3, food.nameAr)
+            statement.setString(4, food.type.name)
+            statement.setString(5, food.dayType.name)
+            statement.setInt(6, if (food.isActive) 1 else 0)
+            statement.setInt(7, if (food.isVisibleToUsers) 1 else 0)
+            statement.setInt(8, food.displayOrder)
             statement.executeUpdate()
         }
     }
@@ -231,7 +315,7 @@ class HotelDatabase(
 
     fun getReservations(): List<FoodReservation> = connection.prepareStatement(
         """
-        SELECT room_number, date, guest_meal_selections
+        SELECT room_number, date, guest_meal_selections, breakfast_count
         FROM food_reservations
         ORDER BY date, room_number
         """.trimIndent()
@@ -241,15 +325,17 @@ class HotelDatabase(
                 while (rows.next()) {
                     val selectionsJson = rows.getString("guest_meal_selections")
                     val selections = try {
-                        Json.decodeFromString<List<GuestMealSelection>>(selectionsJson)
+                        json.decodeFromString<List<GuestMealSelection>>(selectionsJson)
                     } catch (e: Exception) {
+                        println("list empty with error -> ${e.message}")
                         emptyList()
                     }
                     add(
                         FoodReservation(
                             roomNumber = rows.getString("room_number"),
                             date = rows.getString("date"),
-                            guestMealSelections = selections
+                            guestMealSelections = selections,
+                            breakfastCount = rows.getInt("breakfast_count")
                         )
                     )
                 }
@@ -260,7 +346,7 @@ class HotelDatabase(
     fun getReservationsForRoom(roomNumber: String): List<FoodReservation> =
         connection.prepareStatement(
             """
-        SELECT room_number, date, guest_meal_selections
+        SELECT room_number, date, guest_meal_selections, breakfast_count
         FROM food_reservations
         WHERE room_number = ?
         ORDER BY date
@@ -274,13 +360,15 @@ class HotelDatabase(
                         val selections = try {
                             Json.decodeFromString<List<GuestMealSelection>>(selectionsJson)
                         } catch (e: Exception) {
+                            println("list empty with error -> ${e.message}")
                             emptyList()
                         }
                         add(
                             FoodReservation(
                                 roomNumber = rows.getString("room_number"),
                                 date = rows.getString("date"),
-                                guestMealSelections = selections
+                                guestMealSelections = selections,
+                                breakfastCount = rows.getInt("breakfast_count")
                             )
                         )
                     }
@@ -291,15 +379,17 @@ class HotelDatabase(
     fun saveReservation(reservation: FoodReservation) {
         connection.prepareStatement(
             """
-            INSERT INTO food_reservations(room_number, date, guest_meal_selections)
-            VALUES(?, ?, ?)
+            INSERT INTO food_reservations(room_number, date, guest_meal_selections, breakfast_count)
+            VALUES(?, ?, ?, ?)
             ON CONFLICT(room_number, date) DO UPDATE SET
-                guest_meal_selections = excluded.guest_meal_selections
+                guest_meal_selections = excluded.guest_meal_selections,
+                breakfast_count = excluded.breakfast_count
             """.trimIndent()
         ).use { statement ->
             statement.setString(1, reservation.roomNumber)
             statement.setString(2, reservation.date)
-            statement.setString(3, Json.encodeToString(reservation.guestMealSelections))
+            statement.setString(3, json.encodeToString(reservation.guestMealSelections))
+            statement.setInt(4, reservation.breakfastCount)
             statement.executeUpdate()
         }
     }
@@ -309,10 +399,14 @@ class HotelDatabase(
             statement.executeUpdate(
                 """
                 CREATE TABLE IF NOT EXISTS rooms(
-                    room_number TEXT PRIMARY KEY,
+                    id TEXT PRIMARY KEY,
+                    room_number TEXT NOT NULL,
+                    capacity INTEGER NOT NULL DEFAULT 1,
                     guest_name TEXT NOT NULL,
                     identification_id TEXT,
                     guest_count INTEGER NOT NULL DEFAULT 1,
+                    has_breakfast INTEGER NOT NULL DEFAULT 0,
+                    breakfast_count INTEGER NOT NULL DEFAULT 0,
                     check_in_date TEXT NOT NULL,
                     check_out_date TEXT NOT NULL,
                     check_in_epoch_millis INTEGER NOT NULL,
@@ -326,6 +420,7 @@ class HotelDatabase(
                 CREATE TABLE IF NOT EXISTS food_items(
                     id TEXT PRIMARY KEY,
                     name TEXT NOT NULL,
+                    name_ar TEXT,
                     type TEXT NOT NULL,
                     day_type TEXT NOT NULL DEFAULT 'EVEN',
                     is_active INTEGER NOT NULL DEFAULT 1,
@@ -352,6 +447,7 @@ class HotelDatabase(
                     room_number TEXT NOT NULL,
                     date TEXT NOT NULL,
                     guest_meal_selections TEXT NOT NULL,
+                    breakfast_count INTEGER NOT NULL DEFAULT 0,
                     PRIMARY KEY(room_number, date),
                     FOREIGN KEY(room_number) REFERENCES rooms(room_number)
                 )
@@ -361,24 +457,78 @@ class HotelDatabase(
     }
 
     private fun migrateIfNeeded() {
+        val resColumns = mutableSetOf<String>()
+        connection.metaData.getColumns(null, null, "food_reservations", null).use { rs ->
+            while (rs.next()) {
+                resColumns.add(rs.getString("COLUMN_NAME"))
+            }
+        }
+        if (!resColumns.contains("breakfast_count")) {
+            connection.createStatement().use { it.executeUpdate("ALTER TABLE food_reservations ADD COLUMN breakfast_count INTEGER NOT NULL DEFAULT 0") }
+        }
+
         val roomColumns = mutableSetOf<String>()
-        connection.getMetaData().getColumns(null, null, "rooms", null).use { rs ->
+        connection.metaData.getColumns(null, null, "rooms", null).use { rs ->
             while (rs.next()) {
                 roomColumns.add(rs.getString("COLUMN_NAME"))
             }
         }
 
         connection.createStatement().use { statement ->
+            if (!roomColumns.contains("id")) {
+                println("Migrating database: Adding 'id' column to 'rooms' table...")
+                // In SQLite, changing PK is hard. We'll recreate the table.
+                statement.executeUpdate("ALTER TABLE rooms RENAME TO rooms_old")
+                statement.executeUpdate(
+                    """
+                    CREATE TABLE rooms(
+                        id TEXT PRIMARY KEY,
+                        room_number TEXT NOT NULL,
+                        capacity INTEGER NOT NULL DEFAULT 1,
+                        guest_name TEXT NOT NULL,
+                        identification_id TEXT,
+                        guest_count INTEGER NOT NULL DEFAULT 1,
+                        check_in_date TEXT NOT NULL,
+                        check_out_date TEXT NOT NULL,
+                        check_in_epoch_millis INTEGER NOT NULL,
+                        check_out_epoch_millis INTEGER NOT NULL
+                    )
+                    """.trimIndent()
+                )
+                statement.executeUpdate(
+                    """
+                    INSERT INTO rooms (id, room_number, capacity, guest_name, identification_id, guest_count, check_in_date, check_out_date, check_in_epoch_millis, check_out_epoch_millis)
+                    SELECT room_number, room_number, capacity, guest_name, identification_id, guest_count, check_in_date, check_out_date, check_in_epoch_millis, check_out_epoch_millis FROM rooms_old
+                    """.trimIndent()
+                )
+                statement.executeUpdate("DROP TABLE rooms_old")
+                println("Migration completed successfully.")
+            }
+            
+            // Re-fetch columns after possible recreation
+            roomColumns.clear()
+            connection.metaData.getColumns(null, null, "rooms", null).use { rs ->
+                while (rs.next()) {
+                    roomColumns.add(rs.getString("COLUMN_NAME"))
+                }
+            }
+
+            if (!roomColumns.contains("breakfast_count")) {
+                statement.executeUpdate("ALTER TABLE rooms ADD COLUMN breakfast_count INTEGER NOT NULL DEFAULT 0")
+            }
+            if (!roomColumns.contains("has_breakfast")) {
+                statement.executeUpdate("ALTER TABLE rooms ADD COLUMN has_breakfast INTEGER NOT NULL DEFAULT 0")
+            }
             if (!roomColumns.contains("identification_id")) {
                 statement.executeUpdate("ALTER TABLE rooms ADD COLUMN identification_id TEXT")
-                if (roomColumns.contains("phone_number")) {
-                    statement.executeUpdate("UPDATE rooms SET identification_id = phone_number")
-                }
+            }
+            if (!roomColumns.contains("capacity")) {
+                statement.executeUpdate("ALTER TABLE rooms ADD COLUMN capacity INTEGER NOT NULL DEFAULT 1")
             }
         }
 
         val foodColumns = mutableSetOf<String>()
-        connection.getMetaData().getColumns(null, null, "food_items", null).use { rs ->
+        connection.metaData.getColumns(null, null, "food_items", null).use { rs ->
             while (rs.next()) {
                 foodColumns.add(rs.getString("COLUMN_NAME"))
             }
@@ -396,6 +546,9 @@ class HotelDatabase(
             }
             if (!foodColumns.contains("display_order")) {
                 statement.executeUpdate("ALTER TABLE food_items ADD COLUMN display_order INTEGER NOT NULL DEFAULT 0")
+            }
+            if (!foodColumns.contains("name_ar")) {
+                statement.executeUpdate("ALTER TABLE food_items ADD COLUMN name_ar TEXT")
             }
         }
     }
@@ -592,47 +745,57 @@ class HotelDatabase(
             defaultFoods.forEach(::upsertFood)
         }
 
-        if (getMenuConfigs().isEmpty()) {
-            DayType.entries.forEach { dayType ->
-                FoodType.entries.forEach { foodType ->
+        // Ensure all menu configs exist
+        DayType.entries.forEach { dayType ->
+            FoodType.entries.forEach { foodType ->
+                val exists = connection.prepareStatement("SELECT 1 FROM menu_configs WHERE day_type = ? AND food_type = ?")
+                    .use { stmt ->
+                        stmt.setString(1, dayType.name)
+                        stmt.setString(2, foodType.name)
+                        stmt.executeQuery().next()
+                    }
+                if (!exists) {
                     upsertMenuConfig(MenuConfig(dayType, foodType, true))
                 }
             }
         }
 
-        if (getRooms().isEmpty()) {
+        /*if (getRooms().isEmpty()) {
             listOf(
                 Room(
-                    "101",
-                    "رضا احمدی",
-                    "09121112233",
-                    2,
-                    "1402/08/01",
-                    "1402/08/05",
-                    1698823800000L,
-                    1699169400000L
+                    id = UUID.randomUUID().toString(),
+                    roomNumber = "101",
+                    guestName = "رضا احمدی",
+                    identificationId = "09121112233",
+                    guestCount = 2,
+                    checkInDate = "1402/08/01",
+                    checkOutDate = "1402/08/05",
+                    checkInEpochMillis = 1698823800000L,
+                    checkOutEpochMillis = 1699169400000L
                 ),
                 Room(
-                    "102",
-                    "مریم علوی",
-                    "09124445566",
-                    1,
-                    "1402/08/02",
-                    "1402/08/06",
-                    1698910200000L,
-                    1699255800000L
+                    id = UUID.randomUUID().toString(),
+                    roomNumber = "102",
+                    guestName = "مریم علوی",
+                    identificationId = "09124445566",
+                    guestCount = 1,
+                    checkInDate = "1402/08/02",
+                    checkOutDate = "1402/08/06",
+                    checkInEpochMillis = 1698910200000L,
+                    checkOutEpochMillis = 1699255800000L
                 ),
                 Room(
-                    "103",
-                    "محمد محمدی",
-                    "09127778899",
-                    3,
-                    "1402/08/05",
-                    "1402/08/10",
-                    1699169400000L,
-                    1699601400000L
+                    id = UUID.randomUUID().toString(),
+                    roomNumber = "103",
+                    guestName = "محمد محمدی",
+                    identificationId = "09127778899",
+                    guestCount = 3,
+                    checkInDate = "1402/08/05",
+                    checkOutDate = "1402/08/10",
+                    checkInEpochMillis = 1699169400000L,
+                    checkOutEpochMillis = 1699601400000L
                 )
             ).forEach(::upsertRoom)
-        }
+        }*/
     }
 }

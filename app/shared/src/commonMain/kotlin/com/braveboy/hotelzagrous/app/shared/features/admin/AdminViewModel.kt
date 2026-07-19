@@ -6,6 +6,7 @@ import com.braveboy.hotelzagrous.core.FoodItem
 import com.braveboy.hotelzagrous.core.FoodReservation
 import com.braveboy.hotelzagrous.core.GuestMealSelection
 import com.braveboy.hotelzagrous.core.MenuConfig
+import com.braveboy.hotelzagrous.core.Room
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.launch
@@ -24,18 +25,21 @@ class AdminViewModel(
             is AdminIntent.LoadData -> loadData()
             is AdminIntent.UpdateRoomStay -> updateRoom(intent)
             is AdminIntent.AddRoom -> addRoom(intent)
+            is AdminIntent.DeleteRoom -> deleteRoom(intent.id)
             is AdminIntent.ExportPdf -> exportToPdf()
             is AdminIntent.ClearAllData -> clearAllData()
             is AdminIntent.MarkLunchDelivered -> markLunchDelivered(intent)
             is AdminIntent.MarkDinnerDelivered -> markDinnerDelivered(intent)
             is AdminIntent.ChangeFood -> updateFoodSelection(intent)
+            is AdminIntent.ChangeBreakfastCount -> updateBreakfastCount(intent)
             is AdminIntent.SelectRoomForFood -> updateState { it.copy(selectedRoom = intent.room) }
             is AdminIntent.SelectReportDate -> updateState { it.copy(selectedReportDate = intent.date) }
             is AdminIntent.UpsertFood -> upsertFood(intent.food)
             is AdminIntent.DeleteFood -> deleteFood(intent.id)
             is AdminIntent.UpdateMenuConfig -> updateMenuConfig(intent.config)
-            is AdminIntent.PrintDailyDinnerReport -> printDailyReport(intent.date, isLunch = false)
-            is AdminIntent.PrintDailyLaunchReport -> printDailyReport(intent.date, isLunch = true)
+            is AdminIntent.PrintDailyBreakfastReport -> printBreakfastBuffetReport(intent.date, state.value.rooms)
+            is AdminIntent.PrintDailyDinnerReport -> printDailyReport(intent.date, com.braveboy.hotelzagrous.core.FoodType.DINNER)
+            is AdminIntent.PrintDailyLaunchReport -> printDailyReport(intent.date, com.braveboy.hotelzagrous.core.FoodType.LUNCH)
         }
     }
 
@@ -113,7 +117,9 @@ class AdminViewModel(
     private fun updateRoom(intent: AdminIntent.UpdateRoomStay) {
         scope.launch(Dispatchers.Main) {
             runCatching {
+                println("id  vm is ${intent.id}")
                 repository.updateRoomStay(
+                    intent.id,
                     intent.roomNumber,
                     intent.guestName,
                     intent.identificationId,
@@ -121,12 +127,15 @@ class AdminViewModel(
                     intent.checkOut,
                     intent.checkInMillis,
                     intent.checkOutMillis,
-                    intent.guestCount
+                    intent.guestCount,
+                    intent.hasBreakfast,
+                    intent.breakfastCount
                 )
             }.onSuccess {
                 loadData()
             }.onFailure { e ->
-                updateState { current -> current.copy(error = "به‌روزرسانی اتاق انجام نشد: ${e.message}") }
+                println("Update room failed: ${e.message}")
+                // Don't set global error to avoid blocking the whole UI
             }
         }
     }
@@ -139,6 +148,18 @@ class AdminViewModel(
                 loadData()
             }.onFailure { e ->
                 updateState { current -> current.copy(error = "افزودن اتاق انجام نشد: ${e.message}") }
+            }
+        }
+    }
+
+    private fun deleteRoom(id: String) {
+        scope.launch(Dispatchers.Main) {
+            runCatching {
+                repository.deleteRoom(id)
+            }.onSuccess {
+                loadData()
+            }.onFailure { e ->
+                updateState { it.copy(error = "حذف اتاق انجام نشد: ${e.message}") }
             }
         }
     }
@@ -216,10 +237,9 @@ class AdminViewModel(
                 ?: GuestMealSelection(intent.guestIndex)
 
             updatedSelections.removeAll { it.guestIndex == intent.guestIndex }
-            val newSelection = if (intent.isLunch) {
-                existingSelection.copy(lunchFoodId = intent.foodId)
-            } else {
-                existingSelection.copy(dinnerFoodId = intent.foodId)
+            val newSelection = when (intent.foodType) {
+                com.braveboy.hotelzagrous.core.FoodType.LUNCH -> existingSelection.copy(lunchFoodId = intent.foodId)
+                com.braveboy.hotelzagrous.core.FoodType.DINNER -> existingSelection.copy(dinnerFoodId = intent.foodId)
             }
             updatedSelections.add(newSelection)
 
@@ -231,7 +251,25 @@ class AdminViewModel(
             }.onSuccess {
                 loadData()
             }.onFailure { e ->
-                updateState { it.copy(error = "تغییر غذا با خطا مواجه شد: ${e.message}") }
+                println("Update food selection failed: ${e.message}")
+            }
+        }
+    }
+
+    private fun updateBreakfastCount(intent: AdminIntent.ChangeBreakfastCount) {
+        scope.launch(Dispatchers.Main) {
+            val reservation =
+                state.value.reservations.find { it.roomNumber == intent.roomNumber && it.date == intent.date }
+                    ?: FoodReservation(intent.roomNumber, intent.date)
+
+            val updatedRes = reservation.copy(breakfastCount = intent.count)
+
+            runCatching {
+                repository.saveReservation(updatedRes)
+            }.onSuccess {
+                loadData()
+            }.onFailure { e ->
+                println("Update breakfast count failed: ${e.message}")
             }
         }
     }
@@ -239,7 +277,66 @@ class AdminViewModel(
     private fun exportToPdf() {
     }
 
-    private fun printDailyReport(date: String, isLunch: Boolean) {
+    private fun printBreakfastBuffetReport(date: String, rooms: List<Room>) {
+        val reservations = state.value.reservations.filter { it.date == date }.associateBy { it.roomNumber }
+        val dateMillis = com.braveboy.hotelzagrous.core.DateUtils.convertDateToTimeMillis(date)
+        
+        // Filter rooms active on this date
+        val activeRooms = rooms.filter { room ->
+            dateMillis >= room.checkInEpochMillis && dateMillis <= room.checkOutEpochMillis
+        }.sortedBy { it.roomNumber }
+
+        val breakfastData = activeRooms.mapNotNull { room ->
+            val res = reservations[room.roomNumber]
+            val count = res?.breakfastCount ?: if (room.hasBreakfast) room.breakfastCount else 0
+            if (count > 0) {
+                Triple(room.roomNumber, room.guestName, count)
+            } else null
+        }
+
+        if (breakfastData.isEmpty()) return
+
+        val html = buildString {
+            append("<!DOCTYPE html><html><head><meta charset='UTF-8'><style>")
+            append("body { direction: rtl; font-family: Tahoma, Arial, sans-serif; padding: 10px; }")
+            append("h2 { text-align: center; margin-bottom: 20px; font-size: 20px; }")
+            append("table { width: 100%; border-collapse: collapse; border: 2px solid black; }")
+            append("th, td { border: 1.5px solid black; padding: 12px 6px; text-align: center; font-size: 16px; }")
+            append("th { background-color: #f8f8f8; font-weight: bold; }")
+            append(".total-row { font-weight: bold; background-color: #f0f0f0; }")
+            append("</style></head><body>")
+
+            append("<h2>گزارش صبحانه (سلف سرویس) - تاریخ: $date</h2>")
+            append("<table>")
+            append("<thead><tr>")
+            append("<th>ردیف</th><th>شماره اتاق</th><th>نام مهمان</th><th>تعداد نفرات صبحانه</th><th>امضا/تایید</th>")
+            append("</tr></thead>")
+            append("<tbody>")
+
+            var totalBreakfasts = 0
+            breakfastData.forEachIndexed { index, data ->
+                append("<tr>")
+                append("<td>${index + 1}</td>")
+                append("<td>${data.first}</td>")
+                append("<td>${data.second}</td>")
+                append("<td>${data.third}</td>")
+                append("<td></td>")
+                append("</tr>")
+                totalBreakfasts += data.third
+            }
+            append("</tbody>")
+            append("<tfoot><tr class='total-row'>")
+            append("<td colspan='3'>جمع کل صبحانه امروز</td>")
+            append("<td>$totalBreakfasts</td>")
+            append("<td></td>")
+            append("</tr></tfoot>")
+            append("</table>")
+            append("</body></html>")
+        }
+        ReportPrinter.openInBrowser(html)
+    }
+
+    private fun printDailyReport(date: String, foodType: com.braveboy.hotelzagrous.core.FoodType) {
         val reservations =
             state.value.reservations.filter { it.date == date }.sortedBy { it.roomNumber }
         val foodMap = state.value.foods.associateBy { it.id }
@@ -248,14 +345,22 @@ class AdminViewModel(
 
         // 1. Identify unique foods ordered on this day for the specific meal
         val orderedFoodIds = reservations.flatMap { res ->
-            res.guestMealSelections.mapNotNull { if (isLunch) it.lunchFoodId else it.dinnerFoodId }
+            res.guestMealSelections.mapNotNull {
+                when (foodType) {
+                    com.braveboy.hotelzagrous.core.FoodType.LUNCH -> it.lunchFoodId
+                    com.braveboy.hotelzagrous.core.FoodType.DINNER -> it.dinnerFoodId
+                }
+            }
         }.distinct()
 
         val columnFoods = orderedFoodIds.mapNotNull { foodMap[it] }.sortedBy { it.displayOrder }
 
         if (columnFoods.isEmpty()) return
 
-        val mealTitle = if (isLunch) "ناهار" else "شام"
+        val mealTitle = when (foodType) {
+            com.braveboy.hotelzagrous.core.FoodType.LUNCH -> "ناهار"
+            com.braveboy.hotelzagrous.core.FoodType.DINNER -> "شام"
+        }
 
         val html = buildString {
             append("<!DOCTYPE html><html><head><meta charset='UTF-8'><style>")
@@ -282,14 +387,19 @@ class AdminViewModel(
             append("</tr></thead>")
 
             append("<tbody>")
-            val columnTotals = IntArray(columnFoods.size) { 0 }
+            val columnTotals = IntArray(columnFoods.size)
             var totalCountSum = 0
             var rowIndex = 1
 
             reservations.forEach { res ->
                 val roomSelections = res.guestMealSelections
                 val roomFoodIds =
-                    roomSelections.mapNotNull { if (isLunch) it.lunchFoodId else it.dinnerFoodId }
+                    roomSelections.mapNotNull {
+                        when (foodType) {
+                            com.braveboy.hotelzagrous.core.FoodType.LUNCH -> it.lunchFoodId
+                            com.braveboy.hotelzagrous.core.FoodType.DINNER -> it.dinnerFoodId
+                        }
+                    }
 
                 if (roomFoodIds.isEmpty()) return@forEach
 
@@ -320,6 +430,7 @@ class AdminViewModel(
             append("</body></html>")
         }
 
-        ReportPrinter.printHtml(html, "گزارش $mealTitle $date")
+        // Changed from printHtml to openInBrowser to bypass "print service not found" issues
+        ReportPrinter.openInBrowser(html)
     }
 }

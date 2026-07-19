@@ -18,17 +18,22 @@ data class AdminState(
 
 sealed class AdminIntent {
     data class UpdateRoomStay(
-        val roomNumber: String, 
+        val id: String,
+        val roomNumber: String,
         val guestName: String,
         val identificationId: String,
-        val checkIn: String, 
+        val checkIn: String,
         val checkOut: String,
         val checkInMillis: Long,
         val checkOutMillis: Long,
-        val guestCount: Int
+        val guestCount: Int,
+        val hasBreakfast: Boolean,
+        val breakfastCount: Int
     ) : AdminIntent()
     data class AddRoom(val room: Room) : AdminIntent()
+    data class DeleteRoom(val id: String) : AdminIntent()
     object ExportPdf : AdminIntent()
+    data class PrintDailyBreakfastReport(val date: String) : AdminIntent()
     data class PrintDailyLaunchReport(val date: String) : AdminIntent()
     data class PrintDailyDinnerReport(val date: String) : AdminIntent()
     object LoadData : AdminIntent()
@@ -51,7 +56,13 @@ sealed class AdminIntent {
         val date: String,
         val guestIndex: Int,
         val foodId: String?,
-        val isLunch: Boolean
+        val foodType: com.braveboy.hotelzagrous.core.FoodType
+    ) : AdminIntent()
+
+    data class ChangeBreakfastCount(
+        val roomNumber: String,
+        val date: String,
+        val count: Int
     ) : AdminIntent()
 
     data class SelectRoomForFood(val room: Room?) : AdminIntent()

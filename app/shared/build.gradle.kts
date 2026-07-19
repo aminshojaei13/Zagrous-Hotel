@@ -69,6 +69,7 @@ kotlin {
         jvmMain.dependencies {
             implementation(libs.ktor.clientJava)
             implementation(libs.kotlinx.coroutines.swing)
+            implementation(libs.openhtmltopdf.pdfbox)
         }
         jsMain.dependencies {
             implementation(libs.wrappers.browser)

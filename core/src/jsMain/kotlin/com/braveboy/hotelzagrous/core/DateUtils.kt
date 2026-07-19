@@ -37,7 +37,7 @@ actual object DateUtils {
 
     actual fun convertMillisToJalaliString(millis: Long): String {
         val instant = Instant.fromEpochMilliseconds(millis)
-        val localDate = instant.toLocalDateTime(TimeZone.UTC).date
+        val localDate = instant.toLocalDateTime(TimeZone.currentSystemDefault()).date
         return gregorianToJalali(localDate.year, localDate.month.ordinal + 1, localDate.day)
     }
 
@@ -50,6 +50,18 @@ actual object DateUtils {
     }
 
     actual fun isEven(dateString: String): Boolean {
+        TODO("Not yet implemented")
+    }
+
+    actual fun getJalaliMonthNames(): List<String> {
+        TODO("Not yet implemented")
+    }
+
+    actual fun getDaysInJalaliMonth(year: Int, month: Int): Int {
+        TODO("Not yet implemented")
+    }
+
+    actual fun getFirstDayOfMonth(year: Int, month: Int): Int {
         TODO("Not yet implemented")
     }
 }

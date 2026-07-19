@@ -22,4 +22,14 @@ actual object ReportPrinter {
             document.body?.removeChild(iframe)
         }, 1000)
     }
+
+    actual fun savePdf(html: String, fileName: String) {
+        printHtml(html, fileName)
+    }
+
+    actual fun openInBrowser(html: String) {
+        val newWindow = window.open("", "_blank")
+        newWindow?.document?.write(html)
+        newWindow?.document?.close()
+    }
 }

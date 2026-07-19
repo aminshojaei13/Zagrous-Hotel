@@ -125,14 +125,22 @@ class HotelRepository(
     }
 
     suspend fun addRoom(room: Room) {
-        val normalizedRoom = room.copy(roomNumber = room.roomNumber.normalizeDigits())
+        val normalizedRoom = room.copy(
+            roomNumber = room.roomNumber.normalizeDigits(),
+            identificationId = room.identificationId.normalizeDigits()
+        )
         client.post("$apiBaseUrl/rooms") {
             contentType(ContentType.Application.Json)
             setBody(normalizedRoom)
         }
     }
 
+    suspend fun deleteRoom(id: String) {
+        client.delete("$apiBaseUrl/rooms/$id")
+    }
+
     suspend fun updateRoomStay(
+        id: String,
         roomNumber: String,
         guestName: String,
         identificationId: String,
@@ -140,20 +148,26 @@ class HotelRepository(
         checkOut: String,
         checkInMillis: Long,
         checkOutMillis: Long,
-        guestCount: Int
+        guestCount: Int,
+        hasBreakfast: Boolean,
+        breakfastCount: Int
     ) {
-        val normalizedRoomNumber = roomNumber.normalizeDigits()
-        client.put("$apiBaseUrl/rooms/$normalizedRoomNumber/stay") {
+        println("id is $id")
+        val normalizedIdentificationId = identificationId.normalizeDigits()
+        client.put("$apiBaseUrl/rooms/$id/stay") {
             contentType(ContentType.Application.Json)
             setBody(
                 UpdateRoomStayRequest(
+                    roomNumber = roomNumber.normalizeDigits(),
                     guestName = guestName,
-                    identificationId = identificationId,
+                    identificationId = normalizedIdentificationId,
                     checkIn = checkIn,
                     checkOut = checkOut,
                     checkInMillis = checkInMillis,
                     checkOutMillis = checkOutMillis,
-                    guestCount = guestCount
+                    guestCount = guestCount,
+                    hasBreakfast = hasBreakfast,
+                    breakfastCount = breakfastCount
                 )
             )
         }

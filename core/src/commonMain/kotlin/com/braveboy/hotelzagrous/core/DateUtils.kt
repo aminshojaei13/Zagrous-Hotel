@@ -6,4 +6,7 @@ expect object DateUtils {
     fun convertDateToTimeMillis(date: String): Long
     fun isFriday(dateString: String): Boolean
     fun isEven(dateString: String): Boolean
+    fun getJalaliMonthNames(): List<String>
+    fun getDaysInJalaliMonth(year: Int, month: Int): Int
+    fun getFirstDayOfMonth(year: Int, month: Int): Int // 0 for Shanbeh, 6 for Jomeh
 }

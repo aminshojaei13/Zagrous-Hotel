@@ -66,24 +66,45 @@ fun Application.module() {
             }
 
             get("/rooms") { call.respond(database.getRooms()) }
-            get("/rooms/{roomNumber}") {
-                val roomNumber = call.parameters["roomNumber"].orEmpty().normalizeDigits()
-                val room = database.getRoom(roomNumber)
-                if (room == null) call.respond(HttpStatusCode.NotFound, ApiError("شماره اتاق یافت نشد"))
+            get("/rooms/{idOrNumber}") {
+                val idOrNumber = call.parameters["idOrNumber"].orEmpty()
+                // Try as UUID/ID first, then as Room Number
+                val room = database.getRoom(idOrNumber) ?: database.getRoomByNumber(idOrNumber.normalizeDigits())
+                if (room == null) call.respond(HttpStatusCode.NotFound, ApiError("اتاق یافت نشد"))
                 else call.respond(room)
             }
             post("/rooms") {
                 val room = call.receive<Room>()
-                val normalizedRoom = room.copy(roomNumber = room.roomNumber.normalizeDigits())
-                database.upsertRoom(normalizedRoom)
-                call.respond(HttpStatusCode.Created, normalizedRoom)
+                val normalizedRoom = room.copy(
+                    roomNumber = room.roomNumber.normalizeDigits(),
+                    identificationId = room.identificationId.normalizeDigits()
+                )
+                val id = database.upsertRoom(normalizedRoom)
+                call.respond(HttpStatusCode.Created, normalizedRoom.copy(id = id))
             }
-            put("/rooms/{roomNumber}/stay") {
-                val roomNumber = call.parameters["roomNumber"].orEmpty().normalizeDigits()
+            delete("/rooms/{id}") {
+                val id = call.parameters["id"].orEmpty()
+                database.deleteRoom(id)
+                call.respond(HttpStatusCode.OK)
+            }
+            put("/rooms/{id}/stay") {
+                val id = call.parameters["id"].orEmpty()
                 val request = call.receive<UpdateRoomStayRequest>()
-                val updated = database.updateRoomStay(roomNumber, request.guestName, request.identificationId, request.checkIn, request.checkOut, request.checkInMillis, request.checkOutMillis, request.guestCount)
-                if (updated) call.respond(HttpStatusCode.OK, database.getRoom(roomNumber)!!)
-                else call.respond(HttpStatusCode.NotFound, ApiError("شماره اتاق یافت نشد"))
+                val updated = database.updateRoomStay(
+                    id,
+                    request.roomNumber.normalizeDigits(),
+                    request.guestName,
+                    request.identificationId.normalizeDigits(),
+                    request.checkIn,
+                    request.checkOut,
+                    request.checkInMillis,
+                    request.checkOutMillis,
+                    request.guestCount,
+                    request.hasBreakfast,
+                    request.breakfastCount
+                )
+                if (updated) call.respond(HttpStatusCode.OK, database.getRoom(id)!!)
+                else call.respond(HttpStatusCode.NotFound, ApiError("شناسه اتاق یافت نشد"))
             }
             get("/foods") { call.respond(database.getFoods()) }
             post("/foods") {

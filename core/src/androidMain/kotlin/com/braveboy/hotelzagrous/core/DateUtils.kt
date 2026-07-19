@@ -16,7 +16,7 @@ actual object DateUtils {
     }
 
     actual fun convertMillisToJalaliString(millis: Long): String {
-        return Instant.fromEpochMilliseconds(millis).toPersianDateTime(TimeZone.UTC).toDateString()
+        return Instant.fromEpochMilliseconds(millis).toPersianDateTime(TimeZone.currentSystemDefault()).toDateString()
     }
 
     actual fun isFriday(dateString: String): Boolean {
@@ -50,5 +50,31 @@ actual object DateUtils {
         } catch (e: Exception) {
             0
         }
+    }
+
+    actual fun getJalaliMonthNames(): List<String> = listOf(
+        "فروردین", "اردیبهشت", "خرداد", "تیر", "مرداد", "شهریور",
+        "مهر", "آبان", "آذر", "دی", "بهمن", "اسفند"
+    )
+
+    actual fun getDaysInJalaliMonth(year: Int, month: Int): Int {
+        return when {
+            month <= 6 -> 31
+            month <= 11 -> 30
+            else -> if (isLeapYear(year)) 30 else 29
+        }
+    }
+
+    actual fun getFirstDayOfMonth(year: Int, month: Int): Int {
+        return try {
+            PersianDateTime(year, month, 1).persianDayOfWeek().number - 1
+        } catch (e: Exception) {
+            0
+        }
+    }
+
+    private fun isLeapYear(year: Int): Boolean {
+        val r = year % 33
+        return r == 1 || r == 5 || r == 9 || r == 13 || r == 17 || r == 22 || r == 26 || r == 30
     }
 }
