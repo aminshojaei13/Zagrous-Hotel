@@ -5,10 +5,12 @@ import androidx.compose.foundation.*
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
+import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.*
 import androidx.compose.material3.*
+import androidx.compose.material3.TabRowDefaults.tabIndicatorOffset
 import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
@@ -33,41 +35,48 @@ fun FinanceScreen(viewModel: FinanceViewModel) {
 
     Column(modifier = Modifier.fillMaxSize().padding(16.dp)) {
         // Tab Selector
-        ScrollableTabRow(
-            selectedTabIndex = when(currentTab) {
-                "dashboard" -> 0
-                "transactions" -> 1
-                "projects" -> 2
-                else -> 0
-            },
-            edgePadding = 0.dp,
+        val selectedIndex = when(currentTab) {
+            "dashboard" -> 0
+            "transactions" -> 1
+            "projects" -> 2
+            else -> 0
+        }
+        
+        SecondaryTabRow(
+            selectedTabIndex = selectedIndex,
             containerColor = Color.Transparent,
             divider = {}
         ) {
             Tab(selected = currentTab == "dashboard", onClick = { currentTab = "dashboard" }) {
-                Text("داشبورد", modifier = Modifier.padding(12.dp))
+                Text("داشبورد", modifier = Modifier.padding(12.dp), style = MaterialTheme.typography.titleSmall)
             }
             Tab(selected = currentTab == "transactions", onClick = { currentTab = "transactions" }) {
-                Text("تراکنش‌ها", modifier = Modifier.padding(12.dp))
+                Text("تراکنش‌ها", modifier = Modifier.padding(12.dp), style = MaterialTheme.typography.titleSmall)
             }
             Tab(selected = currentTab == "projects", onClick = { currentTab = "projects" }) {
-                Text("وضعیت مالی اتاق‌ها", modifier = Modifier.padding(12.dp))
+                Text("وضعیت مالی اتاق‌ها", modifier = Modifier.padding(12.dp), style = MaterialTheme.typography.titleSmall)
             }
         }
 
         Spacer(Modifier.height(16.dp))
 
         Box(modifier = Modifier.weight(1f)) {
-            when (currentTab) {
-                "dashboard" -> FinanceDashboard(state)
-                "transactions" -> TransactionList(
-                    state = state,
-                    onEdit = { editingTransaction = it; showAddDialog = true },
-                    onDelete = { viewModel.onIntent(FinanceIntent.DeleteTransaction(it)) },
-                    onFilterChange = { viewModel.onIntent(FinanceIntent.SetTypeFilter(it)) },
-                    onSearch = { viewModel.onIntent(FinanceIntent.SetSearchQuery(it)) }
-                )
-                "projects" -> RoomFinanceList(state)
+            if (state.isLoading) {
+                Box(Modifier.fillMaxSize(), contentAlignment = Alignment.Center) {
+                    CircularProgressIndicator()
+                }
+            } else {
+                when (currentTab) {
+                    "dashboard" -> FinanceDashboard(state)
+                    "transactions" -> TransactionList(
+                        state = state,
+                        onEdit = { editingTransaction = it; showAddDialog = true },
+                        onDelete = { viewModel.onIntent(FinanceIntent.DeleteTransaction(it)) },
+                        onFilterChange = { viewModel.onIntent(FinanceIntent.SetTypeFilter(it)) },
+                        onSearch = { viewModel.onIntent(FinanceIntent.SetSearchQuery(it)) }
+                    )
+                    "projects" -> RoomFinanceList(state)
+                }
             }
         }
 
@@ -102,14 +111,14 @@ fun FinanceDashboard(state: FinanceState) {
                 title = "کل هزینه‌ها",
                 amount = report.totalExpenses,
                 icon = Icons.Default.TrendingDown,
-                color = Color(0xFFE57373),
+                color = MaterialTheme.colorScheme.error,
                 modifier = Modifier.weight(1f)
             )
             DashboardCard(
                 title = "کل دریافتی‌ها",
                 amount = report.totalDeposits + report.totalSettlements,
                 icon = Icons.Default.TrendingUp,
-                color = Color(0xFF81C784),
+                color = Color(0xFF4CAF50),
                 modifier = Modifier.weight(1f)
             )
         }
@@ -119,14 +128,14 @@ fun FinanceDashboard(state: FinanceState) {
                 title = "مانده طلب",
                 amount = report.remainingAmount,
                 icon = Icons.Default.AccountBalanceWallet,
-                color = Color(0xFFFFB74D),
+                color = Color(0xFFFF9800),
                 modifier = Modifier.weight(1f)
             )
             DashboardCard(
                 title = "سود خالص",
                 amount = report.netProfit,
                 icon = Icons.Default.MonetizationOn,
-                color = Color(0xFF64B5F6),
+                color = MaterialTheme.colorScheme.primary,
                 modifier = Modifier.weight(1f)
             )
         }
@@ -135,39 +144,48 @@ fun FinanceDashboard(state: FinanceState) {
         Text("گزارش نموداری", style = MaterialTheme.typography.titleLarge, fontWeight = FontWeight.Bold)
         Spacer(Modifier.height(16.dp))
 
-        // Simple Bar Chart Placeholder
         Surface(
-            modifier = Modifier.fillMaxWidth().height(200.dp),
-            shape = RoundedCornerShape(12.dp),
-            color = MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.3f)
+            modifier = Modifier.fillMaxWidth().height(250.dp),
+            shape = RoundedCornerShape(16.dp),
+            color = MaterialTheme.colorScheme.surface,
+            border = BorderStroke(1.dp, MaterialTheme.colorScheme.outlineVariant)
         ) {
             Row(
-                modifier = Modifier.padding(16.dp).fillMaxSize(),
+                modifier = Modifier.padding(24.dp).fillMaxSize(),
                 horizontalArrangement = Arrangement.SpaceEvenly,
                 verticalAlignment = Alignment.Bottom
             ) {
-                val max = listOf(report.totalExpenses, report.totalDeposits, report.totalSettlements, report.netProfit).maxOrNull()?.coerceAtLeast(1) ?: 1
-                BarChartItem("هزینه", report.totalExpenses, max, Color(0xFFE57373))
+                val values = listOf(report.totalExpenses, report.totalDeposits, report.totalSettlements, report.netProfit)
+                val max = values.maxOrNull()?.coerceAtLeast(1) ?: 1
+                BarChartItem("هزینه", report.totalExpenses, max, MaterialTheme.colorScheme.error)
                 BarChartItem("بیعانه", report.totalDeposits, max, Color(0xFF81C784))
                 BarChartItem("تسویه", report.totalSettlements, max, Color(0xFF4CAF50))
-                BarChartItem("سود", report.netProfit, max, Color(0xFF64B5F6))
+                BarChartItem("سود", report.netProfit, max, MaterialTheme.colorScheme.primary)
             }
         }
+        
+        Spacer(Modifier.height(24.dp))
     }
 }
 
 @Composable
 fun BarChartItem(label: String, value: Long, max: Long, color: Color) {
-    val heightFactor = (value.toFloat() / max.toFloat()).coerceIn(0.1f, 1f)
-    Column(horizontalAlignment = Alignment.CenterHorizontally) {
-        Text(value.toString(), style = MaterialTheme.typography.labelSmall)
+    val heightFactor = (value.toFloat() / max.toFloat()).coerceIn(0.05f, 1f)
+    Column(horizontalAlignment = Alignment.CenterHorizontally, modifier = Modifier.width(60.dp)) {
+        Text(
+            text = value.formatPrice(),
+            style = MaterialTheme.typography.labelSmall.copy(fontSize = 10.sp),
+            maxLines = 1,
+            overflow = TextOverflow.Ellipsis
+        )
+        Spacer(Modifier.height(4.dp))
         Box(
             modifier = Modifier
-                .width(40.dp)
+                .width(32.dp)
                 .fillMaxHeight(0.8f * heightFactor)
                 .background(color, RoundedCornerShape(topStart = 4.dp, topEnd = 4.dp))
         )
-        Text(label, style = MaterialTheme.typography.labelMedium, modifier = Modifier.padding(top = 4.dp))
+        Text(label, style = MaterialTheme.typography.labelMedium, modifier = Modifier.padding(top = 8.dp), fontWeight = FontWeight.Bold)
     }
 }
 
@@ -175,15 +193,22 @@ fun BarChartItem(label: String, value: Long, max: Long, color: Color) {
 fun DashboardCard(title: String, amount: Long, icon: ImageVector, color: Color, modifier: Modifier = Modifier) {
     Card(
         modifier = modifier,
-        colors = CardDefaults.cardColors(containerColor = color.copy(alpha = 0.1f)),
-        shape = RoundedCornerShape(16.dp)
+        colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surface),
+        shape = RoundedCornerShape(16.dp),
+        border = BorderStroke(1.dp, color.copy(alpha = 0.2f))
     ) {
         Column(modifier = Modifier.padding(16.dp)) {
-            Icon(icon, contentDescription = null, tint = color)
-            Spacer(Modifier.height(8.dp))
+            Surface(
+                modifier = Modifier.size(36.dp),
+                color = color.copy(alpha = 0.1f),
+                shape = CircleShape
+            ) {
+                Icon(icon, contentDescription = null, tint = color, modifier = Modifier.padding(8.dp))
+            }
+            Spacer(Modifier.height(12.dp))
             Text(title, style = MaterialTheme.typography.labelMedium, color = MaterialTheme.colorScheme.onSurfaceVariant)
             Text(
-                text = "${amount.toString()} ریال",
+                text = "${amount.formatPrice()} ریال",
                 style = MaterialTheme.typography.titleMedium,
                 fontWeight = FontWeight.Bold,
                 color = MaterialTheme.colorScheme.onSurface
@@ -201,14 +226,18 @@ fun TransactionList(
     onSearch: (String) -> Unit
 ) {
     Column {
-        Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+        Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(12.dp)) {
             OutlinedTextField(
                 value = state.searchQuery,
                 onValueChange = onSearch,
                 placeholder = { Text("جستجو در عنوان...") },
                 modifier = Modifier.weight(1f),
                 leadingIcon = { Icon(Icons.Default.Search, null) },
-                shape = RoundedCornerShape(12.dp)
+                shape = RoundedCornerShape(12.dp),
+                colors = TextFieldDefaults.colors(
+                    unfocusedContainerColor = MaterialTheme.colorScheme.surface,
+                    focusedContainerColor = MaterialTheme.colorScheme.surface
+                )
             )
             
             var expanded by remember { mutableStateOf(false) }
@@ -216,14 +245,24 @@ fun TransactionList(
                 FilterChip(
                     selected = state.typeFilter != null,
                     onClick = { expanded = true },
-                    label = { Text(state.typeFilter?.name ?: "همه انواع") },
-                    trailingIcon = { Icon(Icons.Default.ArrowDropDown, null) }
+                    label = { 
+                        Text(
+                            when(state.typeFilter) {
+                                TransactionType.EXPENSE -> "هزینه"
+                                TransactionType.DEPOSIT -> "بیعانه"
+                                TransactionType.SETTLEMENT -> "تسویه"
+                                null -> "همه انواع"
+                            }
+                        ) 
+                    },
+                    trailingIcon = { Icon(Icons.Default.ArrowDropDown, null) },
+                    shape = RoundedCornerShape(12.dp)
                 )
                 DropdownMenu(expanded = expanded, onDismissRequest = { expanded = false }) {
                     DropdownMenuItem(text = { Text("همه") }, onClick = { onFilterChange(null); expanded = false })
-                    TransactionType.entries.forEach { type ->
-                        DropdownMenuItem(text = { Text(type.name) }, onClick = { onFilterChange(type); expanded = false })
-                    }
+                    DropdownMenuItem(text = { Text("هزینه") }, onClick = { onFilterChange(TransactionType.EXPENSE); expanded = false })
+                    DropdownMenuItem(text = { Text("بیعانه") }, onClick = { onFilterChange(TransactionType.DEPOSIT); expanded = false })
+                    DropdownMenuItem(text = { Text("تسویه") }, onClick = { onFilterChange(TransactionType.SETTLEMENT); expanded = false })
                 }
             }
         }
@@ -235,9 +274,15 @@ fun TransactionList(
             (state.searchQuery.isBlank() || tx.title.contains(state.searchQuery, ignoreCase = true))
         }
 
-        LazyColumn(verticalArrangement = Arrangement.spacedBy(8.dp)) {
-            items(filteredTransactions) { tx ->
-                TransactionItem(tx, onEdit, onDelete)
+        if (filteredTransactions.isEmpty()) {
+            Box(Modifier.fillMaxSize(), contentAlignment = Alignment.Center) {
+                Text("تراکنشی یافت نشد", color = MaterialTheme.colorScheme.outline)
+            }
+        } else {
+            LazyColumn(verticalArrangement = Arrangement.spacedBy(12.dp), contentPadding = PaddingValues(bottom = 80.dp)) {
+                items(filteredTransactions) { tx ->
+                    TransactionItem(tx, onEdit, onDelete)
+                }
             }
         }
     }
@@ -248,38 +293,53 @@ fun TransactionItem(tx: FinancialTransaction, onEdit: (FinancialTransaction) -> 
     Card(
         modifier = Modifier.fillMaxWidth(),
         colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surface),
-        border = BorderStroke(1.dp, MaterialTheme.colorScheme.outlineVariant)
+        border = BorderStroke(1.dp, MaterialTheme.colorScheme.outlineVariant),
+        shape = RoundedCornerShape(12.dp)
     ) {
         Row(modifier = Modifier.padding(12.dp), verticalAlignment = Alignment.CenterVertically) {
-            val color = when(tx.transactionType) {
-                TransactionType.EXPENSE -> Color(0xFFE57373)
-                TransactionType.DEPOSIT -> Color(0xFF81C784)
-                TransactionType.SETTLEMENT -> Color(0xFF4CAF50)
+            val (color, icon) = when(tx.transactionType) {
+                TransactionType.EXPENSE -> MaterialTheme.colorScheme.error to Icons.Default.Remove
+                TransactionType.DEPOSIT -> Color(0xFF81C784) to Icons.Default.Add
+                TransactionType.SETTLEMENT -> Color(0xFF4CAF50) to Icons.Default.DoneAll
             }
             
-            Box(modifier = Modifier.size(40.dp).background(color.copy(alpha = 0.2f), RoundedCornerShape(8.dp)), contentAlignment = Alignment.Center) {
-                Icon(
-                    when(tx.transactionType) {
-                        TransactionType.EXPENSE -> Icons.Default.Remove
-                        else -> Icons.Default.Add
-                    },
-                    contentDescription = null,
-                    tint = color
+            Surface(
+                modifier = Modifier.size(44.dp),
+                color = color.copy(alpha = 0.1f),
+                shape = RoundedCornerShape(12.dp)
+            ) {
+                Icon(icon, contentDescription = null, tint = color, modifier = Modifier.padding(10.dp))
+            }
+            
+            Spacer(Modifier.width(16.dp))
+            
+            Column(modifier = Modifier.weight(1f)) {
+                Text(tx.title, fontWeight = FontWeight.Bold, style = MaterialTheme.typography.bodyLarge)
+                Text(
+                    "${tx.paymentDate} • ${when(tx.paymentMethod) {
+                        PaymentMethod.CASH -> "نقدی"
+                        PaymentMethod.CARD -> "کارت"
+                        PaymentMethod.BANK_TRANSFER -> "حواله"
+                    }}", 
+                    style = MaterialTheme.typography.labelSmall,
+                    color = MaterialTheme.colorScheme.onSurfaceVariant
                 )
             }
             
-            Spacer(Modifier.width(12.dp))
-            
-            Column(modifier = Modifier.weight(1f)) {
-                Text(tx.title, fontWeight = FontWeight.Bold)
-                Text("${tx.paymentDate} - ${tx.paymentMethod}", style = MaterialTheme.typography.labelSmall)
-            }
-            
             Column(horizontalAlignment = Alignment.End) {
-                Text("${tx.amount} ریال", fontWeight = FontWeight.ExtraBold, color = color)
+                Text(
+                    text = "${tx.amount.formatPrice()} ریال", 
+                    fontWeight = FontWeight.ExtraBold, 
+                    color = color,
+                    style = MaterialTheme.typography.titleMedium
+                )
                 Row {
-                    IconButton(onClick = { onEdit(tx) }) { Icon(Icons.Default.Edit, null, modifier = Modifier.size(18.dp)) }
-                    IconButton(onClick = { onDelete(tx.id) }) { Icon(Icons.Default.Delete, null, modifier = Modifier.size(18.dp), tint = MaterialTheme.colorScheme.error) }
+                    IconButton(onClick = { onEdit(tx) }, modifier = Modifier.size(32.dp)) { 
+                        Icon(Icons.Default.Edit, null, modifier = Modifier.size(18.dp), tint = MaterialTheme.colorScheme.primary) 
+                    }
+                    IconButton(onClick = { onDelete(tx.id) }, modifier = Modifier.size(32.dp)) { 
+                        Icon(Icons.Default.Delete, null, modifier = Modifier.size(18.dp), tint = MaterialTheme.colorScheme.error) 
+                    }
                 }
             }
         }
@@ -288,9 +348,15 @@ fun TransactionItem(tx: FinancialTransaction, onEdit: (FinancialTransaction) -> 
 
 @Composable
 fun RoomFinanceList(state: FinanceState) {
-    LazyColumn(verticalArrangement = Arrangement.spacedBy(12.dp)) {
-        items(state.roomSummaries) { summary ->
-            RoomFinanceItem(summary)
+    if (state.roomSummaries.isEmpty()) {
+        Box(Modifier.fillMaxSize(), contentAlignment = Alignment.Center) {
+            Text("اطلاعاتی برای نمایش وجود ندارد", color = MaterialTheme.colorScheme.outline)
+        }
+    } else {
+        LazyColumn(verticalArrangement = Arrangement.spacedBy(16.dp), contentPadding = PaddingValues(bottom = 80.dp)) {
+            items(state.roomSummaries) { summary ->
+                RoomFinanceItem(summary)
+            }
         }
     }
 }
@@ -299,24 +365,49 @@ fun RoomFinanceList(state: FinanceState) {
 fun RoomFinanceItem(summary: RoomFinancialSummary) {
     Card(
         modifier = Modifier.fillMaxWidth(),
-        shape = RoundedCornerShape(16.dp)
+        shape = RoundedCornerShape(16.dp),
+        colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surface),
+        border = BorderStroke(1.dp, MaterialTheme.colorScheme.outlineVariant)
     ) {
         Column(modifier = Modifier.padding(16.dp)) {
-            Row(horizontalArrangement = Arrangement.SpaceBetween, modifier = Modifier.fillMaxWidth()) {
-                Text("اتاق ${summary.roomNumber}", style = MaterialTheme.typography.titleMedium, fontWeight = FontWeight.Bold)
-                Text(summary.guestName, style = MaterialTheme.typography.titleMedium)
+            Row(horizontalArrangement = Arrangement.SpaceBetween, modifier = Modifier.fillMaxWidth(), verticalAlignment = Alignment.CenterVertically) {
+                Row(verticalAlignment = Alignment.CenterVertically) {
+                    Surface(color = MaterialTheme.colorScheme.primary, shape = CircleShape, modifier = Modifier.size(32.dp)) {
+                        Icon(Icons.Default.Hotel, null, tint = Color.White, modifier = Modifier.padding(6.dp))
+                    }
+                    Spacer(Modifier.width(12.dp))
+                    Text("اتاق ${summary.roomNumber}", style = MaterialTheme.typography.titleMedium, fontWeight = FontWeight.ExtraBold)
+                }
+                Text(summary.guestName, style = MaterialTheme.typography.bodyLarge, color = MaterialTheme.colorScheme.primary)
             }
-            HorizontalDivider(modifier = Modifier.padding(vertical = 8.dp))
+            
+            HorizontalDivider(modifier = Modifier.padding(vertical = 12.dp), thickness = 0.5.dp)
             
             FinanceRow("مبلغ قرارداد", summary.totalContractAmount)
-            FinanceRow("مجموع بیعانه‌ها", summary.totalDeposits, color = Color(0xFF81C784))
-            FinanceRow("مجموع هزینه‌ها", summary.totalExpenses, color = Color(0xFFE57373))
-            FinanceRow("مانده تسویه", summary.remainingSettlement, fontWeight = FontWeight.ExtraBold, color = if(summary.remainingSettlement > 0) Color(0xFFFFB74D) else Color(0xFF4CAF50))
+            FinanceRow("مجموع بیعانه‌ها", summary.totalDeposits, color = Color(0xFF4CAF50))
+            FinanceRow("مجموع هزینه‌ها", summary.totalExpenses, color = MaterialTheme.colorScheme.error)
             
             Spacer(Modifier.height(8.dp))
-            Row(modifier = Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.SpaceBetween) {
-                Text("سود پروژه", fontWeight = FontWeight.Bold)
-                Text("${summary.profit} ریال", fontWeight = FontWeight.Bold, color = if(summary.profit >= 0) Color(0xFF4CAF50) else Color(0xFFE57373))
+            Surface(
+                modifier = Modifier.fillMaxWidth(),
+                color = MaterialTheme.colorScheme.primary.copy(alpha = 0.05f),
+                shape = RoundedCornerShape(8.dp)
+            ) {
+                Column(modifier = Modifier.padding(12.dp)) {
+                    FinanceRow(
+                        "مانده تسویه", 
+                        summary.remainingSettlement, 
+                        fontWeight = FontWeight.ExtraBold, 
+                        color = if(summary.remainingSettlement > 0) Color(0xFFFF9800) else Color(0xFF4CAF50)
+                    )
+                    Spacer(Modifier.height(4.dp))
+                    FinanceRow(
+                        "سود پروژه", 
+                        summary.profit, 
+                        fontWeight = FontWeight.ExtraBold, 
+                        color = if(summary.profit >= 0) Color(0xFF4CAF50) else MaterialTheme.colorScheme.error
+                    )
+                }
             }
         }
     }
@@ -324,9 +415,9 @@ fun RoomFinanceItem(summary: RoomFinancialSummary) {
 
 @Composable
 fun FinanceRow(label: String, amount: Long, fontWeight: FontWeight = FontWeight.Normal, color: Color = Color.Unspecified) {
-    Row(modifier = Modifier.fillMaxWidth().padding(vertical = 2.dp), horizontalArrangement = Arrangement.SpaceBetween) {
-        Text(label, style = MaterialTheme.typography.bodySmall)
-        Text("${amount} ریال", style = MaterialTheme.typography.bodySmall, fontWeight = fontWeight, color = color)
+    Row(modifier = Modifier.fillMaxWidth().padding(vertical = 4.dp), horizontalArrangement = Arrangement.SpaceBetween) {
+        Text(label, style = MaterialTheme.typography.bodyMedium, color = MaterialTheme.colorScheme.onSurfaceVariant)
+        Text("${amount.formatPrice()} ریال", style = MaterialTheme.typography.bodyMedium, fontWeight = fontWeight, color = color)
     }
 }
 
@@ -352,69 +443,125 @@ fun AddEditTransactionDialog(
 
     AlertDialog(
         onDismissRequest = onDismiss,
-        title = { Text(if (transaction == null) "ثبت تراکنش جدید" else "ویرایش تراکنش") },
+        title = { Text(if (transaction == null) "ثبت تراکنش جدید" else "ویرایش تراکنش", fontWeight = FontWeight.Bold) },
         text = {
-            Column(modifier = Modifier.verticalScroll(rememberScrollState()).fillMaxWidth(), verticalArrangement = Arrangement.spacedBy(12.dp)) {
+            Column(modifier = Modifier.verticalScroll(rememberScrollState()).fillMaxWidth(), verticalArrangement = Arrangement.spacedBy(16.dp)) {
                 // Room Selection
-                Box {
-                    OutlinedTextField(
-                        value = selectedRoom?.let { "اتاق ${it.roomNumber} - ${it.guestName}" } ?: "انتخاب اتاق",
-                        onValueChange = {},
-                        readOnly = true,
-                        label = { Text("اتاق مربوطه") },
-                        modifier = Modifier.fillMaxWidth(),
-                        trailingIcon = { IconButton(onClick = { expandedRoom = true }) { Icon(Icons.Default.ArrowDropDown, null) } }
-                    )
-                    DropdownMenu(expanded = expandedRoom, onDismissRequest = { expandedRoom = false }) {
-                        rooms.forEach { room ->
-                            DropdownMenuItem(
-                                text = { Text("اتاق ${room.roomNumber} - ${room.guestName}") },
-                                onClick = { selectedRoom = room; expandedRoom = false }
-                            )
+                Column {
+                    Text("اتاق مربوطه", style = MaterialTheme.typography.labelMedium, color = MaterialTheme.colorScheme.primary)
+                    Spacer(Modifier.height(4.dp))
+                    Box {
+                        OutlinedCard(
+                            onClick = { expandedRoom = true },
+                            modifier = Modifier.fillMaxWidth(),
+                            shape = RoundedCornerShape(12.dp)
+                        ) {
+                            Row(modifier = Modifier.padding(12.dp), verticalAlignment = Alignment.CenterVertically) {
+                                Icon(Icons.Default.Hotel, null, modifier = Modifier.size(18.dp), tint = MaterialTheme.colorScheme.outline)
+                                Spacer(Modifier.width(12.dp))
+                                Text(
+                                    text = selectedRoom?.let { "اتاق ${it.roomNumber} - ${it.guestName}" } ?: "انتخاب اتاق",
+                                    style = MaterialTheme.typography.bodyLarge
+                                )
+                                Spacer(Modifier.weight(1f))
+                                Icon(Icons.Default.ArrowDropDown, null)
+                            }
+                        }
+                        DropdownMenu(
+                            expanded = expandedRoom, 
+                            onDismissRequest = { expandedRoom = false },
+                            modifier = Modifier.fillMaxWidth(0.8f)
+                        ) {
+                            rooms.forEach { room ->
+                                DropdownMenuItem(
+                                    text = { Text("اتاق ${room.roomNumber} - ${room.guestName}") },
+                                    onClick = { selectedRoom = room; expandedRoom = false }
+                                )
+                            }
                         }
                     }
                 }
 
-                OutlinedTextField(value = title, onValueChange = { title = it }, label = { Text("عنوان") }, modifier = Modifier.fillMaxWidth())
-                OutlinedTextField(value = amount, onValueChange = { amount = it }, label = { Text("مبلغ (ریال)") }, modifier = Modifier.fillMaxWidth())
+                OutlinedTextField(
+                    value = title, 
+                    onValueChange = { title = it }, 
+                    label = { Text("عنوان تراکنش") }, 
+                    modifier = Modifier.fillMaxWidth(),
+                    shape = RoundedCornerShape(12.dp),
+                    singleLine = true
+                )
+                
+                OutlinedTextField(
+                    value = amount, 
+                    onValueChange = { amount = it }, 
+                    label = { Text("مبلغ (ریال)") }, 
+                    modifier = Modifier.fillMaxWidth(),
+                    shape = RoundedCornerShape(12.dp),
+                    singleLine = true,
+                    keyboardOptions = androidx.compose.foundation.text.KeyboardOptions(keyboardType = androidx.compose.ui.text.input.KeyboardType.Number)
+                )
                 
                 // Transaction Type
-                Row(modifier = Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.spacedBy(8.dp)) {
-                    TransactionType.entries.forEach { t ->
-                        FilterChip(
-                            selected = type == t,
-                            onClick = { type = t },
-                            label = { Text(t.name) },
-                            modifier = Modifier.weight(1f)
-                        )
+                Column {
+                    Text("نوع تراکنش", style = MaterialTheme.typography.labelMedium, color = MaterialTheme.colorScheme.primary)
+                    Spacer(Modifier.height(8.dp))
+                    Row(modifier = Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+                        TransactionType.entries.forEach { t ->
+                            val label = when(t) {
+                                TransactionType.EXPENSE -> "هزینه"
+                                TransactionType.DEPOSIT -> "بیعانه"
+                                TransactionType.SETTLEMENT -> "تسویه"
+                            }
+                            FilterChip(
+                                selected = type == t,
+                                onClick = { type = t },
+                                label = { Text(label) },
+                                modifier = Modifier.weight(1f),
+                                shape = RoundedCornerShape(8.dp)
+                            )
+                        }
                     }
                 }
 
                 OutlinedTextField(
                     value = date,
                     onValueChange = { date = it },
-                    label = { Text("تاریخ") },
+                    label = { Text("تاریخ پرداخت") },
                     modifier = Modifier.fillMaxWidth(),
+                    shape = RoundedCornerShape(12.dp),
+                    readOnly = true,
                     trailingIcon = { IconButton(onClick = { showDatePicker = true }) { Icon(Icons.Default.CalendarToday, null) } }
                 )
 
                 // Status & Method
-                Row(modifier = Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+                Row(modifier = Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.spacedBy(16.dp)) {
                     Column(modifier = Modifier.weight(1f)) {
-                        Text("روش پرداخت", style = MaterialTheme.typography.labelSmall)
+                        Text("روش پرداخت", style = MaterialTheme.typography.labelMedium, color = MaterialTheme.colorScheme.primary)
+                        Spacer(Modifier.height(4.dp))
                         PaymentMethod.entries.forEach { m ->
                             Row(verticalAlignment = Alignment.CenterVertically) {
                                 RadioButton(selected = method == m, onClick = { method = m })
-                                Text(m.name, style = MaterialTheme.typography.bodySmall)
+                                Text(
+                                    when(m) {
+                                        PaymentMethod.CASH -> "نقدی"
+                                        PaymentMethod.CARD -> "کارت"
+                                        PaymentMethod.BANK_TRANSFER -> "حواله"
+                                    }, 
+                                    style = MaterialTheme.typography.bodySmall
+                                )
                             }
                         }
                     }
                     Column(modifier = Modifier.weight(1f)) {
-                        Text("وضعیت", style = MaterialTheme.typography.labelSmall)
+                        Text("وضعیت", style = MaterialTheme.typography.labelMedium, color = MaterialTheme.colorScheme.primary)
+                        Spacer(Modifier.height(4.dp))
                         TransactionStatus.entries.forEach { s ->
                             Row(verticalAlignment = Alignment.CenterVertically) {
                                 RadioButton(selected = status == s, onClick = { status = s })
-                                Text(s.name, style = MaterialTheme.typography.bodySmall)
+                                Text(
+                                    if(s == TransactionStatus.PAID) "پرداخت شده" else "در انتظار", 
+                                    style = MaterialTheme.typography.bodySmall
+                                )
                             }
                         }
                     }
@@ -422,25 +569,29 @@ fun AddEditTransactionDialog(
             }
         },
         confirmButton = {
-            Button(onClick = {
-                if (selectedRoom != null && title.isNotBlank() && amount.toLongOrNull() != null) {
-                    onConfirm(
-                        FinancialTransaction(
-                            id = transaction?.id ?: "",
-                            roomId = selectedRoom!!.id,
-                            title = title,
-                            amount = amount.toLongOrNull() ?: 0,
-                            transactionType = type,
-                            paymentDate = date,
-                            paymentMethod = method,
-                            status = status,
-                            description = description
+            Button(
+                onClick = {
+                    if (selectedRoom != null && title.isNotBlank() && amount.toLongOrNull() != null) {
+                        onConfirm(
+                            FinancialTransaction(
+                                id = transaction?.id ?: "",
+                                roomId = selectedRoom!!.id,
+                                title = title,
+                                amount = amount.normalizeDigits().toLongOrNull() ?: 0,
+                                transactionType = type,
+                                paymentDate = date,
+                                paymentMethod = method,
+                                status = status,
+                                description = description
+                            )
                         )
-                    )
-                }
-            }) { Text("تایید") }
+                    }
+                },
+                shape = RoundedCornerShape(12.dp)
+            ) { Text("ذخیره تراکنش") }
         },
-        dismissButton = { TextButton(onClick = onDismiss) { Text("انصراف") } }
+        dismissButton = { TextButton(onClick = onDismiss) { Text("انصراف") } },
+        shape = RoundedCornerShape(24.dp)
     )
 
     if (showDatePicker) {

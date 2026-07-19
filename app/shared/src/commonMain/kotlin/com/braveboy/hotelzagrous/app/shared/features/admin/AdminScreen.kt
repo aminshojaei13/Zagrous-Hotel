@@ -62,6 +62,7 @@ import androidx.compose.material3.HorizontalDivider
 import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
 import androidx.compose.material3.MaterialTheme
+import androidx.compose.material3.OutlinedCard
 import androidx.compose.material3.OutlinedTextField
 import androidx.compose.material3.Surface
 import androidx.compose.material3.Switch
@@ -96,6 +97,7 @@ import com.braveboy.hotelzagrous.core.FoodType
 import com.braveboy.hotelzagrous.core.GuestMealSelection
 import com.braveboy.hotelzagrous.core.MenuConfig
 import com.braveboy.hotelzagrous.core.Room
+import com.braveboy.hotelzagrous.core.formatPrice
 import com.braveboy.hotelzagrous.core.normalizeDigits
 import kotlin.time.Clock
 import kotlinx.coroutines.CoroutineScope
@@ -734,23 +736,9 @@ fun RoomAdminCard(
     onFoodChange: (String, Int, String?, FoodType) -> Unit,
     onBreakfastChange: (String, Int) -> Unit
 ) {
-    var roomNumber by remember(room) { mutableStateOf(room.roomNumber) }
-    var guestName by remember(room) { mutableStateOf(room.guestName) }
-    var identificationId by remember(room) { mutableStateOf(room.identificationId) }
-    var checkIn by remember(room) { mutableStateOf(room.checkInDate) }
-    var checkOut by remember(room) { mutableStateOf(room.checkOutDate) }
-    var checkInMillis by remember(room) { mutableLongStateOf(room.checkInEpochMillis) }
-    var checkOutMillis by remember(room) { mutableLongStateOf(room.checkOutEpochMillis) }
-    var guestCount by remember(room) { mutableIntStateOf(room.guestCount) }
-    var hasBreakfast by remember(room) { mutableStateOf(room.hasBreakfast) }
-    var breakfastCount by remember(room) { mutableIntStateOf(room.breakfastCount) }
-    var contractAmount by remember(room) { mutableLongStateOf(room.contractAmount) }
-    var expandedGuestCount by remember { mutableStateOf(false) }
+    var showEditDialog by remember { mutableStateOf(false) }
     var showFoodDialog by remember { mutableStateOf(false) }
     var showDeleteConfirm by remember { mutableStateOf(false) }
-    var changeRoomNumber by remember { mutableStateOf(false) }
-    var changeName by remember { mutableStateOf(false) }
-    var changeId by remember { mutableStateOf(false) }
 
     Surface(
         modifier = Modifier.fillMaxWidth(),
@@ -763,242 +751,75 @@ fun RoomAdminCard(
             verticalAlignment = Alignment.CenterVertically
         ) {
             // Room
-            if (changeRoomNumber) {
-                AlertDialog(
-                    onDismissRequest = { changeRoomNumber = false },
-                    title = { Text("شماره اتاق جدید") },
-                    text = {
-                        OutlinedTextField(
-                            value = roomNumber,
-                            onValueChange = { roomNumber = it },
-                            modifier = Modifier.fillMaxWidth(),
-                            textStyle = MaterialTheme.typography.bodyLarge.copy(fontWeight = FontWeight.Bold),
-                            shape = MaterialTheme.shapes.small,
-                            singleLine = true
-                        )
-                    },
-                    confirmButton = {
-                        Button(
-                            onClick = {
-                                onUpdate(
-                                    roomNumber,
-                                    guestName,
-                                    identificationId,
-                                    checkIn,
-                                    checkOut,
-                                    checkInMillis,
-                                    checkOutMillis,
-                                    guestCount,
-                                    hasBreakfast,
-                                    breakfastCount,
-                                    contractAmount
-                                )
-                                changeRoomNumber = false
-                            }
-                        ) { Text("تایید") }
-                    },
-                    dismissButton = {
-                        TextButton(onClick = {
-                            changeRoomNumber = false
-                        }) { Text("انصراف") }
-                    },
-                    shape = MaterialTheme.shapes.large
-                )
-            }
-            Column(modifier = Modifier.width(55.dp)) {
+            Column(modifier = Modifier.width(60.dp)) {
                 Text(
                     text = "اتاق",
-                    style = MaterialTheme.typography.labelLarge,
+                    style = MaterialTheme.typography.labelSmall,
                     color = MaterialTheme.colorScheme.outline
                 )
                 Text(
-                    modifier = Modifier.clickable { changeRoomNumber = true },
                     text = room.roomNumber,
                     style = MaterialTheme.typography.titleLarge,
                     fontWeight = FontWeight.ExtraBold,
                     color = MaterialTheme.colorScheme.primary,
-                    maxLines = 1,
-                    overflow = TextOverflow.Ellipsis
+                    maxLines = 1
                 )
             }
 
-            if (changeName) {
-                AlertDialog(
-                    onDismissRequest = { changeName = false },
-                    title = { Text("نام جدید") },
-                    text = {
-                        OutlinedTextField(
-                            value = guestName,
-                            onValueChange = { guestName = it },
-                            modifier = Modifier.fillMaxWidth(),
-                            textStyle = MaterialTheme.typography.bodyLarge.copy(fontWeight = FontWeight.Bold),
-                            shape = MaterialTheme.shapes.small,
-                            singleLine = true
-                        )
-                    },
-                    confirmButton = {
-                        Button(
-                            onClick = {
-                                onUpdate(
-                                    roomNumber,
-                                    guestName,
-                                    identificationId,
-                                    checkIn,
-                                    checkOut,
-                                    checkInMillis,
-                                    checkOutMillis,
-                                    guestCount,
-                                    hasBreakfast,
-                                    breakfastCount,
-                                    contractAmount
-                                )
-                                changeName = false
-                            }
-                        ) { Text("تایید") }
-                    },
-                    dismissButton = {
-                        TextButton(onClick = {
-                            changeName = false
-                        }) { Text("انصراف") }
-                    },
-                    shape = MaterialTheme.shapes.large
+            // Info
+            Column(modifier = Modifier.weight(1.5f)) {
+                Text(
+                    text = "نام مهمان / شناسه",
+                    style = MaterialTheme.typography.labelSmall,
+                    color = MaterialTheme.colorScheme.outline
+                )
+                Text(
+                    text = room.guestName.ifBlank { "مهمان ثبت نشده" },
+                    style = MaterialTheme.typography.bodyLarge,
+                    fontWeight = FontWeight.Bold,
+                    maxLines = 1,
+                    overflow = TextOverflow.Ellipsis
+                )
+                Text(
+                    text = "شناسه: ${room.identificationId.ifBlank { "---" }}",
+                    style = MaterialTheme.typography.labelSmall,
+                    color = MaterialTheme.colorScheme.onSurfaceVariant
                 )
             }
+
+            // Amount
             Column(modifier = Modifier.weight(1.2f)) {
                 Text(
-                    text = "نام مهمان",
-                    style = MaterialTheme.typography.labelLarge,
+                    text = "مبلغ قرارداد",
+                    style = MaterialTheme.typography.labelSmall,
                     color = MaterialTheme.colorScheme.outline
                 )
                 Text(
-                    modifier = Modifier.clickable { changeName = true },
-                    text = room.guestName,
-                    style = MaterialTheme.typography.bodyLarge,
+                    text = "${room.contractAmount.formatPrice()} ریال",
+                    style = MaterialTheme.typography.bodyMedium,
                     fontWeight = FontWeight.Bold,
-                    maxLines = 1,
-                    overflow = TextOverflow.Ellipsis
+                    color = Color(0xFF4CAF50),
+                    maxLines = 1
                 )
             }
-
-            if (changeId) {
-                AlertDialog(
-                    onDismissRequest = { changeId = false },
-                    title = { Text("تغییر شناسه") },
-                    text = {
-                        OutlinedTextField(
-                            value = identificationId,
-                            onValueChange = { identificationId = it },
-                            modifier = Modifier.fillMaxWidth(),
-                            textStyle = MaterialTheme.typography.bodyLarge.copy(fontWeight = FontWeight.Bold),
-                            shape = MaterialTheme.shapes.small,
-                            singleLine = true
-                        )
-                    },
-                    confirmButton = {
-                        Button(
-                            onClick = {
-                                onUpdate(
-                                    roomNumber,
-                                    guestName,
-                                    identificationId,
-                                    checkIn,
-                                    checkOut,
-                                    checkInMillis,
-                                    checkOutMillis,
-                                    guestCount,
-                                    hasBreakfast,
-                                    breakfastCount,
-                                    contractAmount
-                                )
-                                changeId = false
-                            }
-                        ) { Text("تایید") }
-                    },
-                    dismissButton = {
-                        TextButton(onClick = {
-                            changeId = false
-                        }) { Text("انصراف") }
-                    },
-                    shape = MaterialTheme.shapes.large
-                )
-            }
-            Column(modifier = Modifier.weight(1f)) {
-                Text(
-                    text = "شناسایی",
-                    style = MaterialTheme.typography.labelLarge,
-                    color = MaterialTheme.colorScheme.outline
-                )
-                Text(
-                    modifier = Modifier.clickable { changeId = true },
-                    text = room.identificationId.ifBlank { "0" },
-                    style = MaterialTheme.typography.bodyLarge,
-                    fontWeight = FontWeight.Bold,
-                    maxLines = 1,
-                    overflow = TextOverflow.Ellipsis
-                )
-            }
-
-            Spacer(Modifier.width(8.dp))
 
             // Guest Count
-            Column(modifier = Modifier.width(75.dp)) {
+            Column(modifier = Modifier.width(70.dp)) {
                 Text(
                     "تعداد",
-                    style = MaterialTheme.typography.labelLarge,
+                    style = MaterialTheme.typography.labelSmall,
                     color = MaterialTheme.colorScheme.outline
                 )
-                Box {
-                    Surface(
-                        onClick = { expandedGuestCount = true },
-                        color = MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.5f),
-                        shape = MaterialTheme.shapes.small
-                    ) {
-                        Row(
-                            modifier = Modifier.padding(horizontal = 6.dp, vertical = 2.dp),
-                            verticalAlignment = Alignment.CenterVertically
-                        ) {
-                            Text(
-                                text = "$guestCount نفر",
-                                style = MaterialTheme.typography.bodyLarge,
-                                fontWeight = FontWeight.Bold,
-                                maxLines = 1
-                            )
-                            Icon(Icons.Default.ArrowDropDown, null, modifier = Modifier.size(14.dp))
-                        }
-                    }
-                    DropdownMenu(
-                        expanded = expandedGuestCount,
-                        onDismissRequest = { expandedGuestCount = false }
+                Surface(
+                    color = MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.5f),
+                    shape = MaterialTheme.shapes.small
+                ) {
+                    Text(
+                        text = "${room.guestCount} نفر",
+                        modifier = Modifier.padding(horizontal = 6.dp, vertical = 2.dp),
+                        style = MaterialTheme.typography.labelMedium,
+                        fontWeight = FontWeight.Bold
                     )
-                    {
-                        (1..7).forEach { number ->
-                            DropdownMenuItem(
-                                text = {
-                                    Text(
-                                        "$number نفر",
-                                        style = MaterialTheme.typography.bodyLarge
-                                    )
-                                },
-                                onClick = {
-                                    guestCount = number
-                                    onUpdate(
-                                        roomNumber,
-                                        guestName,
-                                        identificationId,
-                                        checkIn,
-                                        checkOut,
-                                        checkInMillis,
-                                        checkOutMillis,
-                                        guestCount,
-                                        hasBreakfast,
-                                        breakfastCount,
-                                        contractAmount
-                                    )
-                                    expandedGuestCount = false
-                                }
-                            )
-                        }
-                    }
                 }
             }
 
@@ -1006,50 +827,21 @@ fun RoomAdminCard(
             Column(modifier = Modifier.weight(1.4f)) {
                 Text(
                     "بازه اقامت",
-                    style = MaterialTheme.typography.labelLarge,
+                    style = MaterialTheme.typography.labelSmall,
                     color = MaterialTheme.colorScheme.outline
                 )
                 Row(verticalAlignment = Alignment.CenterVertically) {
-                    DatePickerFieldSmall(checkIn) { date, millis ->
-                        checkIn = date
-                        checkInMillis = millis
-                        onUpdate(
-                            roomNumber,
-                            guestName,
-                            identificationId,
-                            checkIn,
-                            checkOut,
-                            checkInMillis,
-                            checkOutMillis,
-                            guestCount,
-                            hasBreakfast,
-                            breakfastCount,
-                            contractAmount
-                        )
-                    }
                     Text(
-                        "-",
-                        style = MaterialTheme.typography.bodyLarge,
-                        color = MaterialTheme.colorScheme.outline,
-                        modifier = Modifier.padding(horizontal = 2.dp)
+                        text = room.checkInDate,
+                        style = MaterialTheme.typography.labelMedium,
+                        fontWeight = FontWeight.Bold
                     )
-                    DatePickerFieldSmall(checkOut) { date, millis ->
-                        checkOut = date
-                        checkOutMillis = millis
-                        onUpdate(
-                            roomNumber,
-                            guestName,
-                            identificationId,
-                            checkIn,
-                            checkOut,
-                            checkInMillis,
-                            checkOutMillis,
-                            guestCount,
-                            hasBreakfast,
-                            breakfastCount,
-                            contractAmount
-                        )
-                    }
+                    Text("-", modifier = Modifier.padding(horizontal = 2.dp))
+                    Text(
+                        text = room.checkOutDate,
+                        style = MaterialTheme.typography.labelMedium,
+                        fontWeight = FontWeight.Bold
+                    )
                 }
             }
 
@@ -1058,27 +850,58 @@ fun RoomAdminCard(
                 horizontalArrangement = Arrangement.spacedBy(4.dp),
                 modifier = Modifier.padding(start = 8.dp)
             ) {
-                IconButton(onClick = { showFoodDialog = true }, modifier = Modifier.size(32.dp)) {
+                IconButton(onClick = { showFoodDialog = true }, modifier = Modifier.size(36.dp)) {
                     Icon(
                         Icons.Default.Restaurant,
                         null,
                         tint = MaterialTheme.colorScheme.secondary,
-                        modifier = Modifier.size(18.dp)
+                        modifier = Modifier.size(20.dp)
+                    )
+                }
+                IconButton(onClick = { showEditDialog = true }, modifier = Modifier.size(36.dp)) {
+                    Icon(
+                        Icons.Default.Edit,
+                        null,
+                        tint = MaterialTheme.colorScheme.primary,
+                        modifier = Modifier.size(20.dp)
                     )
                 }
                 IconButton(
                     onClick = { showDeleteConfirm = true },
-                    modifier = Modifier.size(32.dp)
+                    modifier = Modifier.size(36.dp)
                 ) {
                     Icon(
                         Icons.Default.Delete,
                         null,
                         tint = MaterialTheme.colorScheme.error,
-                        modifier = Modifier.size(18.dp)
+                        modifier = Modifier.size(20.dp)
                     )
                 }
             }
         }
+    }
+
+    if (showEditDialog) {
+        EditRoomStayDialog(
+            room = room,
+            onDismiss = { showEditDialog = false },
+            onConfirm = { updatedRoom ->
+                onUpdate(
+                    updatedRoom.roomNumber,
+                    updatedRoom.guestName,
+                    updatedRoom.identificationId,
+                    updatedRoom.checkInDate,
+                    updatedRoom.checkOutDate,
+                    updatedRoom.checkInEpochMillis,
+                    updatedRoom.checkOutEpochMillis,
+                    updatedRoom.guestCount,
+                    updatedRoom.hasBreakfast,
+                    updatedRoom.breakfastCount,
+                    updatedRoom.contractAmount
+                )
+                showEditDialog = false
+            }
+        )
     }
 
     if (showFoodDialog) {
@@ -1096,13 +919,13 @@ fun RoomAdminCard(
         AlertDialog(
             onDismissRequest = { showDeleteConfirm = false },
             title = { Text("حذف اتاق ${room.roomNumber}") },
-            text = { Text("آیا از حذف این اتاق اطمینان دارید؟") },
+            text = { Text("آیا از حذف این اتاق و تمام اطلاعات مربوط به آن اطمینان دارید؟") },
             confirmButton = {
                 TextButton(
                     onClick = { onDelete(); showDeleteConfirm = false },
                     colors = ButtonDefaults.textButtonColors(contentColor = MaterialTheme.colorScheme.error)
                 ) {
-                    Text("حذف")
+                    Text("بله، حذف شود")
                 }
             },
             dismissButton = {
@@ -1112,6 +935,109 @@ fun RoomAdminCard(
             }
         )
     }
+}
+
+@Composable
+fun EditRoomStayDialog(
+    room: Room,
+    onDismiss: () -> Unit,
+    onConfirm: (Room) -> Unit
+) {
+    var roomNumber by remember { mutableStateOf(room.roomNumber) }
+    var guestName by remember { mutableStateOf(room.guestName) }
+    var identificationId by remember { mutableStateOf(room.identificationId) }
+    var guestCount by remember { mutableIntStateOf(room.guestCount) }
+    var contractAmount by remember { mutableStateOf(room.contractAmount.toString()) }
+    var checkIn by remember { mutableStateOf(room.checkInDate) }
+    var checkOut by remember { mutableStateOf(room.checkOutDate) }
+    var checkInMillis by remember { mutableLongStateOf(room.checkInEpochMillis) }
+    var checkOutMillis by remember { mutableLongStateOf(room.checkOutEpochMillis) }
+    
+    var expandedGuestCount by remember { mutableStateOf(false) }
+
+    AlertDialog(
+        onDismissRequest = onDismiss,
+        title = { Text("ویرایش اقامت اتاق ${room.roomNumber}", fontWeight = FontWeight.Bold) },
+        text = {
+            Column(
+                verticalArrangement = Arrangement.spacedBy(12.dp),
+                modifier = Modifier.verticalScroll(rememberScrollState())
+            ) {
+                OutlinedTextField(
+                    value = roomNumber,
+                    onValueChange = { roomNumber = it },
+                    label = { Text("شماره اتاق") },
+                    modifier = Modifier.fillMaxWidth(),
+                    shape = MaterialTheme.shapes.medium
+                )
+                OutlinedTextField(
+                    value = guestName,
+                    onValueChange = { guestName = it },
+                    label = { Text("نام مهمان") },
+                    modifier = Modifier.fillMaxWidth(),
+                    shape = MaterialTheme.shapes.medium
+                )
+                OutlinedTextField(
+                    value = identificationId,
+                    onValueChange = { identificationId = it },
+                    label = { Text("کد شناسایی") },
+                    modifier = Modifier.fillMaxWidth(),
+                    shape = MaterialTheme.shapes.medium
+                )
+                OutlinedTextField(
+                    value = contractAmount,
+                    onValueChange = { contractAmount = it },
+                    label = { Text("مبلغ قرارداد (ریال)") },
+                    modifier = Modifier.fillMaxWidth(),
+                    shape = MaterialTheme.shapes.medium
+                )
+                
+                Row(modifier = Modifier.fillMaxWidth(), verticalAlignment = Alignment.CenterVertically) {
+                    Text("تعداد مهمان:", modifier = Modifier.weight(1f))
+                    Box {
+                        TextButton(onClick = { expandedGuestCount = true }) {
+                            Text("$guestCount نفر")
+                            Icon(Icons.Default.ArrowDropDown, null)
+                        }
+                        DropdownMenu(expanded = expandedGuestCount, onDismissRequest = { expandedGuestCount = false }) {
+                            (1..7).forEach { n ->
+                                DropdownMenuItem(text = { Text("$n نفر") }, onClick = { guestCount = n; expandedGuestCount = false })
+                            }
+                        }
+                    }
+                }
+
+                Row(modifier = Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+                    DatePickerField(
+                        label = "تاریخ ورود",
+                        value = checkIn,
+                        modifier = Modifier.weight(1f)
+                    ) { date, millis -> checkIn = date; checkInMillis = millis }
+                    DatePickerField(
+                        label = "تاریخ خروج",
+                        value = checkOut,
+                        modifier = Modifier.weight(1f)
+                    ) { date, millis -> checkOut = date; checkOutMillis = millis }
+                }
+            }
+        },
+        confirmButton = {
+            Button(onClick = {
+                onConfirm(room.copy(
+                    roomNumber = roomNumber.normalizeDigits(),
+                    guestName = guestName,
+                    identificationId = identificationId.normalizeDigits(),
+                    guestCount = guestCount,
+                    contractAmount = contractAmount.normalizeDigits().toLongOrNull() ?: 0,
+                    checkInDate = checkIn,
+                    checkOutDate = checkOut,
+                    checkInEpochMillis = checkInMillis,
+                    checkOutEpochMillis = checkOutMillis
+                ))
+            }) { Text("بروزرسانی") }
+        },
+        dismissButton = { TextButton(onClick = onDismiss) { Text("انصراف") } }
+    )
 }
 
 @Composable
@@ -2574,86 +2500,30 @@ fun AddRoomDialog(
 
     AlertDialog(
         onDismissRequest = onDismiss,
-        title = { Text("ثبت اتاق جدید", fontWeight = FontWeight.Bold) },
+        title = { Text("ثبت اقامت جدید", fontWeight = FontWeight.ExtraBold, style = MaterialTheme.typography.titleLarge) },
         text = {
             Column(
-                verticalArrangement = Arrangement.spacedBy(12.dp),
-                modifier = Modifier.padding(top = 8.dp)
+                verticalArrangement = Arrangement.spacedBy(16.dp),
+                modifier = Modifier.padding(top = 8.dp).verticalScroll(rememberScrollState())
             ) {
-                Box(modifier = Modifier.fillMaxWidth()) {
-                    OutlinedTextField(
-                        value = selectedPhysicalRoom?.roomNumber ?: roomNumber,
-                        onValueChange = { roomNumber = it },
-                        label = { Text("شماره اتاق") },
-                        modifier = Modifier.fillMaxWidth(),
-                        shape = MaterialTheme.shapes.medium,
-                        singleLine = true,
-                        trailingIcon = {
-                            IconButton(onClick = { expandedRoom = true }) {
-                                Icon(Icons.Default.ArrowDropDown, null)
-                            }
-                        }
-                    )
-                    DropdownMenu(
-                        expanded = expandedRoom,
-                        onDismissRequest = { expandedRoom = false }) {
-                        physicalRooms.forEach { room ->
-                            DropdownMenuItem(
-                                text = { Text("اتاق ${room.roomNumber} (تخت: ${room.bedCount})") },
-                                onClick = {
-                                    selectedPhysicalRoom = room
-                                    roomNumber = room.roomNumber
-                                    expandedRoom = false
-                                }
-                            )
-                        }
-                    }
-                }
-
-                OutlinedTextField(
-                    value = guestName,
-                    onValueChange = { guestName = it },
-                    label = { Text("نام مهمان (اختیاری)") },
-                    modifier = Modifier.fillMaxWidth(),
-                    shape = MaterialTheme.shapes.medium,
-                    singleLine = true
-                )
-                OutlinedTextField(
-                    value = identificationId,
-                    onValueChange = { identificationId = it },
-                    label = { Text("کد شناسایی") },
-                    modifier = Modifier.fillMaxWidth(),
-                    shape = MaterialTheme.shapes.medium,
-                    singleLine = true
-                )
-                OutlinedTextField(
-                    value = contractAmount,
-                    onValueChange = { contractAmount = it },
-                    label = { Text("مبلغ قرارداد (ریال)") },
-                    modifier = Modifier.fillMaxWidth(),
-                    shape = MaterialTheme.shapes.medium,
-                    singleLine = true
-                )
-
-                Row(
-                    modifier = Modifier.fillMaxWidth(),
-                    horizontalArrangement = Arrangement.spacedBy(10.dp),
-                    verticalAlignment = Alignment.CenterVertically
-                ) {
-                    Box(modifier = Modifier.weight(1f)) {
-                        Surface(
-                            onClick = { expandedGuest = true },
-                            modifier = Modifier.fillMaxWidth().height(56.dp),
-                            shape = MaterialTheme.shapes.medium,
-                            border = BorderStroke(1.dp, MaterialTheme.colorScheme.outline),
-                            color = Color.Transparent
+                // Physical Room Selection
+                Column {
+                    Text("انتخاب اتاق فیزیکی", style = MaterialTheme.typography.labelMedium, color = MaterialTheme.colorScheme.primary)
+                    Spacer(Modifier.height(4.dp))
+                    Box(modifier = Modifier.fillMaxWidth()) {
+                        OutlinedCard(
+                            onClick = { expandedRoom = true },
+                            modifier = Modifier.fillMaxWidth(),
+                            shape = MaterialTheme.shapes.medium
                         ) {
                             Row(
-                                modifier = Modifier.padding(horizontal = 12.dp),
+                                modifier = Modifier.padding(12.dp),
                                 verticalAlignment = Alignment.CenterVertically
                             ) {
+                                Icon(Icons.Default.Bed, null, modifier = Modifier.size(20.dp), tint = MaterialTheme.colorScheme.outline)
+                                Spacer(Modifier.width(12.dp))
                                 Text(
-                                    "تعداد مهمان: $guestCount",
+                                    text = selectedPhysicalRoom?.let { "اتاق ${it.roomNumber} (تخت: ${it.bedCount})" } ?: "انتخاب از لیست اتاق‌ها",
                                     style = MaterialTheme.typography.bodyLarge
                                 )
                                 Spacer(Modifier.weight(1f))
@@ -2661,16 +2531,99 @@ fun AddRoomDialog(
                             }
                         }
                         DropdownMenu(
-                            expanded = expandedGuest,
-                            onDismissRequest = { expandedGuest = false }) {
-                            (1..7).forEach { num ->
+                            expanded = expandedRoom,
+                            onDismissRequest = { expandedRoom = false },
+                            modifier = Modifier.fillMaxWidth(0.8f)
+                        ) {
+                            physicalRooms.forEach { room ->
                                 DropdownMenuItem(
-                                    text = { Text("$num نفر") },
+                                    text = { Text("اتاق ${room.roomNumber} (تخت: ${room.bedCount} - ظرفیت: ${room.capacity})") },
                                     onClick = {
-                                        guestCount = num
-                                        if (breakfastCount > num) breakfastCount = num
-                                        expandedGuest = false
-                                    })
+                                        selectedPhysicalRoom = room
+                                        roomNumber = room.roomNumber
+                                        expandedRoom = false
+                                    }
+                                )
+                            }
+                        }
+                    }
+                }
+
+                if (selectedPhysicalRoom == null) {
+                    OutlinedTextField(
+                        value = roomNumber,
+                        onValueChange = { roomNumber = it },
+                        label = { Text("شماره اتاق (دستی)") },
+                        modifier = Modifier.fillMaxWidth(),
+                        shape = MaterialTheme.shapes.medium,
+                        singleLine = true
+                    )
+                }
+
+                OutlinedTextField(
+                    value = guestName,
+                    onValueChange = { guestName = it },
+                    label = { Text("نام مهمان اصلی") },
+                    modifier = Modifier.fillMaxWidth(),
+                    shape = MaterialTheme.shapes.medium,
+                    singleLine = true,
+                    leadingIcon = { Icon(Icons.Default.Person, null, modifier = Modifier.size(20.dp)) }
+                )
+                
+                Row(modifier = Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.spacedBy(12.dp)) {
+                    OutlinedTextField(
+                        value = identificationId,
+                        onValueChange = { identificationId = it },
+                        label = { Text("کد شناسایی") },
+                        modifier = Modifier.weight(1f),
+                        shape = MaterialTheme.shapes.medium,
+                        singleLine = true
+                    )
+                    OutlinedTextField(
+                        value = contractAmount,
+                        onValueChange = { contractAmount = it },
+                        label = { Text("مبلغ قرارداد (ریال)") },
+                        modifier = Modifier.weight(1f),
+                        shape = MaterialTheme.shapes.medium,
+                        singleLine = true,
+                        keyboardOptions = androidx.compose.foundation.text.KeyboardOptions(keyboardType = androidx.compose.ui.text.input.KeyboardType.Number)
+                    )
+                }
+
+                Row(
+                    modifier = Modifier.fillMaxWidth(),
+                    horizontalArrangement = Arrangement.spacedBy(12.dp),
+                    verticalAlignment = Alignment.CenterVertically
+                ) {
+                    Column(modifier = Modifier.weight(1f)) {
+                        Text("تعداد مهمانان", style = MaterialTheme.typography.labelMedium, color = MaterialTheme.colorScheme.primary)
+                        Box(modifier = Modifier.padding(top = 4.dp)) {
+                            OutlinedCard(
+                                onClick = { expandedGuest = true },
+                                modifier = Modifier.fillMaxWidth(),
+                                shape = MaterialTheme.shapes.medium
+                            ) {
+                                Row(
+                                    modifier = Modifier.padding(horizontal = 12.dp, vertical = 8.dp),
+                                    verticalAlignment = Alignment.CenterVertically
+                                ) {
+                                    Text("$guestCount نفر")
+                                    Spacer(Modifier.weight(1f))
+                                    Icon(Icons.Default.ArrowDropDown, null)
+                                }
+                            }
+                            DropdownMenu(
+                                expanded = expandedGuest,
+                                onDismissRequest = { expandedGuest = false }) {
+                                val maxGuests = (selectedPhysicalRoom?.capacity ?: 7).coerceAtLeast(7)
+                                (1..maxGuests).forEach { num ->
+                                    DropdownMenuItem(
+                                        text = { Text("$num نفر") },
+                                        onClick = {
+                                            guestCount = num
+                                            expandedGuest = false
+                                        })
+                                }
                             }
                         }
                     }
@@ -2678,7 +2631,7 @@ fun AddRoomDialog(
 
                 Row(
                     modifier = Modifier.fillMaxWidth(),
-                    horizontalArrangement = Arrangement.spacedBy(10.dp)
+                    horizontalArrangement = Arrangement.spacedBy(12.dp)
                 ) {
                     DatePickerField(
                         label = "تاریخ ورود",
@@ -2696,7 +2649,7 @@ fun AddRoomDialog(
         confirmButton = {
             Button(
                 onClick = {
-                    if (roomNumber.isNotBlank()) {
+                    if (roomNumber.isNotBlank() && checkIn.isNotBlank() && checkOut.isNotBlank()) {
                         onConfirm(
                             Room(
                                 roomNumber = roomNumber.normalizeDigits(),
@@ -2709,13 +2662,13 @@ fun AddRoomDialog(
                                 checkOutDate = checkOut,
                                 checkInEpochMillis = checkInMillis,
                                 checkOutEpochMillis = checkOutMillis,
-                                contractAmount = contractAmount.toLongOrNull() ?: 0
+                                contractAmount = contractAmount.normalizeDigits().toLongOrNull() ?: 0
                             )
                         )
                     }
                 },
                 shape = MaterialTheme.shapes.medium
-            ) { Text("ثبت در سیستم", fontWeight = FontWeight.Bold) }
+            ) { Text("ثبت نهایی اقامت", fontWeight = FontWeight.Bold) }
         },
         dismissButton = { TextButton(onClick = onDismiss) { Text("انصراف") } }
     )
@@ -2877,49 +2830,57 @@ fun RoomHistoryContent(
                         Spacer(Modifier.width(8.dp))
 
                         // Guest Count
-                        Column(modifier = Modifier.width(75.dp)) {
+                        Column(modifier = Modifier.width(60.dp)) {
                             Text(
                                 text = "تعداد",
-                                style = MaterialTheme.typography.labelMedium,
+                                style = MaterialTheme.typography.labelSmall,
                                 color = MaterialTheme.colorScheme.outline
                             )
                             Text(
-                                text = room.guestCount.toString(),
-                                style = MaterialTheme.typography.labelMedium,
+                                text = "${room.guestCount} نفر",
+                                style = MaterialTheme.typography.bodyMedium,
+                                fontWeight = FontWeight.Bold
+                            )
+                        }
+
+                        // Amount
+                        Column(modifier = Modifier.weight(1f)) {
+                            Text(
+                                text = "مبلغ قرارداد",
+                                style = MaterialTheme.typography.labelSmall,
                                 color = MaterialTheme.colorScheme.outline
+                            )
+                            Text(
+                                text = "${room.contractAmount.formatPrice()} ریال",
+                                style = MaterialTheme.typography.bodyMedium,
+                                fontWeight = FontWeight.Bold,
+                                color = Color(0xFF4CAF50)
                             )
                         }
 
                         // Stay Period
-                        Column(modifier = Modifier.weight(1.4f)) {
+                        Column(modifier = Modifier.weight(1.2f)) {
                             Text(
                                 "بازه اقامت",
-                                style = MaterialTheme.typography.labelMedium,
+                                style = MaterialTheme.typography.labelSmall,
                                 color = MaterialTheme.colorScheme.outline
                             )
                             Row(verticalAlignment = Alignment.CenterVertically) {
                                 Text(
                                     text = room.checkInDate,
-                                    style = MaterialTheme.typography.bodyMedium,
-                                    color = MaterialTheme.colorScheme.outline,
-                                    modifier = Modifier.padding(horizontal = 2.dp)
+                                    style = MaterialTheme.typography.labelSmall,
+                                    fontWeight = FontWeight.Bold
                                 )
-                                Text(
-                                    text = "-",
-                                    style = MaterialTheme.typography.bodyMedium,
-                                    color = MaterialTheme.colorScheme.outline,
-                                    modifier = Modifier.padding(horizontal = 2.dp)
-                                )
+                                Text("-", modifier = Modifier.padding(horizontal = 2.dp))
                                 Text(
                                     text = room.checkOutDate,
-                                    style = MaterialTheme.typography.bodyMedium,
-                                    color = MaterialTheme.colorScheme.outline,
-                                    modifier = Modifier.padding(horizontal = 2.dp)
+                                    style = MaterialTheme.typography.labelSmall,
+                                    fontWeight = FontWeight.Bold
                                 )
                             }
                         }
 
-                        Column(modifier = Modifier.weight(1.4f)) {
+                        Column(modifier = Modifier.weight(1.2f)) {
                             val roomReservations =
                                 state.reservations.filter { it.roomNumber == room.roomNumber }
                             val totalLunch = roomReservations.flatMap { it.guestMealSelections }
@@ -2929,13 +2890,13 @@ fun RoomHistoryContent(
 
                             Text(
                                 "ناهار: $totalLunch",
-                                style = MaterialTheme.typography.labelMedium,
-                                color = MaterialTheme.colorScheme.outline
+                                style = MaterialTheme.typography.labelSmall,
+                                color = MaterialTheme.colorScheme.onSurfaceVariant
                             )
                             Text(
                                 "شام: $totalDinner",
-                                style = MaterialTheme.typography.labelMedium,
-                                color = MaterialTheme.colorScheme.outline
+                                style = MaterialTheme.typography.labelSmall,
+                                color = MaterialTheme.colorScheme.onSurfaceVariant
                             )
                         }
                     }
