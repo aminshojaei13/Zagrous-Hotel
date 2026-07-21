@@ -201,7 +201,7 @@ fun Application.module() {
                     totalDeposits = totalDeposits,
                     totalSettlements = totalSettlements,
                     remainingAmount = summaries.sumOf { it.remainingSettlement },
-                    netProfit = summaries.sumOf { it.profit },
+                    netProfit = rooms.sumOf { it.contractAmount } - totalExpenses,
                     transactions = transactions
                 )
                 

@@ -105,7 +105,7 @@ enum class TransactionStatus { PAID, PENDING }
 @Serializable
 data class FinancialTransaction(
     val id: String = "",
-    val roomId: String, // Related to Room.id
+    val roomId: String? = null, // Optional: Related to Room.id, null for general hotel expenses
     val title: String,
     val description: String = "",
     val amount: Long,

@@ -554,7 +554,7 @@ class HotelDatabase(
                 """
                 CREATE TABLE IF NOT EXISTS financial_transactions(
                     id TEXT PRIMARY KEY,
-                    room_id TEXT NOT NULL,
+                    room_id TEXT,
                     title TEXT NOT NULL,
                     description TEXT,
                     amount INTEGER NOT NULL,
@@ -693,6 +693,58 @@ class HotelDatabase(
             }
             if (!roomColumns.contains("contract_amount")) {
                 statement.executeUpdate("ALTER TABLE rooms ADD COLUMN contract_amount INTEGER NOT NULL DEFAULT 0")
+            }
+        }
+
+        val txColumns = mutableSetOf<String>()
+        connection.metaData.getColumns(null, null, "financial_transactions", null).use { rs ->
+            while (rs.next()) {
+                txColumns.add(rs.getString("COLUMN_NAME"))
+            }
+        }
+        
+        // In SQLite, we can't easily change NOT NULL to NULL. 
+        // We check if it's already nullable by checking the metadata if needed, 
+        // but for simplicity and safety, we'll just ensure the column exists.
+        // If the user wants to allow NULL room_id, we should recreate the table if it was NOT NULL.
+        
+        connection.createStatement().use { statement ->
+            var isRoomIdNotNull = false
+            connection.metaData.getColumns(null, null, "financial_transactions", "room_id").use { rs ->
+                if (rs.next()) {
+                    isRoomIdNotNull = rs.getInt("NULLABLE") == 0 // columnNoNulls = 0
+                }
+            }
+
+            if (isRoomIdNotNull) {
+                println("Migrating financial_transactions: making room_id nullable...")
+                statement.executeUpdate("ALTER TABLE financial_transactions RENAME TO financial_transactions_old")
+                statement.executeUpdate(
+                    """
+                    CREATE TABLE financial_transactions(
+                        id TEXT PRIMARY KEY,
+                        room_id TEXT,
+                        title TEXT NOT NULL,
+                        description TEXT,
+                        amount INTEGER NOT NULL,
+                        transaction_type TEXT NOT NULL,
+                        payment_date TEXT NOT NULL,
+                        created_at INTEGER NOT NULL,
+                        updated_at INTEGER NOT NULL,
+                        notes TEXT,
+                        payment_method TEXT NOT NULL,
+                        status TEXT NOT NULL,
+                        FOREIGN KEY(room_id) REFERENCES rooms(id)
+                    )
+                    """.trimIndent()
+                )
+                statement.executeUpdate(
+                    """
+                    INSERT INTO financial_transactions (id, room_id, title, description, amount, transaction_type, payment_date, created_at, updated_at, notes, payment_method, status)
+                    SELECT id, room_id, title, description, amount, transaction_type, payment_date, created_at, updated_at, notes, payment_method, status FROM financial_transactions_old
+                    """.trimIndent()
+                )
+                statement.executeUpdate("DROP TABLE financial_transactions_old")
             }
         }
 
