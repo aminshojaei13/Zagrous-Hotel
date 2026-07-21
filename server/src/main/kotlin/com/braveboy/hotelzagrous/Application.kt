@@ -2,6 +2,7 @@ package com.braveboy.hotelzagrous
 
 import com.braveboy.hotelzagrous.core.ApiError
 import com.braveboy.hotelzagrous.core.FinancialReport
+import com.braveboy.hotelzagrous.core.FinancialSummaryResponse
 import com.braveboy.hotelzagrous.core.FinancialTransaction
 import com.braveboy.hotelzagrous.core.FoodItem
 import com.braveboy.hotelzagrous.core.FoodReservation
@@ -204,7 +205,7 @@ fun Application.module() {
                     transactions = transactions
                 )
                 
-                call.respond(mapOf("report" to report, "summaries" to summaries))
+                call.respond(FinancialSummaryResponse(report, summaries))
             }
         }
     }

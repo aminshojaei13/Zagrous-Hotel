@@ -223,15 +223,13 @@ class HotelRepository(
     suspend fun getFinancialSummary(): Pair<FinancialReport, List<RoomFinancialSummary>> = try {
         val response: HttpResponse = client.get("$apiBaseUrl/financial-summary")
         if (response.status.isSuccess()) {
-            val body = response.body<Map<String, kotlinx.serialization.json.JsonElement>>()
-            val json = Json { ignoreUnknownKeys = true }
-            val report = json.decodeFromJsonElement(FinancialReport.serializer(), body["report"]!!)
-            val summaries = json.decodeFromJsonElement(kotlinx.serialization.builtins.ListSerializer(RoomFinancialSummary.serializer()), body["summaries"]!!)
-            report to summaries
+            val data = response.body<com.braveboy.hotelzagrous.core.FinancialSummaryResponse>()
+            data.report to data.summaries
         } else {
             FinancialReport(0, 0, 0, 0, 0) to emptyList()
         }
     } catch (e: Throwable) {
+        println("Error fetching financial summary: ${e.message}")
         FinancialReport(0, 0, 0, 0, 0) to emptyList()
     }
 }

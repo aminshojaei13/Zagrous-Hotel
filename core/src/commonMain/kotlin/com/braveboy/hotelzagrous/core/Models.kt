@@ -85,6 +85,12 @@ data class UpdateRoomStayRequest(
 )
 
 @Serializable
+data class FinancialSummaryResponse(
+    val report: FinancialReport,
+    val summaries: List<RoomFinancialSummary>
+)
+
+@Serializable
 data class ApiError(val message: String)
 
 @Serializable
