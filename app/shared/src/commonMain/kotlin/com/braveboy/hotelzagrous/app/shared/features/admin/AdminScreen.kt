@@ -634,7 +634,8 @@ fun RoomTimelineContent(state: AdminState, viewModel: AdminViewModel) {
                                                     Surface(
                                                         modifier = Modifier
                                                             .width((duration * 50 - 8).dp)
-                                                            .fillMaxHeight(),
+                                                            .fillMaxHeight()
+                                                            .padding(start = 16.dp, end = 16.dp),
                                                         color = MaterialTheme.colorScheme.primaryContainer,
                                                         shape = RoundedCornerShape(
                                                             topStart = if (bookingStart < monthStart) 0.dp else 48.dp,
@@ -1087,7 +1088,6 @@ fun RoomManagementContent(state: AdminState, viewModel: AdminViewModel) {
                     reservations = state.reservations,
                     onUpdate = { rNum, name, idId, inD, outD, inM, outM, count, hasB, bCount, cAmt ->
                         val effectiveId = room.id.ifBlank { room.roomNumber }
-                        println("id s is $effectiveId")
                         viewModel.onIntent(
                             AdminIntent.UpdateRoomStay(
                                 id = effectiveId,
@@ -1109,10 +1109,10 @@ fun RoomManagementContent(state: AdminState, viewModel: AdminViewModel) {
                         viewModel.onIntent(
                             AdminIntent.ChangeFood(
                                 room.roomNumber,
-                                d,
-                                idx,
-                                fId,
-                                fType
+                                date = d,
+                                guestIndex = idx,
+                                foodId = fId,
+                                foodType = fType
                             )
                         )
                     },
