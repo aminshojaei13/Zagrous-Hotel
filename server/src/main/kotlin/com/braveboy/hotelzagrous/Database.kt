@@ -155,7 +155,7 @@ class HotelDatabase(
     }
 
     fun getPhysicalRooms(): List<PhysicalRoom> = connection.prepareStatement(
-        "SELECT id, room_number, bed_count, capacity, type FROM physical_rooms ORDER BY room_number"
+        "SELECT id, room_number, bed_count, capacity, type, is_active FROM physical_rooms ORDER BY room_number"
     ).use { statement ->
         statement.executeQuery().use { rows ->
             buildList {
@@ -166,7 +166,8 @@ class HotelDatabase(
                             roomNumber = rows.getString("room_number"),
                             bedCount = rows.getInt("bed_count"),
                             capacity = rows.getInt("capacity"),
-                            type = rows.getString("type")
+                            type = rows.getString("type"),
+                            isActive = rows.getInt("is_active") == 1
                         )
                     )
                 }
@@ -178,13 +179,14 @@ class HotelDatabase(
         val id = room.id.ifBlank { UUID.randomUUID().toString() }
         connection.prepareStatement(
             """
-            INSERT INTO physical_rooms(id, room_number, bed_count, capacity, type)
-            VALUES(?, ?, ?, ?, ?)
+            INSERT INTO physical_rooms(id, room_number, bed_count, capacity, type, is_active)
+            VALUES(?, ?, ?, ?, ?, ?)
             ON CONFLICT(id) DO UPDATE SET
                 room_number = excluded.room_number,
                 bed_count = excluded.bed_count,
                 capacity = excluded.capacity,
-                type = excluded.type
+                type = excluded.type,
+                is_active = excluded.is_active
             """.trimIndent()
         ).use { statement ->
             statement.setString(1, id)
@@ -192,6 +194,7 @@ class HotelDatabase(
             statement.setInt(3, room.bedCount)
             statement.setInt(4, room.capacity)
             statement.setString(5, room.type)
+            statement.setInt(6, if (room.isActive) 1 else 0)
             statement.executeUpdate()
         }
     }
@@ -289,7 +292,7 @@ class HotelDatabase(
                 guest_name = excluded.guest_name,
                 identification_id = excluded.identification_id,
                 guest_count = excluded.guest_count,
-                has_breakfast = excluded.has_breakfast,
+                hasBreakfast = excluded.has_breakfast,
                 breakfast_count = excluded.breakfast_count,
                 check_in_date = excluded.check_in_date,
                 check_out_date = excluded.check_out_date,
@@ -358,7 +361,7 @@ class HotelDatabase(
         return connection.prepareStatement(
             """
             UPDATE rooms
-            SET room_number = ?, guest_name = ?, identification_id = ?, check_in_date = ?, check_out_date = ?, check_in_epoch_millis = ?, check_out_epoch_millis = ?, guest_count = ?, has_breakfast = ?, breakfast_count = ?, contract_amount = ?, booking_source = ?, agency_name = ?, settlement_type = ?, agency_amount = ?, guest_amount = ?
+            SET room_number = ?, guest_name = ?, identification_id = ?, check_in_date = ?, check_out_date = ?, check_in_epoch_millis = ?, check_out_epoch_millis = ?, guest_count = ?, hasBreakfast = ?, breakfast_count = ?, contract_amount = ?, booking_source = ?, agency_name = ?, settlement_type = ?, agency_amount = ?, guest_amount = ?
             WHERE id = ?
             """.trimIndent()
         ).use { statement ->
@@ -657,7 +660,8 @@ class HotelDatabase(
                     room_number TEXT NOT NULL,
                     bed_count INTEGER NOT NULL DEFAULT 1,
                     capacity INTEGER NOT NULL DEFAULT 1,
-                    type TEXT NOT NULL DEFAULT 'STANDARD'
+                    type TEXT NOT NULL DEFAULT 'STANDARD',
+                    is_active INTEGER NOT NULL DEFAULT 1
                 )
                 """.trimIndent()
             )
@@ -760,11 +764,6 @@ class HotelDatabase(
             }
         }
         
-        // In SQLite, we can't easily change NOT NULL to NULL. 
-        // We check if it's already nullable by checking the metadata if needed, 
-        // but for simplicity and safety, we'll just ensure the column exists.
-        // If the user wants to allow NULL room_id, we should recreate the table if it was NOT NULL.
-        
         connection.createStatement().use { statement ->
             var isRoomIdNotNull = false
             connection.metaData.getColumns(null, null, "financial_transactions", "room_id").use { rs ->
@@ -824,6 +823,18 @@ class HotelDatabase(
             }
             if (!foodColumns.contains("display_order")) {
                 statement.executeUpdate("ALTER TABLE food_items ADD COLUMN display_order INTEGER NOT NULL DEFAULT 0")
+            }
+        }
+
+        val physicalRoomColumns = mutableSetOf<String>()
+        connection.metaData.getColumns(null, null, "physical_rooms", null).use { rs ->
+            while (rs.next()) {
+                physicalRoomColumns.add(rs.getString("COLUMN_NAME"))
+            }
+        }
+        if (!physicalRoomColumns.contains("is_active")) {
+            connection.createStatement().use { statement ->
+                statement.executeUpdate("ALTER TABLE physical_rooms ADD COLUMN is_active INTEGER NOT NULL DEFAULT 1")
             }
         }
     }

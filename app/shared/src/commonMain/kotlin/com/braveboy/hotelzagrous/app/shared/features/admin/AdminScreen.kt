@@ -174,6 +174,13 @@ fun AdminScreen(viewModel: AdminViewModel, repository: com.braveboy.hotelzagrous
                 )
                 Spacer(Modifier.height(4.dp))
                 NavigationItem(
+                    label = "تعریف و وضعیت اتاق‌ها",
+                    icon = Icons.Default.Hotel,
+                    selected = currentTab == "physical_rooms",
+                    onClick = { currentTab = "physical_rooms" }
+                )
+                Spacer(Modifier.height(4.dp))
+                NavigationItem(
                     label = "گزارش رزرو غذا",
                     icon = Icons.Default.Restaurant,
                     selected = currentTab == "reservations",
@@ -246,6 +253,7 @@ fun AdminScreen(viewModel: AdminViewModel, repository: com.braveboy.hotelzagrous
                     val title = when (currentTab) {
                         "timeline" -> "تقویم وضعیت اتاق‌ها"
                         "rooms" -> "مدیریت اتاق‌ها"
+                        "physical_rooms" -> "تعریف و وضعیت اتاق‌ها"
                         "menu" -> "مدیریت منو غذا"
                         "daily_report" -> "مشاهده و چاپ غذا"
                         "history" -> "تاریخچه اتاق‌های ثبت شده"
@@ -313,6 +321,7 @@ fun AdminScreen(viewModel: AdminViewModel, repository: com.braveboy.hotelzagrous
                 } else {
                     when (currentTab) {
                         "rooms" -> RoomManagementContent(state, viewModel)
+                        "physical_rooms" -> PhysicalRoomManagementContent(state, viewModel)
                         "timeline" -> RoomTimelineContent(state, viewModel)
                         "menu" -> MenuManagementContent(state, viewModel)
                         "reservations" -> ReservationSummaryContent(state, viewModel)
@@ -358,16 +367,18 @@ fun AdminScreen(viewModel: AdminViewModel, repository: com.braveboy.hotelzagrous
 
 @Composable
 fun AddPhysicalRoomDialog(
+    physicalRoom: com.braveboy.hotelzagrous.core.PhysicalRoom? = null,
     onDismiss: () -> Unit,
     onConfirm: (com.braveboy.hotelzagrous.core.PhysicalRoom) -> Unit
 ) {
-    var roomNumber by remember { mutableStateOf("") }
-    var bedCount by remember { mutableStateOf("1") }
-    var capacity by remember { mutableStateOf("1") }
+    var roomNumber by remember { mutableStateOf(physicalRoom?.roomNumber ?: "") }
+    var bedCount by remember { mutableStateOf(physicalRoom?.bedCount?.toString() ?: "1") }
+    var capacity by remember { mutableStateOf(physicalRoom?.capacity?.toString() ?: "1") }
+    var isActive by remember { mutableStateOf(physicalRoom?.isActive ?: true) }
 
     AlertDialog(
         onDismissRequest = onDismiss,
-        title = { Text("تعریف اتاق جدید", fontWeight = FontWeight.Bold) },
+        title = { Text(if (physicalRoom == null) "تعریف اتاق جدید" else "ویرایش اتاق ${physicalRoom.roomNumber}", fontWeight = FontWeight.Bold) },
         text = {
             Column(verticalArrangement = Arrangement.spacedBy(12.dp)) {
                 OutlinedTextField(
@@ -388,21 +399,124 @@ fun AddPhysicalRoomDialog(
                     label = { Text("تعداد نفرات (ظرفیت)") },
                     modifier = Modifier.fillMaxWidth()
                 )
+                Row(verticalAlignment = Alignment.CenterVertically) {
+                    Text("وضعیت سرویس‌دهی (فعال)")
+                    Spacer(Modifier.weight(1f))
+                    Switch(checked = isActive, onCheckedChange = { isActive = it })
+                }
             }
         },
         confirmButton = {
             Button(onClick = {
                 onConfirm(
                     com.braveboy.hotelzagrous.core.PhysicalRoom(
+                        id = physicalRoom?.id ?: "",
                         roomNumber = roomNumber,
                         bedCount = bedCount.toIntOrNull() ?: 1,
-                        capacity = capacity.toIntOrNull() ?: 1
+                        capacity = capacity.toIntOrNull() ?: 1,
+                        isActive = isActive
                     )
                 )
             }) { Text("تایید") }
         },
         dismissButton = { TextButton(onClick = onDismiss) { Text("انصراف") } }
     )
+}
+
+@Composable
+fun PhysicalRoomManagementContent(state: AdminState, viewModel: AdminViewModel) {
+    var showAddDialog by remember { mutableStateOf(false) }
+    var editingRoom by remember { mutableStateOf<com.braveboy.hotelzagrous.core.PhysicalRoom?>(null) }
+
+    Column(modifier = Modifier.fillMaxSize().padding(16.dp)) {
+        Row(
+            modifier = Modifier.fillMaxWidth().padding(bottom = 16.dp),
+            horizontalArrangement = Arrangement.SpaceBetween,
+            verticalAlignment = Alignment.CenterVertically
+        ) {
+            Text(
+                "لیست اتاق‌های هتل",
+                style = MaterialTheme.typography.titleLarge,
+                fontWeight = FontWeight.Bold
+            )
+            Button(onClick = { showAddDialog = true }) {
+                Icon(Icons.Default.Add, null, modifier = Modifier.size(18.dp))
+                Spacer(Modifier.width(8.dp))
+                Text("افزودن اتاق جدید")
+            }
+        }
+
+        LazyColumn(verticalArrangement = Arrangement.spacedBy(10.dp)) {
+            items(state.physicalRooms.sortedBy { it.roomNumber }) { room ->
+                Surface(
+                    modifier = Modifier.fillMaxWidth(),
+                    shape = MaterialTheme.shapes.medium,
+                    border = BorderStroke(1.dp, MaterialTheme.colorScheme.surfaceVariant)
+                ) {
+                    Row(
+                        modifier = Modifier.padding(12.dp),
+                        verticalAlignment = Alignment.CenterVertically
+                    ) {
+                        Column(modifier = Modifier.weight(1f)) {
+                            Text(
+                                "اتاق ${room.roomNumber}",
+                                style = MaterialTheme.typography.titleMedium,
+                                fontWeight = FontWeight.Bold
+                            )
+                            Text(
+                                "تخت: ${room.bedCount} | ظرفیت: ${room.capacity}",
+                                style = MaterialTheme.typography.bodySmall,
+                                color = MaterialTheme.colorScheme.outline
+                            )
+                        }
+
+                        Row(verticalAlignment = Alignment.CenterVertically) {
+                            Text(
+                                if (room.isActive) "فعال" else "خارج از سرویس",
+                                style = MaterialTheme.typography.labelMedium,
+                                color = if (room.isActive) MaterialTheme.colorScheme.primary else MaterialTheme.colorScheme.error
+                            )
+                            Spacer(Modifier.width(8.dp))
+                            Switch(
+                                checked = room.isActive,
+                                onCheckedChange = {
+                                    viewModel.onIntent(AdminIntent.UpsertPhysicalRoom(room.copy(isActive = it)))
+                                },
+                                modifier = Modifier.scale(0.8f)
+                            )
+                            IconButton(onClick = { editingRoom = room }) {
+                                Icon(Icons.Default.Edit, null, tint = MaterialTheme.colorScheme.primary)
+                            }
+                            IconButton(onClick = { viewModel.onIntent(AdminIntent.DeletePhysicalRoom(room.id)) }) {
+                                Icon(Icons.Default.Delete, null, tint = MaterialTheme.colorScheme.error)
+                            }
+                        }
+                    }
+                }
+            }
+        }
+    }
+
+    if (showAddDialog) {
+        AddPhysicalRoomDialog(
+            onDismiss = { showAddDialog = false },
+            onConfirm = {
+                viewModel.onIntent(AdminIntent.UpsertPhysicalRoom(it))
+                showAddDialog = false
+            }
+        )
+    }
+
+    if (editingRoom != null) {
+        AddPhysicalRoomDialog(
+            physicalRoom = editingRoom,
+            onDismiss = { editingRoom = null },
+            onConfirm = {
+                viewModel.onIntent(AdminIntent.UpsertPhysicalRoom(it))
+                editingRoom = null
+            }
+        )
+    }
 }
 
 @Composable
@@ -471,14 +585,6 @@ fun RoomTimelineContent(state: AdminState, viewModel: AdminViewModel) {
                     }
                 }
             }
-            Button(
-                onClick = { showAddDialog = true },
-                shape = RoundedCornerShape(8.dp)
-            ) {
-                Icon(Icons.Default.Add, null, modifier = Modifier.size(18.dp))
-                Spacer(Modifier.width(8.dp))
-                Text("افزودن اتاق")
-            }
         }
 
         Box(modifier = Modifier.fillMaxSize().padding(horizontal = 16.dp)) {
@@ -514,11 +620,23 @@ fun RoomTimelineContent(state: AdminState, viewModel: AdminViewModel) {
                                 .padding(horizontal = 8.dp),
                             contentAlignment = Alignment.CenterStart
                         ) {
-                            Text(
-                                physicalRoom.roomNumber,
-                                style = MaterialTheme.typography.bodyMedium,
-                                fontWeight = FontWeight.SemiBold
-                            )
+                            Row(verticalAlignment = Alignment.CenterVertically) {
+                                Text(
+                                    physicalRoom.roomNumber,
+                                    style = MaterialTheme.typography.bodyMedium,
+                                    fontWeight = FontWeight.SemiBold,
+                                    color = if (physicalRoom.isActive) MaterialTheme.colorScheme.onSurface else MaterialTheme.colorScheme.error
+                                )
+                                if (!physicalRoom.isActive) {
+                                    Spacer(Modifier.width(4.dp))
+                                    Icon(
+                                        Icons.Default.Block,
+                                        contentDescription = "خارج از سرویس",
+                                        tint = MaterialTheme.colorScheme.error,
+                                        modifier = Modifier.size(12.dp)
+                                    )
+                                }
+                            }
                         }
                         HorizontalDivider(
                             thickness = 0.5.dp,
@@ -1079,8 +1197,8 @@ fun EditRoomStayDialog(
                         // Auto-update amounts based on settlement type
                         val amount = it.normalizeDigits().toLongOrNull() ?: 0
                         when(settlementType) {
-                            com.braveboy.hotelzagrous.core.SettlementType.FULL_GUEST -> { guestAmount = amount.toString(); agencyAmount = "0" }
-                            com.braveboy.hotelzagrous.core.SettlementType.FULL_AGENCY -> { agencyAmount = amount.toString(); guestAmount = "0" }
+                            SettlementType.FULL_GUEST -> { guestAmount = amount.toString(); agencyAmount = "0" }
+                            SettlementType.FULL_AGENCY -> { agencyAmount = amount.toString(); guestAmount = "0" }
                             else -> {}
                         }
                     },
@@ -2699,7 +2817,7 @@ fun AddRoomDialog(
                             onDismissRequest = { expandedRoom = false },
                             modifier = Modifier.fillMaxWidth(0.8f)
                         ) {
-                            physicalRooms.forEach { room ->
+                            physicalRooms.filter { it.isActive }.forEach { room ->
                                 DropdownMenuItem(
                                     text = { Text("اتاق ${room.roomNumber} (تخت: ${room.bedCount} - ظرفیت: ${room.capacity})") },
                                     onClick = {
@@ -2786,8 +2904,8 @@ fun AddRoomDialog(
                         contractAmount = it 
                         val amount = it.normalizeDigits().toLongOrNull() ?: 0
                         when(settlementType) {
-                            com.braveboy.hotelzagrous.core.SettlementType.FULL_GUEST -> { guestAmount = amount.toString(); agencyAmount = "0" }
-                            com.braveboy.hotelzagrous.core.SettlementType.FULL_AGENCY -> { agencyAmount = amount.toString(); guestAmount = "0" }
+                            SettlementType.FULL_GUEST -> { guestAmount = amount.toString(); agencyAmount = "0" }
+                            SettlementType.FULL_AGENCY -> { agencyAmount = amount.toString(); guestAmount = "0" }
                             else -> {}
                         }
                     },

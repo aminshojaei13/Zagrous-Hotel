@@ -8,7 +8,8 @@ data class PhysicalRoom(
     val roomNumber: String,
     val bedCount: Int = 1,
     val capacity: Int = 1,
-    val type: String = "STANDARD"
+    val type: String = "STANDARD",
+    val isActive: Boolean = true
 )
 
 @Serializable
