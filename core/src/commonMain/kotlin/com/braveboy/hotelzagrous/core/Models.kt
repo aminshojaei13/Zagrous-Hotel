@@ -12,6 +12,12 @@ data class PhysicalRoom(
 )
 
 @Serializable
+enum class BookingSource { DIRECT, AGENCY, ONLINE }
+
+@Serializable
+enum class SettlementType { FULL_GUEST, FULL_AGENCY, PARTIAL }
+
+@Serializable
 data class Room(
     val id: String = "",
     val roomNumber: String,
@@ -24,7 +30,12 @@ data class Room(
     val checkOutDate: String = "",
     val checkInEpochMillis: Long = 0,
     val checkOutEpochMillis: Long = 0,
-    val contractAmount: Long = 0
+    val contractAmount: Long = 0,
+    val bookingSource: BookingSource = BookingSource.DIRECT,
+    val agencyName: String = "",
+    val settlementType: SettlementType = SettlementType.FULL_GUEST,
+    val agencyAmount: Long = 0,
+    val guestAmount: Long = 0
 )
 
 @Serializable
@@ -81,7 +92,12 @@ data class UpdateRoomStayRequest(
     val guestCount: Int,
     val hasBreakfast: Boolean = false,
     val breakfastCount: Int = 0,
-    val contractAmount: Long = 0
+    val contractAmount: Long = 0,
+    val bookingSource: BookingSource = BookingSource.DIRECT,
+    val agencyName: String = "",
+    val settlementType: SettlementType = SettlementType.FULL_GUEST,
+    val agencyAmount: Long = 0,
+    val guestAmount: Long = 0
 )
 
 @Serializable

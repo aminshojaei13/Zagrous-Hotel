@@ -147,18 +147,23 @@ class AdminViewModel(
             runCatching {
                 println("id  vm is ${intent.id}")
                 repository.updateRoomStay(
-                    intent.id,
-                    intent.roomNumber,
-                    intent.guestName,
-                    intent.identificationId,
-                    intent.checkIn,
-                    intent.checkOut,
-                    intent.checkInMillis,
-                    intent.checkOutMillis,
-                    intent.guestCount,
-                    intent.hasBreakfast,
-                    intent.breakfastCount,
-                    intent.contractAmount
+                    id = intent.id,
+                    roomNumber = intent.roomNumber,
+                    guestName = intent.guestName,
+                    identificationId = intent.identificationId,
+                    checkIn = intent.checkIn,
+                    checkOut = intent.checkOut,
+                    checkInMillis = intent.checkInMillis,
+                    checkOutMillis = intent.checkOutMillis,
+                    guestCount = intent.guestCount,
+                    hasBreakfast = intent.hasBreakfast,
+                    breakfastCount = intent.breakfastCount,
+                    contractAmount = intent.contractAmount,
+                    bookingSource = intent.bookingSource,
+                    agencyName = intent.agencyName,
+                    settlementType = intent.settlementType,
+                    agencyAmount = intent.agencyAmount,
+                    guestAmount = intent.guestAmount
                 )
             }.onSuccess {
                 loadData()

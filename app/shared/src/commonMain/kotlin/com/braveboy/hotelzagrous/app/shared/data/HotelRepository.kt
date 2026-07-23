@@ -173,7 +173,12 @@ class HotelRepository(
         guestCount: Int,
         hasBreakfast: Boolean,
         breakfastCount: Int,
-        contractAmount: Long
+        contractAmount: Long,
+        bookingSource: com.braveboy.hotelzagrous.core.BookingSource = com.braveboy.hotelzagrous.core.BookingSource.DIRECT,
+        agencyName: String = "",
+        settlementType: com.braveboy.hotelzagrous.core.SettlementType = com.braveboy.hotelzagrous.core.SettlementType.FULL_GUEST,
+        agencyAmount: Long = 0,
+        guestAmount: Long = 0
     ) {
         println("id is $id")
         val normalizedIdentificationId = identificationId.normalizeDigits()
@@ -191,7 +196,12 @@ class HotelRepository(
                     guestCount = guestCount,
                     hasBreakfast = hasBreakfast,
                     breakfastCount = breakfastCount,
-                    contractAmount = contractAmount
+                    contractAmount = contractAmount,
+                    bookingSource = bookingSource,
+                    agencyName = agencyName,
+                    settlementType = settlementType,
+                    agencyAmount = agencyAmount,
+                    guestAmount = guestAmount
                 )
             )
         }

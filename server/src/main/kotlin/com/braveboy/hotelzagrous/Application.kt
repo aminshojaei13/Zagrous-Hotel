@@ -110,18 +110,23 @@ fun Application.module() {
                 val id = call.parameters["id"].orEmpty()
                 val request = call.receive<UpdateRoomStayRequest>()
                 val updated = database.updateRoomStay(
-                    id,
-                    request.roomNumber.normalizeDigits(),
-                    request.guestName,
-                    request.identificationId.normalizeDigits(),
-                    request.checkIn,
-                    request.checkOut,
-                    request.checkInMillis,
-                    request.checkOutMillis,
-                    request.guestCount,
-                    request.hasBreakfast,
-                    request.breakfastCount,
-                    request.contractAmount
+                    id = id,
+                    roomNumber = request.roomNumber.normalizeDigits(),
+                    guestName = request.guestName,
+                    identificationId = request.identificationId.normalizeDigits(),
+                    checkIn = request.checkIn,
+                    checkOut = request.checkOut,
+                    checkInMillis = request.checkInMillis,
+                    checkOutMillis = request.checkOutMillis,
+                    guestCount = request.guestCount,
+                    hasBreakfast = request.hasBreakfast,
+                    breakfastCount = request.breakfastCount,
+                    contractAmount = request.contractAmount,
+                    bookingSource = request.bookingSource,
+                    agencyName = request.agencyName,
+                    settlementType = request.settlementType,
+                    agencyAmount = request.agencyAmount,
+                    guestAmount = request.guestAmount
                 )
                 if (updated) call.respond(HttpStatusCode.OK, database.getRoom(id)!!)
                 else call.respond(HttpStatusCode.NotFound, ApiError("شناسه اتاق یافت نشد"))

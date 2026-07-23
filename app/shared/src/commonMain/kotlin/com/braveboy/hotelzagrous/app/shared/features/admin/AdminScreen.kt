@@ -89,6 +89,7 @@ import androidx.compose.ui.unit.sp
 import com.braveboy.hotelzagrous.app.shared.features.PersianDatePickerDialog
 import com.braveboy.hotelzagrous.app.shared.features.finance.FinanceScreen
 import com.braveboy.hotelzagrous.app.shared.features.finance.FinanceViewModel
+import com.braveboy.hotelzagrous.core.BookingSource
 import com.braveboy.hotelzagrous.core.DateUtils
 import com.braveboy.hotelzagrous.core.DayType
 import com.braveboy.hotelzagrous.core.FoodItem
@@ -97,6 +98,7 @@ import com.braveboy.hotelzagrous.core.FoodType
 import com.braveboy.hotelzagrous.core.GuestMealSelection
 import com.braveboy.hotelzagrous.core.MenuConfig
 import com.braveboy.hotelzagrous.core.Room
+import com.braveboy.hotelzagrous.core.SettlementType
 import com.braveboy.hotelzagrous.core.formatPrice
 import com.braveboy.hotelzagrous.core.normalizeDigits
 import kotlin.time.Clock
@@ -732,7 +734,7 @@ fun RoomAdminCard(
     room: Room,
     availableFoods: List<FoodItem>,
     reservations: List<FoodReservation>,
-    onUpdate: (String, String, String, String, String, Long, Long, Int, Boolean, Int, Long) -> Unit,
+    onUpdate: (String, String, String, String, String, Long, Long, Int, Boolean, Int, Long, BookingSource, String, SettlementType, Long, Long) -> Unit,
     onDelete: () -> Unit,
     onFoodChange: (String, Int, String?, FoodType) -> Unit,
     onBreakfastChange: (String, Int) -> Unit
@@ -765,6 +767,25 @@ fun RoomAdminCard(
                     color = MaterialTheme.colorScheme.primary,
                     maxLines = 1
                 )
+                Surface(
+                    color = when(room.bookingSource) {
+                        BookingSource.DIRECT -> MaterialTheme.colorScheme.primaryContainer
+                        BookingSource.AGENCY -> MaterialTheme.colorScheme.secondaryContainer
+                        BookingSource.ONLINE -> MaterialTheme.colorScheme.tertiaryContainer
+                    },
+                    shape = RoundedCornerShape(4.dp)
+                ) {
+                    Text(
+                        text = when(room.bookingSource) {
+                            BookingSource.DIRECT -> "مستقیم"
+                            BookingSource.AGENCY -> "آژانس"
+                            BookingSource.ONLINE -> "آنلاین"
+                        },
+                        modifier = Modifier.padding(horizontal = 4.dp, vertical = 2.dp),
+                        style = MaterialTheme.typography.labelSmall,
+                        fontSize = 9.sp
+                    )
+                }
             }
 
             // Info
@@ -781,17 +802,28 @@ fun RoomAdminCard(
                     maxLines = 1,
                     overflow = TextOverflow.Ellipsis
                 )
-                Text(
-                    text = "شناسه: ${room.identificationId.ifBlank { "---" }}",
-                    style = MaterialTheme.typography.labelSmall,
-                    color = MaterialTheme.colorScheme.onSurfaceVariant
-                )
+                Row(verticalAlignment = Alignment.CenterVertically) {
+                    Text(
+                        text = "شناسه: ${room.identificationId.ifBlank { "---" }}",
+                        style = MaterialTheme.typography.labelSmall,
+                        color = MaterialTheme.colorScheme.onSurfaceVariant
+                    )
+                    if (room.agencyName.isNotBlank()) {
+                        Text(" | ", style = MaterialTheme.typography.labelSmall)
+                        Text(
+                            text = room.agencyName,
+                            style = MaterialTheme.typography.labelSmall,
+                            color = MaterialTheme.colorScheme.secondary,
+                            fontWeight = FontWeight.Bold
+                        )
+                    }
+                }
             }
 
             // Amount
-            Column(modifier = Modifier.weight(1.2f)) {
+            Column(modifier = Modifier.weight(1.5f)) {
                 Text(
-                    text = "مبلغ قرارداد",
+                    text = "مبلغ و تسویه",
                     style = MaterialTheme.typography.labelSmall,
                     color = MaterialTheme.colorScheme.outline
                 )
@@ -801,6 +833,15 @@ fun RoomAdminCard(
                     fontWeight = FontWeight.Bold,
                     color = Color(0xFF4CAF50),
                     maxLines = 1
+                )
+                Text(
+                    text = when(room.settlementType) {
+                        SettlementType.FULL_GUEST -> "تسویه کامل مسافر"
+                        SettlementType.FULL_AGENCY -> "تسویه کامل آژانس"
+                        SettlementType.PARTIAL -> "تسویه ترکیبی"
+                    },
+                    style = MaterialTheme.typography.labelSmall,
+                    color = MaterialTheme.colorScheme.outline
                 )
             }
 
@@ -898,7 +939,12 @@ fun RoomAdminCard(
                     updatedRoom.guestCount,
                     updatedRoom.hasBreakfast,
                     updatedRoom.breakfastCount,
-                    updatedRoom.contractAmount
+                    updatedRoom.contractAmount,
+                    updatedRoom.bookingSource,
+                    updatedRoom.agencyName,
+                    updatedRoom.settlementType,
+                    updatedRoom.agencyAmount,
+                    updatedRoom.guestAmount
                 )
                 showEditDialog = false
             }
@@ -953,8 +999,16 @@ fun EditRoomStayDialog(
     var checkOut by remember { mutableStateOf(room.checkOutDate) }
     var checkInMillis by remember { mutableLongStateOf(room.checkInEpochMillis) }
     var checkOutMillis by remember { mutableLongStateOf(room.checkOutEpochMillis) }
-    
+
+    var bookingSource by remember { mutableStateOf(room.bookingSource) }
+    var agencyName by remember { mutableStateOf(room.agencyName) }
+    var settlementType by remember { mutableStateOf(room.settlementType) }
+    var agencyAmount by remember { mutableStateOf(room.agencyAmount.toString()) }
+    var guestAmount by remember { mutableStateOf(room.guestAmount.toString()) }
+
     var expandedGuestCount by remember { mutableStateOf(false) }
+    var expandedBookingSource by remember { mutableStateOf(false) }
+    var expandedSettlementType by remember { mutableStateOf(false) }
 
     AlertDialog(
         onDismissRequest = onDismiss,
@@ -985,14 +1039,105 @@ fun EditRoomStayDialog(
                     modifier = Modifier.fillMaxWidth(),
                     shape = MaterialTheme.shapes.medium
                 )
+
+                // Booking Source Selection
+                Column {
+                    Text("منبع رزرو", style = MaterialTheme.typography.labelSmall, color = MaterialTheme.colorScheme.primary)
+                    Box {
+                        TextButton(onClick = { expandedBookingSource = true }) {
+                            Text(when(bookingSource) {
+                                BookingSource.DIRECT -> "مستقیم"
+                                BookingSource.AGENCY -> "آژانس مسافرتی"
+                                BookingSource.ONLINE -> "رزرو آنلاین (OTA)"
+                            })
+                            Icon(Icons.Default.ArrowDropDown, null)
+                        }
+                        DropdownMenu(expanded = expandedBookingSource, onDismissRequest = { expandedBookingSource = false }) {
+                            DropdownMenuItem(text = { Text("مستقیم") }, onClick = { bookingSource = BookingSource.DIRECT; expandedBookingSource = false })
+                            DropdownMenuItem(text = { Text("آژانس مسافرتی") }, onClick = { bookingSource = BookingSource.AGENCY; expandedBookingSource = false })
+                            DropdownMenuItem(text = { Text("رزرو آنلاین (OTA)") }, onClick = { bookingSource = BookingSource.ONLINE; expandedBookingSource = false })
+                        }
+                    }
+                }
+
+                if (bookingSource != BookingSource.DIRECT) {
+                    OutlinedTextField(
+                        value = agencyName,
+                        onValueChange = { agencyName = it },
+                        label = { Text("نام آژانس / وب‌سایت") },
+                        modifier = Modifier.fillMaxWidth(),
+                        shape = MaterialTheme.shapes.medium
+                    )
+                }
+
+                HorizontalDivider()
+
                 OutlinedTextField(
                     value = contractAmount,
-                    onValueChange = { contractAmount = it },
-                    label = { Text("مبلغ قرارداد (ریال)") },
+                    onValueChange = { 
+                        contractAmount = it 
+                        // Auto-update amounts based on settlement type
+                        val amount = it.normalizeDigits().toLongOrNull() ?: 0
+                        when(settlementType) {
+                            com.braveboy.hotelzagrous.core.SettlementType.FULL_GUEST -> { guestAmount = amount.toString(); agencyAmount = "0" }
+                            com.braveboy.hotelzagrous.core.SettlementType.FULL_AGENCY -> { agencyAmount = amount.toString(); guestAmount = "0" }
+                            else -> {}
+                        }
+                    },
+                    label = { Text("مبلغ کل قرارداد (ریال)") },
                     modifier = Modifier.fillMaxWidth(),
                     shape = MaterialTheme.shapes.medium
                 )
-                
+
+                // Settlement Type Selection
+                Column {
+                    Text("نوع تسویه", style = MaterialTheme.typography.labelSmall, color = MaterialTheme.colorScheme.primary)
+                    Box {
+                        TextButton(onClick = { expandedSettlementType = true }) {
+                            Text(when(settlementType) {
+                                SettlementType.FULL_GUEST -> "تسویه کامل توسط مسافر"
+                                SettlementType.FULL_AGENCY -> "تسویه کامل توسط آژانس"
+                                SettlementType.PARTIAL -> "تسویه ترکیبی (آژانس + مسافر)"
+                            })
+                            Icon(Icons.Default.ArrowDropDown, null)
+                        }
+                        DropdownMenu(expanded = expandedSettlementType, onDismissRequest = { expandedSettlementType = false }) {
+                            DropdownMenuItem(text = { Text("تسویه کامل توسط مسافر") }, onClick = { 
+                                settlementType = SettlementType.FULL_GUEST
+                                guestAmount = contractAmount
+                                agencyAmount = "0"
+                                expandedSettlementType = false 
+                            })
+                            DropdownMenuItem(text = { Text("تسویه کامل توسط آژانس") }, onClick = { 
+                                settlementType = SettlementType.FULL_AGENCY
+                                agencyAmount = contractAmount
+                                guestAmount = "0"
+                                expandedSettlementType = false 
+                            })
+                            DropdownMenuItem(text = { Text("تسویه ترکیبی") }, onClick = { settlementType = SettlementType.PARTIAL; expandedSettlementType = false })
+                        }
+                    }
+                }
+
+                if (settlementType == SettlementType.PARTIAL) {
+                    Row(modifier = Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+                        OutlinedTextField(
+                            value = agencyAmount,
+                            onValueChange = { agencyAmount = it },
+                            label = { Text("سهم آژانس") },
+                            modifier = Modifier.weight(1f),
+                            shape = MaterialTheme.shapes.medium
+                        )
+                        OutlinedTextField(
+                            value = guestAmount,
+                            onValueChange = { guestAmount = it },
+                            label = { Text("سهم مسافر") },
+                            modifier = Modifier.weight(1f),
+                            shape = MaterialTheme.shapes.medium
+                        )
+                    }
+                }
+
                 Row(modifier = Modifier.fillMaxWidth(), verticalAlignment = Alignment.CenterVertically) {
                     Text("تعداد مهمان:", modifier = Modifier.weight(1f))
                     Box {
@@ -1033,7 +1178,12 @@ fun EditRoomStayDialog(
                     checkInDate = checkIn,
                     checkOutDate = checkOut,
                     checkInEpochMillis = checkInMillis,
-                    checkOutEpochMillis = checkOutMillis
+                    checkOutEpochMillis = checkOutMillis,
+                    bookingSource = bookingSource,
+                    agencyName = agencyName,
+                    settlementType = settlementType,
+                    agencyAmount = agencyAmount.normalizeDigits().toLongOrNull() ?: 0,
+                    guestAmount = guestAmount.normalizeDigits().toLongOrNull() ?: 0
                 ))
             }) { Text("بروزرسانی") }
         },
@@ -1086,7 +1236,7 @@ fun RoomManagementContent(state: AdminState, viewModel: AdminViewModel) {
                     room = room,
                     availableFoods = state.foods,
                     reservations = state.reservations,
-                    onUpdate = { rNum, name, idId, inD, outD, inM, outM, count, hasB, bCount, cAmt ->
+                    onUpdate = { rNum, name, idId, inD, outD, inM, outM, count, hasB, bCount, cAmt, bSource, aName, sType, aAmt, gAmt ->
                         val effectiveId = room.id.ifBlank { room.roomNumber }
                         viewModel.onIntent(
                             AdminIntent.UpdateRoomStay(
@@ -1101,7 +1251,12 @@ fun RoomManagementContent(state: AdminState, viewModel: AdminViewModel) {
                                 guestCount = count,
                                 hasBreakfast = hasB,
                                 breakfastCount = bCount,
-                                contractAmount = cAmt
+                                contractAmount = cAmt,
+                                bookingSource = bSource,
+                                agencyName = aName,
+                                settlementType = sType,
+                                agencyAmount = aAmt,
+                                guestAmount = gAmt
                             )
                         )
                     },
@@ -2495,8 +2650,17 @@ fun AddRoomDialog(
     var checkInMillis by remember { mutableLongStateOf(0L) }
     var checkOutMillis by remember { mutableLongStateOf(0L) }
     var contractAmount by remember { mutableStateOf("") }
+    
+    var bookingSource by remember { mutableStateOf(BookingSource.DIRECT) }
+    var agencyName by remember { mutableStateOf("") }
+    var settlementType by remember { mutableStateOf(SettlementType.FULL_GUEST) }
+    var agencyAmount by remember { mutableStateOf("") }
+    var guestAmount by remember { mutableStateOf("") }
+
     var expandedGuest by remember { mutableStateOf(false) }
     var expandedRoom by remember { mutableStateOf(false) }
+    var expandedBookingSource by remember { mutableStateOf(false) }
+    var expandedSettlementType by remember { mutableStateOf(false) }
 
     AlertDialog(
         onDismissRequest = onDismiss,
@@ -2579,15 +2743,111 @@ fun AddRoomDialog(
                         shape = MaterialTheme.shapes.medium,
                         singleLine = true
                     )
+                }
+
+                // Booking Source Selection
+                Column {
+                    Text("منبع رزرو", style = MaterialTheme.typography.labelSmall, color = MaterialTheme.colorScheme.primary)
+                    Box {
+                        OutlinedCard(onClick = { expandedBookingSource = true }, modifier = Modifier.fillMaxWidth(), shape = MaterialTheme.shapes.medium) {
+                            Row(modifier = Modifier.padding(12.dp), verticalAlignment = Alignment.CenterVertically) {
+                                Text(when(bookingSource) {
+                                    BookingSource.DIRECT -> "مستقیم"
+                                    BookingSource.AGENCY -> "آژانس مسافرتی"
+                                    BookingSource.ONLINE -> "رزرو آنلاین (OTA)"
+                                })
+                                Spacer(Modifier.weight(1f))
+                                Icon(Icons.Default.ArrowDropDown, null)
+                            }
+                        }
+                        DropdownMenu(expanded = expandedBookingSource, onDismissRequest = { expandedBookingSource = false }) {
+                            DropdownMenuItem(text = { Text("مستقیم") }, onClick = { bookingSource = BookingSource.DIRECT; expandedBookingSource = false })
+                            DropdownMenuItem(text = { Text("آژانس مسافرتی") }, onClick = { bookingSource = BookingSource.AGENCY; expandedBookingSource = false })
+                            DropdownMenuItem(text = { Text("رزرو آنلاین (OTA)") }, onClick = { bookingSource = BookingSource.ONLINE; expandedBookingSource = false })
+                        }
+                    }
+                }
+
+                if (bookingSource != BookingSource.DIRECT) {
                     OutlinedTextField(
-                        value = contractAmount,
-                        onValueChange = { contractAmount = it },
-                        label = { Text("مبلغ قرارداد (ریال)") },
-                        modifier = Modifier.weight(1f),
-                        shape = MaterialTheme.shapes.medium,
-                        singleLine = true,
-                        keyboardOptions = androidx.compose.foundation.text.KeyboardOptions(keyboardType = androidx.compose.ui.text.input.KeyboardType.Number)
+                        value = agencyName,
+                        onValueChange = { agencyName = it },
+                        label = { Text("نام آژانس / وب‌سایت") },
+                        modifier = Modifier.fillMaxWidth(),
+                        shape = MaterialTheme.shapes.medium
                     )
+                }
+
+                HorizontalDivider()
+
+                OutlinedTextField(
+                    value = contractAmount,
+                    onValueChange = { 
+                        contractAmount = it 
+                        val amount = it.normalizeDigits().toLongOrNull() ?: 0
+                        when(settlementType) {
+                            com.braveboy.hotelzagrous.core.SettlementType.FULL_GUEST -> { guestAmount = amount.toString(); agencyAmount = "0" }
+                            com.braveboy.hotelzagrous.core.SettlementType.FULL_AGENCY -> { agencyAmount = amount.toString(); guestAmount = "0" }
+                            else -> {}
+                        }
+                    },
+                    label = { Text("مبلغ کل قرارداد (ریال)") },
+                    modifier = Modifier.fillMaxWidth(),
+                    shape = MaterialTheme.shapes.medium,
+                    singleLine = true,
+                    keyboardOptions = androidx.compose.foundation.text.KeyboardOptions(keyboardType = androidx.compose.ui.text.input.KeyboardType.Number)
+                )
+
+                // Settlement Type Selection
+                Column {
+                    Text("نوع تسویه", style = MaterialTheme.typography.labelSmall, color = MaterialTheme.colorScheme.primary)
+                    Box {
+                        OutlinedCard(onClick = { expandedSettlementType = true }, modifier = Modifier.fillMaxWidth(), shape = MaterialTheme.shapes.medium) {
+                            Row(modifier = Modifier.padding(12.dp), verticalAlignment = Alignment.CenterVertically) {
+                                Text(when(settlementType) {
+                                    SettlementType.FULL_GUEST -> "تسویه کامل توسط مسافر"
+                                    SettlementType.FULL_AGENCY -> "تسویه کامل توسط آژانس"
+                                    SettlementType.PARTIAL -> "تسویه ترکیبی (آژانس + مسافر)"
+                                })
+                                Spacer(Modifier.weight(1f))
+                                Icon(Icons.Default.ArrowDropDown, null)
+                            }
+                        }
+                        DropdownMenu(expanded = expandedSettlementType, onDismissRequest = { expandedSettlementType = false }) {
+                            DropdownMenuItem(text = { Text("تسویه کامل توسط مسافر") }, onClick = { 
+                                settlementType = SettlementType.FULL_GUEST
+                                guestAmount = contractAmount
+                                agencyAmount = "0"
+                                expandedSettlementType = false 
+                            })
+                            DropdownMenuItem(text = { Text("تسویه کامل توسط آژانس") }, onClick = { 
+                                settlementType = SettlementType.FULL_AGENCY
+                                agencyAmount = contractAmount
+                                guestAmount = "0"
+                                expandedSettlementType = false 
+                            })
+                            DropdownMenuItem(text = { Text("تسویه ترکیبی") }, onClick = { settlementType = SettlementType.PARTIAL; expandedSettlementType = false })
+                        }
+                    }
+                }
+
+                if (settlementType == SettlementType.PARTIAL) {
+                    Row(modifier = Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.spacedBy(12.dp)) {
+                        OutlinedTextField(
+                            value = agencyAmount,
+                            onValueChange = { agencyAmount = it },
+                            label = { Text("سهم آژانس") },
+                            modifier = Modifier.weight(1f),
+                            shape = MaterialTheme.shapes.medium
+                        )
+                        OutlinedTextField(
+                            value = guestAmount,
+                            onValueChange = { guestAmount = it },
+                            label = { Text("سهم مسافر") },
+                            modifier = Modifier.weight(1f),
+                            shape = MaterialTheme.shapes.medium
+                        )
+                    }
                 }
 
                 Row(
@@ -2662,7 +2922,12 @@ fun AddRoomDialog(
                                 checkOutDate = checkOut,
                                 checkInEpochMillis = checkInMillis,
                                 checkOutEpochMillis = checkOutMillis,
-                                contractAmount = contractAmount.normalizeDigits().toLongOrNull() ?: 0
+                                contractAmount = contractAmount.normalizeDigits().toLongOrNull() ?: 0,
+                                bookingSource = bookingSource,
+                                agencyName = agencyName,
+                                settlementType = settlementType,
+                                agencyAmount = agencyAmount.normalizeDigits().toLongOrNull() ?: 0,
+                                guestAmount = guestAmount.normalizeDigits().toLongOrNull() ?: 0
                             )
                         )
                     }

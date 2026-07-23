@@ -1,5 +1,6 @@
 package com.braveboy.hotelzagrous
 
+import com.braveboy.hotelzagrous.core.BookingSource
 import com.braveboy.hotelzagrous.core.DayType
 import com.braveboy.hotelzagrous.core.FinancialTransaction
 import com.braveboy.hotelzagrous.core.FoodItem
@@ -10,6 +11,7 @@ import com.braveboy.hotelzagrous.core.GuestMealSelection
 import com.braveboy.hotelzagrous.core.MenuConfig
 import com.braveboy.hotelzagrous.core.PaymentMethod
 import com.braveboy.hotelzagrous.core.PhysicalRoom
+import com.braveboy.hotelzagrous.core.SettlementType
 import com.braveboy.hotelzagrous.core.TransactionStatus
 import com.braveboy.hotelzagrous.core.TransactionType
 import com.braveboy.hotelzagrous.core.normalizeDigits
@@ -118,7 +120,7 @@ class HotelDatabase(
 
     fun getRooms(): List<Room> = connection.prepareStatement(
         """
-        SELECT id, room_number, guest_name, identification_id, guest_count, has_breakfast, breakfast_count, check_in_date, check_out_date, check_in_epoch_millis, check_out_epoch_millis, contract_amount
+        SELECT id, room_number, guest_name, identification_id, guest_count, has_breakfast, breakfast_count, check_in_date, check_out_date, check_in_epoch_millis, check_out_epoch_millis, contract_amount, booking_source, agency_name, settlement_type, agency_amount, guest_amount
         FROM rooms
         ORDER BY room_number
         """.trimIndent()
@@ -139,7 +141,12 @@ class HotelDatabase(
                             checkOutDate = rows.getString("check_out_date"),
                             checkInEpochMillis = rows.getLong("check_in_epoch_millis"),
                             checkOutEpochMillis = rows.getLong("check_out_epoch_millis"),
-                            contractAmount = rows.getLong("contract_amount")
+                            contractAmount = rows.getLong("contract_amount"),
+                            bookingSource = BookingSource.valueOf(rows.getString("booking_source") ?: BookingSource.DIRECT.name),
+                            agencyName = rows.getString("agency_name") ?: "",
+                            settlementType = SettlementType.valueOf(rows.getString("settlement_type") ?: SettlementType.FULL_GUEST.name),
+                            agencyAmount = rows.getLong("agency_amount"),
+                            guestAmount = rows.getLong("guest_amount")
                         )
                     )
                 }
@@ -198,7 +205,7 @@ class HotelDatabase(
 
     fun getRoom(id: String): Room? = connection.prepareStatement(
         """
-        SELECT id, room_number, guest_name, identification_id, guest_count, has_breakfast, breakfast_count, check_in_date, check_out_date, check_in_epoch_millis, check_out_epoch_millis, contract_amount
+        SELECT id, room_number, guest_name, identification_id, guest_count, has_breakfast, breakfast_count, check_in_date, check_out_date, check_in_epoch_millis, check_out_epoch_millis, contract_amount, booking_source, agency_name, settlement_type, agency_amount, guest_amount
         FROM rooms
         WHERE id = ?
         """.trimIndent()
@@ -220,7 +227,12 @@ class HotelDatabase(
                     checkOutDate = rows.getString("check_out_date"),
                     checkInEpochMillis = rows.getLong("check_in_epoch_millis"),
                     checkOutEpochMillis = rows.getLong("check_out_epoch_millis"),
-                    contractAmount = rows.getLong("contract_amount")
+                    contractAmount = rows.getLong("contract_amount"),
+                    bookingSource = BookingSource.valueOf(rows.getString("booking_source") ?: BookingSource.DIRECT.name),
+                    agencyName = rows.getString("agency_name") ?: "",
+                    settlementType = SettlementType.valueOf(rows.getString("settlement_type") ?: SettlementType.FULL_GUEST.name),
+                    agencyAmount = rows.getLong("agency_amount"),
+                    guestAmount = rows.getLong("guest_amount")
                 )
             }
         }
@@ -230,7 +242,7 @@ class HotelDatabase(
         val normalized = roomNumber.normalizeDigits()
         return connection.prepareStatement(
             """
-            SELECT id, room_number, guest_name, identification_id, guest_count, has_breakfast, breakfast_count, check_in_date, check_out_date, check_in_epoch_millis, check_out_epoch_millis, contract_amount
+            SELECT id, room_number, guest_name, identification_id, guest_count, has_breakfast, breakfast_count, check_in_date, check_out_date, check_in_epoch_millis, check_out_epoch_millis, contract_amount, booking_source, agency_name, settlement_type, agency_amount, guest_amount
             FROM rooms
             WHERE room_number = ?
             ORDER BY check_out_epoch_millis DESC
@@ -254,7 +266,12 @@ class HotelDatabase(
                         checkOutDate = rows.getString("check_out_date"),
                         checkInEpochMillis = rows.getLong("check_in_epoch_millis"),
                         checkOutEpochMillis = rows.getLong("check_out_epoch_millis"),
-                        contractAmount = rows.getLong("contract_amount")
+                        contractAmount = rows.getLong("contract_amount"),
+                        bookingSource = BookingSource.valueOf(rows.getString("booking_source") ?: BookingSource.DIRECT.name),
+                        agencyName = rows.getString("agency_name") ?: "",
+                        settlementType = SettlementType.valueOf(rows.getString("settlement_type") ?: SettlementType.FULL_GUEST.name),
+                        agencyAmount = rows.getLong("agency_amount"),
+                        guestAmount = rows.getLong("guest_amount")
                     )
                 }
             }
@@ -265,8 +282,8 @@ class HotelDatabase(
         val id = room.id.ifBlank { UUID.randomUUID().toString() }
         connection.prepareStatement(
             """
-            INSERT INTO rooms(id, room_number, guest_name, identification_id, guest_count, has_breakfast, breakfast_count, check_in_date, check_out_date, check_in_epoch_millis, check_out_epoch_millis, contract_amount)
-            VALUES(?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+            INSERT INTO rooms(id, room_number, guest_name, identification_id, guest_count, has_breakfast, breakfast_count, check_in_date, check_out_date, check_in_epoch_millis, check_out_epoch_millis, contract_amount, booking_source, agency_name, settlement_type, agency_amount, guest_amount)
+            VALUES(?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
             ON CONFLICT(id) DO UPDATE SET
                 room_number = excluded.room_number,
                 guest_name = excluded.guest_name,
@@ -278,7 +295,12 @@ class HotelDatabase(
                 check_out_date = excluded.check_out_date,
                 check_in_epoch_millis = excluded.check_in_epoch_millis,
                 check_out_epoch_millis = excluded.check_out_epoch_millis,
-                contract_amount = excluded.contract_amount
+                contract_amount = excluded.contract_amount,
+                booking_source = excluded.booking_source,
+                agency_name = excluded.agency_name,
+                settlement_type = excluded.settlement_type,
+                agency_amount = excluded.agency_amount,
+                guest_amount = excluded.guest_amount
             """.trimIndent()
         ).use { statement ->
             statement.setString(1, id)
@@ -293,6 +315,11 @@ class HotelDatabase(
             statement.setLong(10, room.checkInEpochMillis)
             statement.setLong(11, room.checkOutEpochMillis)
             statement.setLong(12, room.contractAmount)
+            statement.setString(13, room.bookingSource.name)
+            statement.setString(14, room.agencyName)
+            statement.setString(15, room.settlementType.name)
+            statement.setLong(16, room.agencyAmount)
+            statement.setLong(17, room.guestAmount)
             statement.executeUpdate()
         }
         return id
@@ -310,7 +337,12 @@ class HotelDatabase(
         guestCount: Int,
         hasBreakfast: Boolean,
         breakfastCount: Int,
-        contractAmount: Long
+        contractAmount: Long,
+        bookingSource: BookingSource = BookingSource.DIRECT,
+        agencyName: String = "",
+        settlementType: SettlementType = SettlementType.FULL_GUEST,
+        agencyAmount: Long = 0,
+        guestAmount: Long = 0
     ): Boolean {
         val oldRoom = getRoom(id) ?: return false
         val newRoomNumber = roomNumber.normalizeDigits()
@@ -326,7 +358,7 @@ class HotelDatabase(
         return connection.prepareStatement(
             """
             UPDATE rooms
-            SET room_number = ?, guest_name = ?, identification_id = ?, check_in_date = ?, check_out_date = ?, check_in_epoch_millis = ?, check_out_epoch_millis = ?, guest_count = ?, has_breakfast = ?, breakfast_count = ?, contract_amount = ?
+            SET room_number = ?, guest_name = ?, identification_id = ?, check_in_date = ?, check_out_date = ?, check_in_epoch_millis = ?, check_out_epoch_millis = ?, guest_count = ?, has_breakfast = ?, breakfast_count = ?, contract_amount = ?, booking_source = ?, agency_name = ?, settlement_type = ?, agency_amount = ?, guest_amount = ?
             WHERE id = ?
             """.trimIndent()
         ).use { statement ->
@@ -341,7 +373,12 @@ class HotelDatabase(
             statement.setInt(9, if (hasBreakfast) 1 else 0)
             statement.setInt(10, breakfastCount)
             statement.setLong(11, contractAmount)
-            statement.setString(12, id)
+            statement.setString(12, bookingSource.name)
+            statement.setString(13, agencyName)
+            statement.setString(14, settlementType.name)
+            statement.setLong(15, agencyAmount)
+            statement.setLong(16, guestAmount)
+            statement.setString(17, id)
             statement.executeUpdate() > 0
         }
     }
@@ -545,7 +582,12 @@ class HotelDatabase(
                     check_out_date TEXT NOT NULL,
                     check_in_epoch_millis INTEGER NOT NULL,
                     check_out_epoch_millis INTEGER NOT NULL,
-                    contract_amount INTEGER NOT NULL DEFAULT 0
+                    contract_amount INTEGER NOT NULL DEFAULT 0,
+                    booking_source TEXT NOT NULL DEFAULT 'DIRECT',
+                    agency_name TEXT NOT NULL DEFAULT '',
+                    settlement_type TEXT NOT NULL DEFAULT 'FULL_GUEST',
+                    agency_amount INTEGER NOT NULL DEFAULT 0,
+                    guest_amount INTEGER NOT NULL DEFAULT 0
                 )
                 """.trimIndent()
             )
@@ -693,6 +735,21 @@ class HotelDatabase(
             }
             if (!roomColumns.contains("contract_amount")) {
                 statement.executeUpdate("ALTER TABLE rooms ADD COLUMN contract_amount INTEGER NOT NULL DEFAULT 0")
+            }
+            if (!roomColumns.contains("booking_source")) {
+                statement.executeUpdate("ALTER TABLE rooms ADD COLUMN booking_source TEXT NOT NULL DEFAULT 'DIRECT'")
+            }
+            if (!roomColumns.contains("agency_name")) {
+                statement.executeUpdate("ALTER TABLE rooms ADD COLUMN agency_name TEXT NOT NULL DEFAULT ''")
+            }
+            if (!roomColumns.contains("settlement_type")) {
+                statement.executeUpdate("ALTER TABLE rooms ADD COLUMN settlement_type TEXT NOT NULL DEFAULT 'FULL_GUEST'")
+            }
+            if (!roomColumns.contains("agency_amount")) {
+                statement.executeUpdate("ALTER TABLE rooms ADD COLUMN agency_amount INTEGER NOT NULL DEFAULT 0")
+            }
+            if (!roomColumns.contains("guest_amount")) {
+                statement.executeUpdate("ALTER TABLE rooms ADD COLUMN guest_amount INTEGER NOT NULL DEFAULT 0")
             }
         }
 

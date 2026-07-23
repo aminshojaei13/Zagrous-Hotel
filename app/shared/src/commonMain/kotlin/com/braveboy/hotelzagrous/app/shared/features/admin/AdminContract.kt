@@ -31,7 +31,12 @@ sealed class AdminIntent {
         val guestCount: Int,
         val hasBreakfast: Boolean,
         val breakfastCount: Int,
-        val contractAmount: Long = 0
+        val contractAmount: Long = 0,
+        val bookingSource: com.braveboy.hotelzagrous.core.BookingSource = com.braveboy.hotelzagrous.core.BookingSource.DIRECT,
+        val agencyName: String = "",
+        val settlementType: com.braveboy.hotelzagrous.core.SettlementType = com.braveboy.hotelzagrous.core.SettlementType.FULL_GUEST,
+        val agencyAmount: Long = 0,
+        val guestAmount: Long = 0
     ) : AdminIntent()
     data class AddRoom(val room: Room) : AdminIntent()
     data class DeleteRoom(val id: String) : AdminIntent()
