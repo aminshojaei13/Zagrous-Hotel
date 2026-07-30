@@ -20,6 +20,7 @@ import androidx.compose.foundation.layout.wrapContentHeight
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.shape.CircleShape
+import androidx.compose.foundation.text.KeyboardOptions
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.ArrowDropDown
 import androidx.compose.material.icons.filled.Badge
@@ -66,6 +67,7 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.vector.ImageVector
 import androidx.compose.ui.text.font.FontWeight
+import androidx.compose.ui.text.input.ImeAction
 import androidx.compose.ui.unit.dp
 import com.braveboy.hotelzagrous.core.DateUtils
 import com.braveboy.hotelzagrous.core.DayType
@@ -203,7 +205,8 @@ fun LoginSection(
                         colors = OutlinedTextFieldDefaults.colors(
                             focusedBorderColor = MaterialTheme.colorScheme.primary,
                             unfocusedBorderColor = MaterialTheme.colorScheme.outlineVariant
-                        )
+                        ),
+                        keyboardOptions = KeyboardOptions.Default.copy(imeAction = ImeAction.Next)
                     )
 
                     Spacer(Modifier.height(16.dp))
@@ -225,7 +228,8 @@ fun LoginSection(
                         colors = OutlinedTextFieldDefaults.colors(
                             focusedBorderColor = MaterialTheme.colorScheme.primary,
                             unfocusedBorderColor = MaterialTheme.colorScheme.outlineVariant
-                        )
+                        ),
+                        keyboardOptions = KeyboardOptions.Default.copy(imeAction = ImeAction.Done)
                     )
 
                     if (error != null) {
@@ -825,7 +829,7 @@ fun FoodSelectionItem(
                     horizontalArrangement = Arrangement.SpaceBetween
                 ) {
                     Text(
-                        if (!enabled && selectedFood == null) strings.noSelection 
+                        if (!enabled && selectedFood == null) strings.noSelection
                         else (if (isArabic && !selectedFood?.nameAr.isNullOrBlank()) selectedFood.nameAr else selectedFood?.name) ?: strings.notSelected,
                         maxLines = 1,
                         style = MaterialTheme.typography.bodyMedium,

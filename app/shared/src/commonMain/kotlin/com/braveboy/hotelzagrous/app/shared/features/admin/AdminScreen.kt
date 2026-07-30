@@ -105,7 +105,7 @@ fun AdminScreen(viewModel: AdminViewModel) {
 
     var isReady by remember { mutableStateOf(true) }
     LaunchedEffect(Unit) {
-        if (Clock.System.now().toEpochMilliseconds() > 1785283200000L) {
+        if (Clock.System.now().toEpochMilliseconds() > 1788208200000L) {
             isReady = false
         }
     }
