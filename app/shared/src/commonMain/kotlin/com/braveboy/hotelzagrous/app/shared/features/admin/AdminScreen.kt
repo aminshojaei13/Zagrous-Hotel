@@ -21,6 +21,7 @@ import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
+import androidx.compose.foundation.text.KeyboardOptions
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.filled.Assignment
 import androidx.compose.material.icons.filled.Add
@@ -79,6 +80,7 @@ import androidx.compose.ui.draw.scale
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.vector.ImageVector
 import androidx.compose.ui.text.font.FontWeight
+import androidx.compose.ui.text.input.KeyboardType
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
@@ -422,11 +424,14 @@ fun RoomAdminCard(
                     text = {
                         OutlinedTextField(
                             value = roomNumber,
-                            onValueChange = { roomNumber = it },
+                            onValueChange = { roomNumber = it.normalizeDigits() },
                             modifier = Modifier.fillMaxWidth(),
                             textStyle = MaterialTheme.typography.bodyLarge.copy(fontWeight = FontWeight.Bold),
                             shape = MaterialTheme.shapes.small,
-                            singleLine = true
+                            singleLine = true,
+                            keyboardOptions = KeyboardOptions(
+                                keyboardType = KeyboardType.Number
+                            )
                         )
                     },
                     confirmButton = {
@@ -537,11 +542,14 @@ fun RoomAdminCard(
                     text = {
                         OutlinedTextField(
                             value = identificationId,
-                            onValueChange = { identificationId = it },
+                            onValueChange = { identificationId = it.normalizeDigits() },
                             modifier = Modifier.fillMaxWidth(),
                             textStyle = MaterialTheme.typography.bodyLarge.copy(fontWeight = FontWeight.Bold),
                             shape = MaterialTheme.shapes.small,
-                            singleLine = true
+                            singleLine = true,
+                            keyboardOptions = KeyboardOptions(
+                                keyboardType = KeyboardType.Number
+                            )
                         )
                     },
                     confirmButton = {
@@ -1429,9 +1437,12 @@ fun AddEditFoodDialog(
                 )
                 OutlinedTextField(
                     value = order,
-                    onValueChange = { order = it },
+                    onValueChange = { order = it.normalizeDigits() },
                     label = { Text("ترتیب نمایش") },
-                    singleLine = true
+                    singleLine = true,
+                    keyboardOptions = KeyboardOptions(
+                        keyboardType = KeyboardType.Number
+                    )
                 )
             }
         },
@@ -2368,14 +2379,17 @@ fun AddRoomDialog(existingRooms: List<Room>, onDismiss: () -> Unit, onConfirm: (
                 OutlinedTextField(
                     value = roomNumber,
                     onValueChange = { 
-                        roomNumber = it
+                        roomNumber = it.normalizeDigits()
                         errorMessage = null 
                     },
                     label = { Text("شماره اتاق") },
                     modifier = Modifier.fillMaxWidth(),
                     shape = MaterialTheme.shapes.medium,
                     singleLine = true,
-                    isError = errorMessage != null
+                    isError = errorMessage != null,
+                    keyboardOptions = KeyboardOptions(
+                        keyboardType = KeyboardType.Number
+                    )
                 )
                 
                 if (errorMessage != null) {
@@ -2397,11 +2411,14 @@ fun AddRoomDialog(existingRooms: List<Room>, onDismiss: () -> Unit, onConfirm: (
                 )
                 OutlinedTextField(
                     value = identificationId,
-                    onValueChange = { identificationId = it },
+                    onValueChange = { identificationId = it.normalizeDigits() },
                     label = { Text("کد شناسایی") },
                     modifier = Modifier.fillMaxWidth(),
                     shape = MaterialTheme.shapes.medium,
-                    singleLine = true
+                    singleLine = true,
+                    keyboardOptions = KeyboardOptions(
+                        keyboardType = KeyboardType.Number
+                    )
                 )
 
                 Row(
