@@ -762,6 +762,16 @@ fun RoomAdminCard(
 
 @Composable
 fun RoomManagementContent(state: AdminState, viewModel: AdminViewModel) {
+    val filteredRooms = remember(state.rooms) {
+        state.rooms.filter {
+            it.checkOutEpochMillis >= Clock.System.now().toEpochMilliseconds()
+        }.sortedBy { it.roomNumber }
+            .sortedBy {
+                val num = it.roomNumber.normalizeDigits().filter { c -> c.isDigit() }
+                if (num.length >= 2) num[1] else ' '
+            }
+    }
+
     Column(modifier = Modifier.fillMaxSize().padding(16.dp)) {
         Row(
             modifier = Modifier.fillMaxWidth().padding(bottom = 16.dp),
@@ -775,82 +785,96 @@ fun RoomManagementContent(state: AdminState, viewModel: AdminViewModel) {
                 maxLines = 1,
                 overflow = TextOverflow.Ellipsis
             )
-            state.rooms.filter {
-                it.checkOutEpochMillis > Clock.System.now().toEpochMilliseconds()
-            }.let {
-                Surface(
-                    color = MaterialTheme.colorScheme.primary.copy(alpha = 0.1f),
-                    shape = CircleShape
-                ) {
-                    Text(
-                        "${it.size} اتاق",
-                        modifier = Modifier.padding(horizontal = 10.dp, vertical = 2.dp),
-                        style = MaterialTheme.typography.labelMedium,
-                        color = MaterialTheme.colorScheme.primary,
-                        fontWeight = FontWeight.Bold
-                    )
-                }
+            Surface(
+                color = MaterialTheme.colorScheme.primary.copy(alpha = 0.1f),
+                shape = CircleShape
+            ) {
+                Text(
+                    "${filteredRooms.size} اتاق",
+                    modifier = Modifier.padding(horizontal = 10.dp, vertical = 2.dp),
+                    style = MaterialTheme.typography.labelMedium,
+                    color = MaterialTheme.colorScheme.primary,
+                    fontWeight = FontWeight.Bold
+                )
             }
         }
         LazyColumn(
             modifier = Modifier.fillMaxSize(),
             verticalArrangement = Arrangement.spacedBy(10.dp)
         ) {
-            items(items = state.rooms.filter {
-                it.checkOutEpochMillis >= Clock.System.now().toEpochMilliseconds()
-            }, key = { it.id.ifBlank { "active_${it.roomNumber}_${it.checkInEpochMillis}" } }) { room ->
-                RoomAdminCard(
-                    room = room,
-                    availableFoods = state.foods,
-                    reservations = state.reservations,
-                    onUpdate = { rNum, name, idId, inD, outD, inM, outM, count, hasB, bCount ->
-                        val effectiveId = room.id.ifBlank { room.roomNumber }
-                        println("id s is $effectiveId")
-                        viewModel.onIntent(
-                            AdminIntent.UpdateRoomStay(
-                                id = effectiveId,
-                                roomNumber = rNum,
-                                guestName = name,
-                                identificationId = idId,
-                                checkIn = inD,
-                                checkOut = outD,
-                                checkInMillis = inM,
-                                checkOutMillis = outM,
-                                guestCount = count,
-                                hasBreakfast = hasB,
-                                breakfastCount = bCount
+            filteredRooms.forEachIndexed { index, room ->
+                if (index > 0) {
+                    val prevRoom = filteredRooms[index - 1]
+                    val currentNum = room.roomNumber.normalizeDigits().filter { it.isDigit() }
+                    val prevNum = prevRoom.roomNumber.normalizeDigits().filter { it.isDigit() }
+                    val currentMiddle = if (currentNum.length >= 2) currentNum[1] else null
+                    val prevMiddle = if (prevNum.length >= 2) prevNum[1] else null
+
+                    if (currentMiddle != prevMiddle) {
+                        item {
+                            HorizontalDivider(
+                                modifier = Modifier.padding(vertical = 8.dp),
+                                color = MaterialTheme.colorScheme.primary.copy(alpha = 0.3f),
+                                thickness = 2.dp
                             )
-                        )
-                    },
-                    onFoodChange = { d, idx, fId, fType ->
-                        viewModel.onIntent(
-                            AdminIntent.ChangeFood(
-                                room.roomNumber,
-                                d,
-                                idx,
-                                fId,
-                                fType
-                            )
-                        )
-                    },
-                    onBreakfastChange = { d, count ->
-                        viewModel.onIntent(
-                            AdminIntent.ChangeBreakfastCount(
-                                room.roomNumber,
-                                d,
-                                count
-                            )
-                        )
-                    },
-                    onDelete = {
-                        val effectiveId = room.id.ifBlank { room.roomNumber }
-                        viewModel.onIntent(
-                            AdminIntent.DeleteRoom(
-                                id = effectiveId
-                            )
-                        )
+                        }
                     }
-                )
+                }
+
+                item(key = room.id.ifBlank { "active_${room.roomNumber}_${room.checkInEpochMillis}" }) {
+                    RoomAdminCard(
+                        room = room,
+                        availableFoods = state.foods,
+                        reservations = state.reservations,
+                        onUpdate = { rNum, name, idId, inD, outD, inM, outM, count, hasB, bCount ->
+                            val effectiveId = room.id.ifBlank { room.roomNumber }
+                            println("id s is $effectiveId")
+                            viewModel.onIntent(
+                                AdminIntent.UpdateRoomStay(
+                                    id = effectiveId,
+                                    roomNumber = rNum,
+                                    guestName = name,
+                                    identificationId = idId,
+                                    checkIn = inD,
+                                    checkOut = outD,
+                                    checkInMillis = inM,
+                                    checkOutMillis = outM,
+                                    guestCount = count,
+                                    hasBreakfast = hasB,
+                                    breakfastCount = bCount
+                                )
+                            )
+                        },
+                        onFoodChange = { d, idx, fId, fType ->
+                            viewModel.onIntent(
+                                AdminIntent.ChangeFood(
+                                    room.roomNumber,
+                                    d,
+                                    idx,
+                                    fId,
+                                    fType
+                                )
+                            )
+                        },
+                        onBreakfastChange = { d, count ->
+                            viewModel.onIntent(
+                                AdminIntent.ChangeBreakfastCount(
+                                    room.roomNumber,
+                                    d,
+                                    count
+                                )
+                            )
+                        },
+                        onDelete = {
+                            val effectiveId = room.id.ifBlank { room.roomNumber }
+                            viewModel.onIntent(
+                                AdminIntent.DeleteRoom(
+                                    id = effectiveId
+                                )
+                            )
+                        }
+                    )
+                }
             }
         }
     }
