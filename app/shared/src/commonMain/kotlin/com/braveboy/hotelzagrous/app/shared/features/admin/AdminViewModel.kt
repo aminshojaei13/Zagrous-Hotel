@@ -117,7 +117,7 @@ class AdminViewModel(
     private fun updateRoom(intent: AdminIntent.UpdateRoomStay) {
         scope.launch(Dispatchers.Main) {
             runCatching {
-                println("id  vm is ${intent.id}")
+                println("id vm is ${intent.id}")
                 repository.updateRoomStay(
                     intent.id,
                     intent.roomNumber,
@@ -340,6 +340,7 @@ class AdminViewModel(
         val reservations =
             state.value.reservations.filter { it.date == date }.sortedBy { it.roomNumber }
         val foodMap = state.value.foods.associateBy { it.id }
+        val roomMap = state.value.rooms.associateBy { it.roomNumber }
 
         if (reservations.isEmpty()) return
 
@@ -380,6 +381,7 @@ class AdminViewModel(
             append("<thead><tr>")
             append("<th style='width: 40px;'>ردیف</th>")
             append("<th style='width: 70px;'>اتاق</th>")
+            append("<th style='width: 150px;'>نام مهمان</th>")
             append("<th style='width: 50px;'>تعداد</th>")
             columnFoods.forEach { food ->
                 append("<th class='food-header'>${food.name}</th>")
@@ -406,6 +408,7 @@ class AdminViewModel(
                 append("<tr>")
                 append("<td>${rowIndex++}</td>")
                 append("<td>${res.roomNumber}</td>")
+                append("<td>${roomMap[res.roomNumber]?.guestName ?: "-"}</td>")
                 append("<td>${roomFoodIds.size}</td>")
                 totalCountSum += roomFoodIds.size
 
@@ -419,7 +422,7 @@ class AdminViewModel(
             append("</tbody>")
 
             append("<tfoot><tr class='total-row'>")
-            append("<td colspan='2'>جمع کل</td>")
+            append("<td colspan='3'>جمع کل</td>")
             append("<td>$totalCountSum</td>")
             columnTotals.forEach { total ->
                 append("<td>$total</td>")

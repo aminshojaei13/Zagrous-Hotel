@@ -206,7 +206,10 @@ fun LoginSection(
                             focusedBorderColor = MaterialTheme.colorScheme.primary,
                             unfocusedBorderColor = MaterialTheme.colorScheme.outlineVariant
                         ),
-                        keyboardOptions = KeyboardOptions.Default.copy(imeAction = ImeAction.Next)
+                        keyboardOptions = KeyboardOptions.Default.copy(
+                            imeAction = ImeAction.Next,
+                            keyboardType = androidx.compose.ui.text.input.KeyboardType.Number
+                        )
                     )
 
                     Spacer(Modifier.height(16.dp))
@@ -245,7 +248,7 @@ fun LoginSection(
                             )
                             Spacer(Modifier.width(8.dp))
                             Text(
-                                error,
+                                strings.getErrorMessage(error) ?: "",
                                 color = MaterialTheme.colorScheme.error,
                                 style = MaterialTheme.typography.bodySmall
                             )
@@ -477,13 +480,13 @@ fun UserDashboard(state: ReservationState, viewModel: ReservationViewModel, stri
                 Spacer(Modifier.height(24.dp))
                 if (state.error != null) {
                     Surface(
-                        color = MaterialTheme.colorScheme.errorContainer,
+                        color = if (state.error == "reservation_success") MaterialTheme.colorScheme.primaryContainer else MaterialTheme.colorScheme.errorContainer,
                         shape = MaterialTheme.shapes.medium,
                         modifier = Modifier.fillMaxWidth().padding(bottom = 16.dp)
                     ) {
                         Text(
-                            state.error,
-                            color = MaterialTheme.colorScheme.onErrorContainer,
+                            strings.getErrorMessage(state.error) ?: "",
+                            color = if (state.error == "reservation_success") MaterialTheme.colorScheme.onPrimaryContainer else MaterialTheme.colorScheme.onErrorContainer,
                             modifier = Modifier.padding(16.dp),
                             style = MaterialTheme.typography.bodyMedium
                         )
@@ -568,11 +571,21 @@ fun FoodCard(
 
             Spacer(Modifier.height(20.dp))
 
+            val sixHours = 6 * 60 * 60 * 1000L
+            val twelveHours = 12 * 60 * 60 * 1000L
+            val isLunchTimeLocked =
+                (DateUtils.convertDateToTimeMillis(date) - Clock.System.now()
+                    .toEpochMilliseconds()) <= sixHours
+            val isDinnerTimeLocked =
+                ((DateUtils.convertDateToTimeMillis(date) + twelveHours) - Clock.System.now()
+                    .toEpochMilliseconds()) <= 0
+
             // Daily Breakfast Selection
             DailyBreakfastRow(
                 reservation = reservation,
                 guestCount = guestCount,
                 strings = strings,
+                enabled = !isLunchTimeLocked,
                 onCountChange = { viewModel.onIntent(ReservationIntent.ChangeBreakfastCount(date, it)) }
             )
 
@@ -622,15 +635,6 @@ fun FoodCard(
                         val dinnerEnabled =
                             state.menuConfigs.find { it.dayType == dayType && it.foodType == FoodType.DINNER }?.isEnabled
                                 ?: true
-
-                        val sixHours = 6 * 60 * 60 * 1000L
-                        val twelveHours = 12 * 60 * 60 * 1000L
-                        val isLunchTimeLocked =
-                            (DateUtils.convertDateToTimeMillis(date) - Clock.System.now()
-                                .toEpochMilliseconds()) <= sixHours
-                        val isDinnerTimeLocked =
-                            ((DateUtils.convertDateToTimeMillis(date) + twelveHours) - Clock.System.now()
-                                .toEpochMilliseconds()) <= 0
 
                         FoodSelectionItem(
                             modifier = Modifier.weight(1f),
@@ -691,6 +695,7 @@ fun DailyBreakfastRow(
     reservation: FoodReservation?,
     guestCount: Int,
     strings: AppStrings,
+    enabled: Boolean = true,
     onCountChange: (Int) -> Unit
 ) {
     var expanded by remember { mutableStateOf(false) }
@@ -734,9 +739,10 @@ fun DailyBreakfastRow(
 
         Box {
             Surface(
+                enabled = enabled,
                 onClick = { expanded = true },
                 shape = MaterialTheme.shapes.medium,
-                color = if (currentCount > 0) MaterialTheme.colorScheme.primary else MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.5f),
+                color = if (!enabled) MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.3F) else if (currentCount > 0) MaterialTheme.colorScheme.primary else MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.5f),
                 border = BorderStroke(1.dp, if (currentCount > 0) MaterialTheme.colorScheme.primary else MaterialTheme.colorScheme.outlineVariant)
             ) {
                 Row(
@@ -744,33 +750,37 @@ fun DailyBreakfastRow(
                     verticalAlignment = Alignment.CenterVertically
                 ) {
                     Text(
-                        text = if (currentCount == 0) strings.noBreakfast else strings.personLabel(currentCount),
+                        text = if (!enabled && currentCount == 0) strings.noSelection else if (currentCount == 0) strings.noBreakfast else strings.personLabel(currentCount),
                         style = MaterialTheme.typography.bodyMedium,
                         fontWeight = FontWeight.Bold,
-                        color = if (currentCount > 0) MaterialTheme.colorScheme.onPrimary else MaterialTheme.colorScheme.onSurfaceVariant
+                        color = if (!enabled) MaterialTheme.colorScheme.outline else if (currentCount > 0) MaterialTheme.colorScheme.onPrimary else MaterialTheme.colorScheme.onSurfaceVariant
                     )
-                    Spacer(Modifier.width(4.dp))
-                    Icon(
-                        Icons.Default.ArrowDropDown,
-                        null,
-                        tint = if (currentCount > 0) MaterialTheme.colorScheme.onPrimary else MaterialTheme.colorScheme.outline,
-                        modifier = Modifier.size(18.dp)
-                    )
+                    if (enabled) {
+                        Spacer(Modifier.width(4.dp))
+                        Icon(
+                            Icons.Default.ArrowDropDown,
+                            null,
+                            tint = if (currentCount > 0) MaterialTheme.colorScheme.onPrimary else MaterialTheme.colorScheme.outline,
+                            modifier = Modifier.size(18.dp)
+                        )
+                    }
                 }
             }
 
-            DropdownMenu(expanded = expanded, onDismissRequest = { expanded = false }) {
-                DropdownMenuItem(
-                    text = { Text(strings.noBreakfast) },
-                    onClick = { onCountChange(0); expanded = false },
-                    leadingIcon = { Icon(Icons.Default.Block, null, modifier = Modifier.size(18.dp)) }
-                )
-                (1..guestCount).forEach { num ->
+            if (enabled) {
+                DropdownMenu(expanded = expanded, onDismissRequest = { expanded = false }) {
                     DropdownMenuItem(
-                        text = { Text(strings.personLabel(num)) },
-                        onClick = { onCountChange(num); expanded = false },
-                        trailingIcon = { if (currentCount == num) Icon(Icons.Default.Check, null, tint = MaterialTheme.colorScheme.primary) }
+                        text = { Text(strings.noBreakfast) },
+                        onClick = { onCountChange(0); expanded = false },
+                        leadingIcon = { Icon(Icons.Default.Block, null, modifier = Modifier.size(18.dp)) }
                     )
+                    (1..guestCount).forEach { num ->
+                        DropdownMenuItem(
+                            text = { Text(strings.personLabel(num)) },
+                            onClick = { onCountChange(num); expanded = false },
+                            trailingIcon = { if (currentCount == num) Icon(Icons.Default.Check, null, tint = MaterialTheme.colorScheme.primary) }
+                        )
+                    }
                 }
             }
         }
@@ -932,6 +942,7 @@ interface AppStrings {
     val notSelected: String
     val switchLanguage: String
     val reservationDeadlineInfo: String
+    fun getErrorMessage(key: String?): String?
 }
 
 object FarsiStrings : AppStrings {
@@ -960,7 +971,19 @@ object FarsiStrings : AppStrings {
     override val noSelection = "عدم انتخاب (هیچکدام)"
     override val notSelected = "انتخاب نشده"
     override val switchLanguage = "تغییر زبان"
-    override val reservationDeadlineInfo = "توجه: امکان انتخاب یا تغییر ناهار تا ساعت ۱۸ روز قبل و شام تا ساعت ۱۲ همان روز میسر است."
+    override val reservationDeadlineInfo = "توجه: امکان انتخاب یا تغییر ناهار و صبحانه تا ساعت ۱۸ روز قبل و شام تا ساعت ۱۲ همان روز میسر است."
+
+    override fun getErrorMessage(key: String?): String? {
+        return when (key) {
+            "error_fill_fields" -> "لطفاً تمامی فیلدها را پر کنید"
+            "error_id_mismatch" -> "شماره شناسایی وارد شده با شماره اتاق مطابقت ندارد"
+            "error_room_not_found" -> "اتاقی با این شماره یافت نشد"
+            "error_connection" -> "خطا در برقراری ارتباط با سرور"
+            "reservation_success" -> "رزرو با موفقیت ثبت شد"
+            "reservation_failed" -> "خطا در ثبت رزرو"
+            else -> key
+        }
+    }
 }
 
 object ArabicStrings : AppStrings {
@@ -989,5 +1012,17 @@ object ArabicStrings : AppStrings {
     override val noSelection = "عدم الاختيار (لا شيء)"
     override val notSelected = "لم يتم الاختيار"
     override val switchLanguage = "تغيير اللغة"
-    override val reservationDeadlineInfo = "تنبيه: يمكن اختيار أو تغییر وجبة الغداء حتى الساعة 6 مساءً من اليوم السابق، ووجبة العشاء حتى الساعة 12 ظهراً من نفس اليوم."
+    override val reservationDeadlineInfo = "تنبيه: يمكن اختيار أو تغییر وجبتي الغداء والإفطار حتى الساعة 6 مساءً من اليوم السابق، ووجبة العشاء حتى الساعة 12 ظهراً من نفس اليوم."
+
+    override fun getErrorMessage(key: String?): String? {
+        return when (key) {
+            "error_fill_fields" -> "يرجى ملء جميع الحقول"
+            "error_id_mismatch" -> "رقم الهوية لا يتطابق مع رقم الغرفة"
+            "error_room_not_found" -> "لم يتم العثور على غرفة بهذا الرقم"
+            "error_connection" -> "خطأ في الاتصال بالخادم"
+            "reservation_success" -> "تم الحجز بنجاح"
+            "reservation_failed" -> "فشل في تسجيل الحجز"
+            else -> key
+        }
+    }
 }
