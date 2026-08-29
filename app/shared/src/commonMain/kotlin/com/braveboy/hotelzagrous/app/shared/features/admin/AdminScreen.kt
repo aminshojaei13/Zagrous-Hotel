@@ -23,6 +23,8 @@ import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.text.KeyboardOptions
 import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.automirrored.filled.ArrowBack
+import androidx.compose.material.icons.automirrored.filled.ArrowForward
 import androidx.compose.material.icons.automirrored.filled.Assignment
 import androidx.compose.material.icons.filled.Add
 import androidx.compose.material.icons.filled.ArrowDropDown
@@ -95,6 +97,9 @@ import com.braveboy.hotelzagrous.core.GuestMealSelection
 import com.braveboy.hotelzagrous.core.MenuConfig
 import com.braveboy.hotelzagrous.core.Room
 import com.braveboy.hotelzagrous.core.normalizeDigits
+import hotelzagrous.app.shared.generated.resources.Res
+import hotelzagrous.app.shared.generated.resources.logo
+import org.jetbrains.compose.resources.painterResource
 import kotlin.time.Clock
 import androidx.compose.material.icons.filled.DarkMode
 import androidx.compose.material.icons.filled.LightMode
@@ -142,18 +147,11 @@ fun AdminScreen(
                     verticalAlignment = Alignment.CenterVertically,
                     modifier = Modifier.padding(bottom = 24.dp, start = 8.dp)
                 ) {
-                    Surface(
-                        modifier = Modifier.size(32.dp),
-                        color = MaterialTheme.colorScheme.primary,
-                        shape = CircleShape
-                    ) {
-                        Icon(
-                            Icons.Default.Hotel,
-                            contentDescription = null,
-                            tint = Color.White,
-                            modifier = Modifier.padding(6.dp)
-                        )
-                    }
+                    androidx.compose.foundation.Image(
+                        painter = painterResource(Res.drawable.logo),
+                        contentDescription = null,
+                        modifier = Modifier.size(40.dp)
+                    )
                     Spacer(Modifier.width(10.dp))
                     Text(
                         text = "هتل زاگرس",
@@ -2589,164 +2587,229 @@ fun DatePickerField(
 fun RoomHistoryContent(
     state: AdminState,
 ) {
+    val historyRooms = remember(state.rooms) {
+        state.rooms.filter {
+            it.checkOutEpochMillis < Clock.System.now().toEpochMilliseconds()
+        }.sortedByDescending { it.checkInEpochMillis }
+    }
+
+    val today = remember { DateUtils.convertMillisToJalaliString(Clock.System.now().toEpochMilliseconds()) }
+    var selectedYearMonth by remember {
+        mutableStateOf(
+            if (historyRooms.isNotEmpty()) historyRooms.first().checkInDate.substring(0, 7)
+            else today.substring(0, 7)
+        )
+    }
+
+    val filteredRooms = remember(historyRooms, selectedYearMonth) {
+        historyRooms.filter { it.checkInDate.startsWith(selectedYearMonth) }
+    }
+
+    val monthNames = remember { DateUtils.getJalaliMonthNames() }
+
+    val displayTitle = try {
+        val parts = selectedYearMonth.split("/")
+        if (parts.size == 2) {
+            val year = parts[0]
+            val monthIdx = parts[1].toIntOrNull()?.minus(1) ?: -1
+            if (monthIdx in 0..11) "${monthNames[monthIdx]} $year" else selectedYearMonth
+        } else selectedYearMonth
+    } catch (e: Exception) {
+        selectedYearMonth
+    }
+
     Column(modifier = Modifier.fillMaxSize().padding(16.dp)) {
         Row(
             modifier = Modifier.fillMaxWidth().padding(bottom = 16.dp),
             horizontalArrangement = Arrangement.SpaceBetween,
             verticalAlignment = Alignment.CenterVertically
         ) {
-            Text(
-                text = "تاریخچه اتاق‌های ثبت شده",
-                style = MaterialTheme.typography.titleLarge,
-                fontWeight = FontWeight.Bold,
-                maxLines = 1,
-                overflow = TextOverflow.Ellipsis
-            )
-            state.rooms.filter {
-                it.checkOutEpochMillis < Clock.System.now().toEpochMilliseconds()
-            }.let {
-                Surface(
-                    color = MaterialTheme.colorScheme.primary.copy(alpha = 0.1f),
-                    shape = CircleShape
-                ) {
-                    Text(
-                        "${it.size} اتاق",
-                        modifier = Modifier.padding(horizontal = 10.dp, vertical = 2.dp),
-                        style = MaterialTheme.typography.labelMedium,
-                        color = MaterialTheme.colorScheme.primary,
-                        fontWeight = FontWeight.Bold
-                    )
+            Row(verticalAlignment = Alignment.CenterVertically) {
+                IconButton(onClick = {
+                    val parts = selectedYearMonth.split("/")
+                    var y = parts[0].toInt()
+                    var m = parts[1].toInt()
+                    m--
+                    if (m < 1) { m = 12; y-- }
+                    selectedYearMonth = "$y/${m.toString().padStart(2, '0')}"
+                }) {
+                    Icon(Icons.AutoMirrored.Filled.ArrowBack, "ماه قبل")
+                }
+
+                Text(
+                    text = displayTitle,
+                    style = MaterialTheme.typography.titleLarge,
+                    fontWeight = FontWeight.ExtraBold,
+                    color = MaterialTheme.colorScheme.primary,
+                    modifier = Modifier.widthIn(min = 140.dp),
+                    textAlign = TextAlign.Center
+                )
+
+                IconButton(onClick = {
+                    val parts = selectedYearMonth.split("/")
+                    var y = parts[0].toInt()
+                    var m = parts[1].toInt()
+                    m++
+                    if (m > 12) { m = 1; y++ }
+                    selectedYearMonth = "$y/${m.toString().padStart(2, '0')}"
+                }) {
+                    Icon(Icons.AutoMirrored.Filled.ArrowForward, "ماه بعد")
                 }
             }
+
+            Surface(
+                color = MaterialTheme.colorScheme.primary.copy(alpha = 0.1f),
+                shape = CircleShape
+            ) {
+                Text(
+                    "${filteredRooms.size} اتاق",
+                    modifier = Modifier.padding(horizontal = 10.dp, vertical = 2.dp),
+                    style = MaterialTheme.typography.labelMedium,
+                    color = MaterialTheme.colorScheme.primary,
+                    fontWeight = FontWeight.Bold
+                )
+            }
         }
-        LazyColumn(
-            modifier = Modifier.fillMaxSize(),
-            verticalArrangement = Arrangement.spacedBy(10.dp)
-        ) {
-            items(items = state.rooms.filter {
-                it.checkOutEpochMillis < Clock.System.now().toEpochMilliseconds()
-            }, key = { it.id.ifBlank { "history_${it.roomNumber}_${it.checkInEpochMillis}" } })
-            { room ->
-                Surface(
-                    modifier = Modifier.fillMaxWidth(),
-                    shape = MaterialTheme.shapes.medium,
-                    color = MaterialTheme.colorScheme.surface,
-                    border = BorderStroke(1.dp, MaterialTheme.colorScheme.surfaceVariant)
-                ) {
-                    Row(
-                        modifier = Modifier.padding(12.dp),
-                        verticalAlignment = Alignment.CenterVertically
+
+        if (filteredRooms.isEmpty()) {
+            Box(Modifier.fillMaxSize(), contentAlignment = Alignment.Center) {
+                Text(
+                    "تاریخچه‌ای برای این ماه یافت نشد.",
+                    color = MaterialTheme.colorScheme.outline
+                )
+            }
+        } else {
+            LazyColumn(
+                modifier = Modifier.fillMaxSize(),
+                verticalArrangement = Arrangement.spacedBy(10.dp)
+            ) {
+                items(
+                    items = filteredRooms,
+                    key = { it.id.ifBlank { "history_${it.roomNumber}_${it.checkInEpochMillis}" } }
+                ) { room ->
+                    Surface(
+                        modifier = Modifier.fillMaxWidth(),
+                        shape = MaterialTheme.shapes.medium,
+                        color = MaterialTheme.colorScheme.surface,
+                        border = BorderStroke(1.dp, MaterialTheme.colorScheme.surfaceVariant)
                     ) {
-                        // Room
-                        Column(modifier = Modifier.width(55.dp)) {
-                            Text(
-                                text = "اتاق",
-                                style = MaterialTheme.typography.labelMedium,
-                                color = MaterialTheme.colorScheme.outline
-                            )
-                            Text(
-                                text = room.roomNumber,
-                                style = MaterialTheme.typography.titleLarge,
-                                fontWeight = FontWeight.ExtraBold,
-                                color = MaterialTheme.colorScheme.primary,
-                                maxLines = 1,
-                                overflow = TextOverflow.Ellipsis
-                            )
-                        }
-
-                        Column(modifier = Modifier.weight(1.2f)) {
-                            Text(
-                                text = "نام مهمان",
-                                style = MaterialTheme.typography.labelMedium,
-                                color = MaterialTheme.colorScheme.outline
-                            )
-                            Text(
-                                text = room.guestName,
-                                style = MaterialTheme.typography.bodyLarge,
-                                fontWeight = FontWeight.Bold,
-                                maxLines = 1,
-                                overflow = TextOverflow.Ellipsis
-                            )
-                        }
-
-                        Column(modifier = Modifier.weight(1f)) {
-                            Text(
-                                text = "شناسایی",
-                                style = MaterialTheme.typography.labelMedium,
-                                color = MaterialTheme.colorScheme.outline
-                            )
-                            Text(
-                                text = room.identificationId.ifBlank { "0" },
-                                style = MaterialTheme.typography.bodyLarge,
-                                fontWeight = FontWeight.Bold,
-                                maxLines = 1,
-                                overflow = TextOverflow.Ellipsis
-                            )
-                        }
-
-                        Spacer(Modifier.width(8.dp))
-
-                        // Guest Count
-                        Column(modifier = Modifier.width(75.dp)) {
-                            Text(
-                                text = "تعداد",
-                                style = MaterialTheme.typography.labelMedium,
-                                color = MaterialTheme.colorScheme.outline
-                            )
-                            Text(
-                                text = room.guestCount.toString(),
-                                style = MaterialTheme.typography.labelMedium,
-                                color = MaterialTheme.colorScheme.outline
-                            )
-                        }
-
-                        // Stay Period
-                        Column(modifier = Modifier.weight(1.4f)) {
-                            Text(
-                                "بازه اقامت",
-                                style = MaterialTheme.typography.labelMedium,
-                                color = MaterialTheme.colorScheme.outline
-                            )
-                            Row(verticalAlignment = Alignment.CenterVertically) {
+                        Row(
+                            modifier = Modifier.padding(12.dp),
+                            verticalAlignment = Alignment.CenterVertically
+                        ) {
+                            // Room
+                            Column(modifier = Modifier.width(55.dp)) {
                                 Text(
-                                    text = room.checkInDate,
-                                    style = MaterialTheme.typography.bodyMedium,
-                                    color = MaterialTheme.colorScheme.outline,
-                                    modifier = Modifier.padding(horizontal = 2.dp)
+                                    text = "اتاق",
+                                    style = MaterialTheme.typography.labelMedium,
+                                    color = MaterialTheme.colorScheme.outline
                                 )
                                 Text(
-                                    text = "-",
-                                    style = MaterialTheme.typography.bodyMedium,
-                                    color = MaterialTheme.colorScheme.outline,
-                                    modifier = Modifier.padding(horizontal = 2.dp)
-                                )
-                                Text(
-                                    text = room.checkOutDate,
-                                    style = MaterialTheme.typography.bodyMedium,
-                                    color = MaterialTheme.colorScheme.outline,
-                                    modifier = Modifier.padding(horizontal = 2.dp)
+                                    text = room.roomNumber,
+                                    style = MaterialTheme.typography.titleLarge,
+                                    fontWeight = FontWeight.ExtraBold,
+                                    color = MaterialTheme.colorScheme.primary,
+                                    maxLines = 1,
+                                    overflow = TextOverflow.Ellipsis
                                 )
                             }
-                        }
 
-                        Column(modifier = Modifier.weight(1.4f)) {
-                            val roomReservations =
-                                state.reservations.filter { it.roomNumber == room.roomNumber }
-                            val totalLunch = roomReservations.flatMap { it.guestMealSelections }
-                                .count { it.lunchDelivered }
-                            val totalDinner = roomReservations.flatMap { it.guestMealSelections }
-                                .count { it.dinnerDelivered }
+                            Column(modifier = Modifier.weight(1.2f)) {
+                                Text(
+                                    text = "نام مهمان",
+                                    style = MaterialTheme.typography.labelMedium,
+                                    color = MaterialTheme.colorScheme.outline
+                                )
+                                Text(
+                                    text = room.guestName,
+                                    style = MaterialTheme.typography.bodyLarge,
+                                    fontWeight = FontWeight.Bold,
+                                    maxLines = 1,
+                                    overflow = TextOverflow.Ellipsis
+                                )
+                            }
 
-                            Text(
-                                "ناهار: $totalLunch",
-                                style = MaterialTheme.typography.labelMedium,
-                                color = MaterialTheme.colorScheme.outline
-                            )
-                            Text(
-                                "شام: $totalDinner",
-                                style = MaterialTheme.typography.labelMedium,
-                                color = MaterialTheme.colorScheme.outline
-                            )
+                            Column(modifier = Modifier.weight(1f)) {
+                                Text(
+                                    text = "شناسایی",
+                                    style = MaterialTheme.typography.labelMedium,
+                                    color = MaterialTheme.colorScheme.outline
+                                )
+                                Text(
+                                    text = room.identificationId.ifBlank { "0" },
+                                    style = MaterialTheme.typography.bodyLarge,
+                                    fontWeight = FontWeight.Bold,
+                                    maxLines = 1,
+                                    overflow = TextOverflow.Ellipsis
+                                )
+                            }
+
+                            Spacer(Modifier.width(8.dp))
+
+                            // Guest Count
+                            Column(modifier = Modifier.width(75.dp)) {
+                                Text(
+                                    text = "تعداد",
+                                    style = MaterialTheme.typography.labelMedium,
+                                    color = MaterialTheme.colorScheme.outline
+                                )
+                                Text(
+                                    text = "${room.guestCount} نفر",
+                                    style = MaterialTheme.typography.bodyMedium,
+                                    fontWeight = FontWeight.Bold
+                                )
+                            }
+
+                            // Stay Period
+                            Column(modifier = Modifier.weight(1.4f)) {
+                                Text(
+                                    "بازه اقامت",
+                                    style = MaterialTheme.typography.labelMedium,
+                                    color = MaterialTheme.colorScheme.outline
+                                )
+                                Row(verticalAlignment = Alignment.CenterVertically) {
+                                    Text(
+                                        text = room.checkInDate,
+                                        style = MaterialTheme.typography.bodyMedium,
+                                        fontWeight = FontWeight.Bold,
+                                        modifier = Modifier.padding(horizontal = 2.dp)
+                                    )
+                                    Text(
+                                        text = "-",
+                                        style = MaterialTheme.typography.bodyMedium,
+                                        color = MaterialTheme.colorScheme.outline,
+                                        modifier = Modifier.padding(horizontal = 2.dp)
+                                    )
+                                    Text(
+                                        text = room.checkOutDate,
+                                        style = MaterialTheme.typography.bodyMedium,
+                                        fontWeight = FontWeight.Bold,
+                                        modifier = Modifier.padding(horizontal = 2.dp)
+                                    )
+                                }
+                            }
+
+                            Column(modifier = Modifier.weight(1f)) {
+                                val roomReservations =
+                                    state.reservations.filter { it.roomNumber == room.roomNumber }
+                                val totalLunch = roomReservations.flatMap { it.guestMealSelections }
+                                    .count { it.lunchDelivered }
+                                val totalDinner = roomReservations.flatMap { it.guestMealSelections }
+                                    .count { it.dinnerDelivered }
+
+                                Text(
+                                    "ناهار: $totalLunch",
+                                    style = MaterialTheme.typography.labelSmall,
+                                    color = MaterialTheme.colorScheme.secondary,
+                                    fontWeight = FontWeight.Bold
+                                )
+                                Text(
+                                    "شام: $totalDinner",
+                                    style = MaterialTheme.typography.labelSmall,
+                                    color = MaterialTheme.colorScheme.secondary,
+                                    fontWeight = FontWeight.Bold
+                                )
+                            }
                         }
                     }
                 }

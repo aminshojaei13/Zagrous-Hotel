@@ -77,6 +77,9 @@ import com.braveboy.hotelzagrous.core.DayType
 import com.braveboy.hotelzagrous.core.FoodItem
 import com.braveboy.hotelzagrous.core.FoodReservation
 import com.braveboy.hotelzagrous.core.FoodType
+import hotelzagrous.app.shared.generated.resources.Res
+import hotelzagrous.app.shared.generated.resources.logo
+import org.jetbrains.compose.resources.painterResource
 import kotlin.time.Clock
 
 @Composable
@@ -179,16 +182,15 @@ fun LoginSection(
                     horizontalAlignment = Alignment.CenterHorizontally
                 ) {
                     Surface(
-                        modifier = Modifier.size(80.dp),
-                        color = MaterialTheme.colorScheme.primaryContainer,
+                        modifier = Modifier.size(100.dp),
+                        color = Color.Transparent,
                         shape = CircleShape
                     ) {
                         Box(contentAlignment = Alignment.Center) {
-                            Icon(
-                                imageVector = Icons.Default.Hotel,
+                            androidx.compose.foundation.Image(
+                                painter = painterResource(Res.drawable.logo),
                                 contentDescription = null,
-                                tint = MaterialTheme.colorScheme.primary,
-                                modifier = Modifier.size(40.dp)
+                                modifier = Modifier.fillMaxSize()
                             )
                         }
                     }
@@ -343,17 +345,25 @@ fun UserDashboard(
         topBar = {
             TopAppBar(
                 title = {
-                    Column {
-                        Text(
-                            strings.guestPanel,
-                            style = MaterialTheme.typography.titleLarge,
-                            fontWeight = FontWeight.ExtraBold
+                    Row(verticalAlignment = Alignment.CenterVertically) {
+                        androidx.compose.foundation.Image(
+                            painter = painterResource(Res.drawable.logo),
+                            contentDescription = null,
+                            modifier = Modifier.size(32.dp)
                         )
-                        Text(
-                            strings.hotelName,
-                            style = MaterialTheme.typography.labelMedium,
-                            color = MaterialTheme.colorScheme.onSurfaceVariant
-                        )
+                        Spacer(Modifier.width(8.dp))
+                        Column {
+                            Text(
+                                strings.guestPanel,
+                                style = MaterialTheme.typography.titleLarge,
+                                fontWeight = FontWeight.ExtraBold
+                            )
+                            Text(
+                                strings.hotelName,
+                                style = MaterialTheme.typography.labelMedium,
+                                color = MaterialTheme.colorScheme.onSurfaceVariant
+                            )
+                        }
                     }
                 },
                 actions = {
