@@ -22,6 +22,8 @@ fun App(isAdmin: Boolean = false) {
     val repository = remember { HotelRepository() }
     val scope = rememberCoroutineScope()
     
+    var isDarkMode by remember { mutableStateOf(false) }
+
     val farsiFontFamily = FontFamily(Font(Res.font.BHoma))
 
     val defaultTypography = Typography()
@@ -43,7 +45,7 @@ fun App(isAdmin: Boolean = false) {
         labelSmall = defaultTypography.labelSmall.copy(fontFamily = farsiFontFamily)
     )
 
-    HotelZagrousTheme(typography = typography) {
+    HotelZagrousTheme(darkTheme = isDarkMode, typography = typography) {
         CompositionLocalProvider(LocalLayoutDirection provides LayoutDirection.Rtl) {
             Surface(
                 modifier = Modifier.fillMaxSize(),
@@ -51,10 +53,10 @@ fun App(isAdmin: Boolean = false) {
             ) {
                 if (isAdmin) {
                     val adminViewModel = remember { AdminViewModel(repository, scope) }
-                    AdminScreen(adminViewModel)
+                    AdminScreen(adminViewModel, isDarkMode) { isDarkMode = !isDarkMode }
                 } else {
                     val resViewModel = remember { ReservationViewModel(repository, scope) }
-                    ReservationScreen(resViewModel)
+                    ReservationScreen(resViewModel, isDarkMode) { isDarkMode = !isDarkMode }
                 }
             }
         }

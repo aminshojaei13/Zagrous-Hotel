@@ -27,12 +27,14 @@ import androidx.compose.material.icons.filled.Badge
 import androidx.compose.material.icons.filled.Block
 import androidx.compose.material.icons.filled.Check
 import androidx.compose.material.icons.filled.CheckCircle
+import androidx.compose.material.icons.filled.DarkMode
 import androidx.compose.material.icons.filled.DateRange
 import androidx.compose.material.icons.filled.Error
 import androidx.compose.material.icons.filled.Event
 import androidx.compose.material.icons.filled.Hotel
 import androidx.compose.material.icons.filled.Info
 import androidx.compose.material.icons.filled.Language
+import androidx.compose.material.icons.filled.LightMode
 import androidx.compose.material.icons.filled.MeetingRoom
 import androidx.compose.material.icons.filled.NightsStay
 import androidx.compose.material.icons.filled.People
@@ -47,6 +49,7 @@ import androidx.compose.material3.DropdownMenuItem
 import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.HorizontalDivider
 import androidx.compose.material3.Icon
+import androidx.compose.material3.IconButton
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.OutlinedTextField
 import androidx.compose.material3.OutlinedTextFieldDefaults
@@ -77,7 +80,11 @@ import com.braveboy.hotelzagrous.core.FoodType
 import kotlin.time.Clock
 
 @Composable
-fun ReservationScreen(viewModel: ReservationViewModel) {
+fun ReservationScreen(
+    viewModel: ReservationViewModel,
+    isDarkMode: Boolean,
+    onToggleTheme: () -> Unit
+) {
     val state by viewModel.state.collectAsState()
     val strings = if (state.isArabic) ArabicStrings else FarsiStrings
 
@@ -100,11 +107,13 @@ fun ReservationScreen(viewModel: ReservationViewModel) {
                 },
                 onLogin = { viewModel.onIntent(ReservationIntent.Login) },
                 onToggleLanguage = { viewModel.onIntent(ReservationIntent.ToggleLanguage) },
+                isDarkMode = isDarkMode,
+                onToggleTheme = onToggleTheme,
                 error = state.error,
                 strings = strings
             )
         } else {
-            UserDashboard(state, viewModel, strings)
+            UserDashboard(state, viewModel, strings, isDarkMode, onToggleTheme)
         }
     }
 }
@@ -117,6 +126,8 @@ fun LoginSection(
     onIdentificationIdChange: (String) -> Unit,
     onLogin: () -> Unit,
     onToggleLanguage: () -> Unit,
+    isDarkMode: Boolean,
+    onToggleTheme: () -> Unit,
     error: String?,
     strings: AppStrings
 ) {
@@ -124,7 +135,18 @@ fun LoginSection(
         modifier = Modifier.fillMaxSize(),
         contentAlignment = Alignment.Center
     ) {
-        Box(modifier = Modifier.align(Alignment.TopEnd).padding(16.dp)) {
+        Row(
+            modifier = Modifier.align(Alignment.TopEnd).padding(16.dp),
+            verticalAlignment = Alignment.CenterVertically
+        ) {
+            IconButton(onClick = onToggleTheme) {
+                Icon(
+                    if (isDarkMode) Icons.Default.LightMode else Icons.Default.DarkMode,
+                    contentDescription = null,
+                    tint = MaterialTheme.colorScheme.primary
+                )
+            }
+            Spacer(Modifier.weight(1F))
             TextButton(onClick = onToggleLanguage) {
                 Icon(Icons.Default.Language, null, modifier = Modifier.size(18.dp))
                 Spacer(Modifier.width(8.dp))
@@ -284,7 +306,13 @@ fun LoginSection(
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
-fun UserDashboard(state: ReservationState, viewModel: ReservationViewModel, strings: AppStrings) {
+fun UserDashboard(
+    state: ReservationState,
+    viewModel: ReservationViewModel,
+    strings: AppStrings,
+    isDarkMode: Boolean,
+    onToggleTheme: () -> Unit
+) {
     val room = state.room
     val stayDays = remember(room, state.tempReservations) {
         if (room != null && room.checkInEpochMillis != 0L && room.checkOutEpochMillis != 0L) {
@@ -586,7 +614,14 @@ fun FoodCard(
                 guestCount = guestCount,
                 strings = strings,
                 enabled = !isLunchTimeLocked,
-                onCountChange = { viewModel.onIntent(ReservationIntent.ChangeBreakfastCount(date, it)) }
+                onCountChange = {
+                    viewModel.onIntent(
+                        ReservationIntent.ChangeBreakfastCount(
+                            date,
+                            it
+                        )
+                    )
+                }
             )
 
             HorizontalDivider(
@@ -708,7 +743,9 @@ fun DailyBreakfastRow(
     ) {
         Row(verticalAlignment = Alignment.CenterVertically, modifier = Modifier.weight(1f)) {
             Surface(
-                color = if (currentCount > 0) MaterialTheme.colorScheme.primaryContainer else MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.5f),
+                color = if (currentCount > 0) MaterialTheme.colorScheme.primaryContainer else MaterialTheme.colorScheme.surfaceVariant.copy(
+                    alpha = 0.5f
+                ),
                 shape = CircleShape,
                 modifier = Modifier.size(32.dp)
             ) {
@@ -742,15 +779,22 @@ fun DailyBreakfastRow(
                 enabled = enabled,
                 onClick = { expanded = true },
                 shape = MaterialTheme.shapes.medium,
-                color = if (!enabled) MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.3F) else if (currentCount > 0) MaterialTheme.colorScheme.primary else MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.5f),
-                border = BorderStroke(1.dp, if (currentCount > 0) MaterialTheme.colorScheme.primary else MaterialTheme.colorScheme.outlineVariant)
+                color = if (!enabled) MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.3F) else if (currentCount > 0) MaterialTheme.colorScheme.primary else MaterialTheme.colorScheme.surfaceVariant.copy(
+                    alpha = 0.5f
+                ),
+                border = BorderStroke(
+                    1.dp,
+                    if (currentCount > 0) MaterialTheme.colorScheme.primary else MaterialTheme.colorScheme.outlineVariant
+                )
             ) {
                 Row(
                     modifier = Modifier.padding(horizontal = 12.dp, vertical = 6.dp),
                     verticalAlignment = Alignment.CenterVertically
                 ) {
                     Text(
-                        text = if (!enabled && currentCount == 0) strings.noSelection else if (currentCount == 0) strings.noBreakfast else strings.personLabel(currentCount),
+                        text = if (!enabled && currentCount == 0) strings.noSelection else if (currentCount == 0) strings.noBreakfast else strings.personLabel(
+                            currentCount
+                        ),
                         style = MaterialTheme.typography.bodyMedium,
                         fontWeight = FontWeight.Bold,
                         color = if (!enabled) MaterialTheme.colorScheme.outline else if (currentCount > 0) MaterialTheme.colorScheme.onPrimary else MaterialTheme.colorScheme.onSurfaceVariant
@@ -772,13 +816,25 @@ fun DailyBreakfastRow(
                     DropdownMenuItem(
                         text = { Text(strings.noBreakfast) },
                         onClick = { onCountChange(0); expanded = false },
-                        leadingIcon = { Icon(Icons.Default.Block, null, modifier = Modifier.size(18.dp)) }
+                        leadingIcon = {
+                            Icon(
+                                Icons.Default.Block,
+                                null,
+                                modifier = Modifier.size(18.dp)
+                            )
+                        }
                     )
                     (1..guestCount).forEach { num ->
                         DropdownMenuItem(
                             text = { Text(strings.personLabel(num)) },
                             onClick = { onCountChange(num); expanded = false },
-                            trailingIcon = { if (currentCount == num) Icon(Icons.Default.Check, null, tint = MaterialTheme.colorScheme.primary) }
+                            trailingIcon = {
+                                if (currentCount == num) Icon(
+                                    Icons.Default.Check,
+                                    null,
+                                    tint = MaterialTheme.colorScheme.primary
+                                )
+                            }
                         )
                     }
                 }
@@ -840,7 +896,8 @@ fun FoodSelectionItem(
                 ) {
                     Text(
                         if (!enabled && selectedFood == null) strings.noSelection
-                        else (if (isArabic && !selectedFood?.nameAr.isNullOrBlank()) selectedFood.nameAr else selectedFood?.name) ?: strings.notSelected,
+                        else (if (isArabic && !selectedFood?.nameAr.isNullOrBlank()) selectedFood.nameAr else selectedFood?.name)
+                            ?: strings.notSelected,
                         maxLines = 1,
                         style = MaterialTheme.typography.bodyMedium,
                         fontWeight = if (selectedFood != null) FontWeight.Bold else FontWeight.Normal,
@@ -889,7 +946,8 @@ fun FoodSelectionItem(
                     DropdownMenuItem(
                         text = {
                             Text(
-                                (if (isArabic && !food.nameAr.isNullOrBlank()) food.nameAr else food.name) ?: "",
+                                (if (isArabic && !food.nameAr.isNullOrBlank()) food.nameAr else food.name)
+                                    ?: "",
                                 style = MaterialTheme.typography.bodyMedium,
                                 fontWeight = FontWeight.Bold
                             )
@@ -971,7 +1029,8 @@ object FarsiStrings : AppStrings {
     override val noSelection = "عدم انتخاب (هیچکدام)"
     override val notSelected = "انتخاب نشده"
     override val switchLanguage = "تغییر زبان"
-    override val reservationDeadlineInfo = "توجه: امکان انتخاب یا تغییر ناهار و صبحانه تا ساعت ۱۸ روز قبل و شام تا ساعت ۱۲ همان روز میسر است."
+    override val reservationDeadlineInfo =
+        "توجه: امکان انتخاب یا تغییر ناهار و صبحانه تا ساعت ۱۸ روز قبل و شام تا ساعت ۱۲ همان روز میسر است."
 
     override fun getErrorMessage(key: String?): String? {
         return when (key) {
@@ -1012,7 +1071,8 @@ object ArabicStrings : AppStrings {
     override val noSelection = "عدم الاختيار (لا شيء)"
     override val notSelected = "لم يتم الاختيار"
     override val switchLanguage = "تغيير اللغة"
-    override val reservationDeadlineInfo = "تنبيه: يمكن اختيار أو تغییر وجبتي الغداء والإفطار حتى الساعة 6 مساءً من اليوم السابق، ووجبة العشاء حتى الساعة 12 ظهراً من نفس اليوم."
+    override val reservationDeadlineInfo =
+        "تنبيه: يمكن اختيار أو تغییر وجبتي الغداء والإفطار حتى الساعة 6 مساءً من اليوم السابق، ووجبة العشاء حتى الساعة 12 ظهراً من نفس اليوم."
 
     override fun getErrorMessage(key: String?): String? {
         return when (key) {

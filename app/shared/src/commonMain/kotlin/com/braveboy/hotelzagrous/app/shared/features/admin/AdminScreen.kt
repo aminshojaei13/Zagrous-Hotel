@@ -96,10 +96,16 @@ import com.braveboy.hotelzagrous.core.MenuConfig
 import com.braveboy.hotelzagrous.core.Room
 import com.braveboy.hotelzagrous.core.normalizeDigits
 import kotlin.time.Clock
+import androidx.compose.material.icons.filled.DarkMode
+import androidx.compose.material.icons.filled.LightMode
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
-fun AdminScreen(viewModel: AdminViewModel) {
+fun AdminScreen(
+    viewModel: AdminViewModel,
+    isDarkMode: Boolean,
+    onToggleTheme: () -> Unit
+) {
     val state by viewModel.state.collectAsState()
     var currentTab by remember { mutableStateOf("rooms") }
     var showAddRoomDialog by remember { mutableStateOf(false) }
@@ -197,10 +203,20 @@ fun AdminScreen(viewModel: AdminViewModel) {
                     onClick = { currentTab = "history" })
 
                 Spacer(Modifier.weight(1f))
+
                 HorizontalDivider(
                     modifier = Modifier.padding(vertical = 12.dp),
-                    color = MaterialTheme.colorScheme.surfaceVariant
+                    color = MaterialTheme.colorScheme.secondary
                 )
+
+                NavigationItem(
+                    label = if (isDarkMode) "حالت روز" else "حالت شب",
+                    icon = if (isDarkMode) Icons.Default.LightMode else Icons.Default.DarkMode,
+                    selected = false,
+                    onClick = onToggleTheme,
+                    contentColor = MaterialTheme.colorScheme.error
+                )
+
                 NavigationItem(
                     label = "بروزرسانی داده‌ها",
                     icon = Icons.Default.Refresh,
