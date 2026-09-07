@@ -1,8 +1,8 @@
-import { useState, useEffect, useMemo } from 'react';
-import { createReservationBridge, ReservationStateJs } from '../kotlin/reservationBridge';
+import { useState, useEffect } from 'react';
+import { getReservationBridge, ReservationStateJs } from '../kotlin/reservationBridge';
 
 export function useReservationViewModel() {
-  const bridge = useMemo(() => createReservationBridge(), []);
+  const bridge = getReservationBridge();
 
   const [state, setState] = useState<ReservationStateJs>(() => bridge.getCurrentState());
 
