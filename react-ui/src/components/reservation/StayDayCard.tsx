@@ -1,5 +1,6 @@
 import React from 'react';
 import { MealSelection } from './MealSelection';
+import { BreakfastPicker } from './BreakfastPicker';
 import {
   getReservationBridge,
   FoodItemJs,
@@ -14,6 +15,7 @@ interface StayDayCardProps {
   isArabic: boolean;
   isLoading: boolean;
   onFoodChange: (date: string, guestIndex: number, foodId: string | null, type: 'LUNCH' | 'DINNER') => void;
+  onBreakfastChange: (date: string, count: number) => void;
 }
 
 export const StayDayCard: React.FC<StayDayCardProps> = ({
@@ -24,11 +26,13 @@ export const StayDayCard: React.FC<StayDayCardProps> = ({
   isArabic,
   isLoading,
   onFoodChange,
+  onBreakfastChange,
 }) => {
   const bridge = getReservationBridge();
   const dayType = bridge.getDayType(date);
 
   const reservation = tempReservations.find(r => r.date === date);
+  const currentBreakfastCount = reservation?.breakfastCount || 0;
 
   // Filter foods for this specific day and type
   const dayFoods = availableFoods.filter(f => f.dayType === dayType);
@@ -55,35 +59,46 @@ export const StayDayCard: React.FC<StayDayCardProps> = ({
         {t.date}
       </div>
 
-      {Array.from({ length: guestCount }).map((_, index) => {
-        const selection = reservation?.guestMealSelections.find(s => s.guestIndex === index);
+      <BreakfastPicker
+        date={date}
+        count={currentBreakfastCount}
+        maxCount={guestCount}
+        isArabic={isArabic}
+        disabled={isLoading}
+        onChange={(count) => onBreakfastChange(date, count)}
+      />
 
-        return (
-          <div key={index} className="guest-row" style={{ marginBottom: index === guestCount - 1 ? 0 : '16px' }}>
-            <div style={{ fontSize: '14px', fontWeight: '500', marginBottom: '8px' }}>
-              {t.guest(index + 1)}
+      <div style={{ marginTop: '16px' }}>
+        {Array.from({ length: guestCount }).map((_, index) => {
+          const selection = reservation?.guestMealSelections.find(s => s.guestIndex === index);
+
+          return (
+            <div key={index} className="guest-row" style={{ marginBottom: index === guestCount - 1 ? 0 : '16px', paddingTop: '12px', borderTop: index === 0 ? 'none' : '1px solid #f5f5f5' }}>
+              <div style={{ fontSize: '14px', fontWeight: '500', marginBottom: '8px' }}>
+                {t.guest(index + 1)}
+              </div>
+              <div style={{ display: 'flex', gap: '12px' }}>
+                <MealSelection
+                  label={t.lunch}
+                  foods={lunchOptions}
+                  selectedId={selection?.lunchFoodId || null}
+                  isArabic={isArabic}
+                  disabled={isLoading}
+                  onSelect={(id) => onFoodChange(date, index, id, 'LUNCH')}
+                />
+                <MealSelection
+                  label={t.dinner}
+                  foods={dinnerOptions}
+                  selectedId={selection?.dinnerFoodId || null}
+                  isArabic={isArabic}
+                  disabled={isLoading}
+                  onSelect={(id) => onFoodChange(date, index, id, 'DINNER')}
+                />
+              </div>
             </div>
-            <div style={{ display: 'flex', gap: '12px' }}>
-              <MealSelection
-                label={t.lunch}
-                foods={lunchOptions}
-                selectedId={selection?.lunchFoodId || null}
-                isArabic={isArabic}
-                disabled={isLoading}
-                onSelect={(id) => onFoodChange(date, index, id, 'LUNCH')}
-              />
-              <MealSelection
-                label={t.dinner}
-                foods={dinnerOptions}
-                selectedId={selection?.dinnerFoodId || null}
-                isArabic={isArabic}
-                disabled={isLoading}
-                onSelect={(id) => onFoodChange(date, index, id, 'DINNER')}
-              />
-            </div>
-          </div>
-        );
-      })}
+          );
+        })}
+      </div>
     </div>
   );
 };

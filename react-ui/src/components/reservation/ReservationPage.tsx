@@ -2,9 +2,15 @@ import React from 'react';
 import { useReservationViewModel } from '../../hooks/useReservationViewModel';
 import { GuestSummaryCard } from './GuestSummaryCard';
 import { StayDayCard } from './StayDayCard';
+import { ConfirmSection } from './ConfirmSection';
 
 export const ReservationPage: React.FC = () => {
-  const { state, changeFood } = useReservationViewModel();
+  const {
+    state,
+    changeFood,
+    changeBreakfastCount,
+    confirmReservation
+  } = useReservationViewModel();
 
   if (!state.room) {
     return (
@@ -23,7 +29,9 @@ export const ReservationPage: React.FC = () => {
         {state.isLoading && <div className="loading-indicator">Updating...</div>}
       </header>
 
-      {state.error && <div className="error-message">{state.error}</div>}
+      {state.error && state.error !== 'reservation_success' && state.error !== 'reservation_failed' && (
+        <div className="error-message">{state.error}</div>
+      )}
 
       <GuestSummaryCard room={state.room} isArabic={state.isArabic} />
 
@@ -40,9 +48,15 @@ export const ReservationPage: React.FC = () => {
             isArabic={state.isArabic}
             isLoading={state.isLoading}
             onFoodChange={(d, idx, fId, type) => changeFood(d, idx, fId, type)}
+            onBreakfastChange={(d, count) => changeBreakfastCount(d, count)}
           />
         ))}
       </section>
+
+      <ConfirmSection
+        state={state}
+        onConfirm={confirmReservation}
+      />
     </div>
   );
 };

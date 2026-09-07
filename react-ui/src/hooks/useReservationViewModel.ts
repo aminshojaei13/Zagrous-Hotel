@@ -26,6 +26,12 @@ export function useReservationViewModel() {
     },
     changeFood: (date: string, guestIndex: number, foodId: string | null, type: 'LUNCH' | 'DINNER') => {
       bridge.changeFood(date, guestIndex, foodId, type);
+    },
+    changeBreakfastCount: (date: string, count: number) => {
+      bridge.changeBreakfastCount(date, count);
+    },
+    confirmReservation: () => {
+      bridge.confirmReservation();
     }
   };
 }
