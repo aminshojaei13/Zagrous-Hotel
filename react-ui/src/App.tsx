@@ -1,9 +1,10 @@
-import { ReservationDemo } from './components/ReservationDemo'
+import './styles/main.css'
+import { LoginForm } from './components/reservation/LoginForm'
 
 function App() {
   return (
-    <div style={{ display: 'flex', justifyContent: 'center', alignItems: 'center', height: '100vh' }}>
-      <ReservationDemo />
+    <div className="container">
+      <LoginForm />
     </div>
   )
 }
