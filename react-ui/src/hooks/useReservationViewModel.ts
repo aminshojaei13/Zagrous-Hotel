@@ -23,6 +23,9 @@ export function useReservationViewModel() {
     },
     login: () => {
       bridge.login();
+    },
+    changeFood: (date: string, guestIndex: number, foodId: string | null, type: 'LUNCH' | 'DINNER') => {
+      bridge.changeFood(date, guestIndex, foodId, type);
     }
   };
 }

@@ -1,9 +1,10 @@
 import React from 'react';
 import { useReservationViewModel } from '../../hooks/useReservationViewModel';
 import { GuestSummaryCard } from './GuestSummaryCard';
+import { StayDayCard } from './StayDayCard';
 
 export const ReservationPage: React.FC = () => {
-  const { state } = useReservationViewModel();
+  const { state, changeFood } = useReservationViewModel();
 
   if (!state.room) {
     return (
@@ -26,29 +27,22 @@ export const ReservationPage: React.FC = () => {
 
       <GuestSummaryCard room={state.room} isArabic={state.isArabic} />
 
-      <section className="stay-info">
-        <h3>{state.isArabic ? 'معلومات الإقامة' : 'اطلاعات اقامت'}</h3>
-        <p style={{ color: '#5f6368' }}>
-          {state.isArabic
-            ? `عدد الأيام: ${state.stayDays.length}`
-            : `تعداد روزهای اقامت: ${state.stayDays.length}`}
-        </p>
-        <div style={{ display: 'flex', flexWrap: 'wrap', gap: '8px' }}>
-          {state.stayDays.map(day => (
-            <span key={day} style={{
-              padding: '4px 12px',
-              backgroundColor: '#e8f0fe',
-              color: 'var(--primary-color)',
-              borderRadius: '16px',
-              fontSize: '14px'
-            }}>
-              {day}
-            </span>
-          ))}
-        </div>
-      </section>
+      <section className="food-selection">
+        <h3 style={{ marginBottom: '16px' }}>{state.isArabic ? 'اختيار الوجبات' : 'انتخاب وعده‌های غذایی'}</h3>
 
-      {/* Further slices (Food Selection, etc.) will be added here */}
+        {state.stayDays.map(date => (
+          <StayDayCard
+            key={date}
+            date={date}
+            guestCount={state.room?.guestCount || 0}
+            availableFoods={state.availableFoods}
+            tempReservations={state.tempReservations}
+            isArabic={state.isArabic}
+            isLoading={state.isLoading}
+            onFoodChange={(d, idx, fId, type) => changeFood(d, idx, fId, type)}
+          />
+        ))}
+      </section>
     </div>
   );
 };

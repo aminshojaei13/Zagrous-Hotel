@@ -53,6 +53,14 @@ class ReservationWebBridge internal constructor(
         viewModel.onIntent(ReservationIntent.ToggleLanguage)
     }
 
+    fun getDayType(date: String): String {
+        return when {
+            DateUtils.isFriday(date) -> DayType.FRIDAY.name
+            DateUtils.isEven(date) -> DayType.EVEN.name
+            else -> DayType.ODD.name
+        }
+    }
+
     private fun ReservationState.toJs(): ReservationStateJs {
         val roomJs = room?.let {
             RoomJs(
@@ -60,7 +68,9 @@ class ReservationWebBridge internal constructor(
                 guestName = it.guestName,
                 guestCount = it.guestCount,
                 checkInDate = it.checkInDate,
-                checkOutDate = it.checkOutDate
+                checkOutDate = it.checkOutDate,
+                hasBreakfast = it.hasBreakfast,
+                breakfastCount = it.breakfastCount
             )
         }
 
@@ -154,7 +164,9 @@ data class RoomJs(
     val guestName: String,
     val guestCount: Int,
     val checkInDate: String,
-    val checkOutDate: String
+    val checkOutDate: String,
+    val hasBreakfast: Boolean,
+    val breakfastCount: Int
 )
 
 @JsExport
