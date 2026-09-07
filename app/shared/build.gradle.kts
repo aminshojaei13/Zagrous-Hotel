@@ -20,6 +20,8 @@ kotlin {
     js {
         browser()
         binaries.executable()
+        binaries.library()
+        generateTypeScriptDefinitions()
     }
     
     @OptIn(ExperimentalWasmDsl::class)
