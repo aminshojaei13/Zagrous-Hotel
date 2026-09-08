@@ -136,12 +136,58 @@ class AdminWebBridge internal constructor(
         )
     }
 
+    fun selectReportDate(date: String) {
+        viewModel.onIntent(AdminIntent.SelectReportDate(date))
+    }
+
+    fun markLunchDelivered(roomNumber: String, guestIndex: Int, date: String) {
+        viewModel.onIntent(AdminIntent.MarkLunchDelivered(roomNumber, guestIndex, date))
+    }
+
+    fun markDinnerDelivered(roomNumber: String, guestIndex: Int, date: String) {
+        viewModel.onIntent(AdminIntent.MarkDinnerDelivered(roomNumber, guestIndex, date))
+    }
+
     private fun AdminState.toJs() = AdminStateJs(
         rooms = rooms.map { it.toAdminJs() }.toTypedArray(),
         foods = foods.map { it.toAdminJs() }.toTypedArray(),
         menuConfigs = menuConfigs.map { it.toAdminJs() }.toTypedArray(),
+        reservations = reservations.map { it.toAdminJs() }.toTypedArray(),
+        dailyReservations = dailyReservations.map { it.toAdminJs() }.toTypedArray(),
+        selectedReportDate = selectedReportDate,
+        dailyReportSummary = dailyReportSummary.toJs(),
         isLoading = isLoading,
         error = error
+    )
+
+    private fun DailyReportSummary.toJs() = DailyReportSummaryJs(
+        date = date,
+        totalBreakfast = totalBreakfast,
+        lunchOrders = lunchOrders.map { it.toJs() }.toTypedArray(),
+        dinnerOrders = dinnerOrders.map { it.toJs() }.toTypedArray(),
+        totalLunch = totalLunch,
+        totalDinner = totalDinner
+    )
+
+    private fun DailyReportFoodItem.toJs() = DailyReportFoodItemJs(
+        foodId = foodId,
+        foodName = foodName,
+        quantity = quantity
+    )
+
+    private fun FoodReservation.toAdminJs() = AdminReservationJs(
+        roomNumber = roomNumber,
+        date = date,
+        guestMealSelections = guestMealSelections.map { it.toAdminJs() }.toTypedArray(),
+        breakfastCount = breakfastCount
+    )
+
+    private fun GuestMealSelection.toAdminJs() = AdminGuestMealSelectionJs(
+        guestIndex = guestIndex,
+        lunchFoodId = lunchFoodId,
+        dinnerFoodId = dinnerFoodId,
+        lunchDelivered = lunchDelivered,
+        dinnerDelivered = dinnerDelivered
     )
 
     private fun FoodItem.toAdminJs() = AdminFoodItemJs(
@@ -181,8 +227,46 @@ data class AdminStateJs(
     val rooms: Array<AdminRoomJs>,
     val foods: Array<AdminFoodItemJs>,
     val menuConfigs: Array<AdminMenuConfigJs>,
+    val reservations: Array<AdminReservationJs>,
+    val dailyReservations: Array<AdminReservationJs>,
+    val selectedReportDate: String,
+    val dailyReportSummary: DailyReportSummaryJs,
     val isLoading: Boolean,
     val error: String?
+)
+
+@JsExport
+data class DailyReportSummaryJs(
+    val date: String,
+    val totalBreakfast: Int,
+    val lunchOrders: Array<DailyReportFoodItemJs>,
+    val dinnerOrders: Array<DailyReportFoodItemJs>,
+    val totalLunch: Int,
+    val totalDinner: Int
+)
+
+@JsExport
+data class DailyReportFoodItemJs(
+    val foodId: String,
+    val foodName: String,
+    val quantity: Int
+)
+
+@JsExport
+data class AdminReservationJs(
+    val roomNumber: String,
+    val date: String,
+    val guestMealSelections: Array<AdminGuestMealSelectionJs>,
+    val breakfastCount: Int
+)
+
+@JsExport
+data class AdminGuestMealSelectionJs(
+    val guestIndex: Int,
+    val lunchFoodId: String?,
+    val dinnerFoodId: String?,
+    val lunchDelivered: Boolean,
+    val dinnerDelivered: Boolean
 )
 
 @JsExport

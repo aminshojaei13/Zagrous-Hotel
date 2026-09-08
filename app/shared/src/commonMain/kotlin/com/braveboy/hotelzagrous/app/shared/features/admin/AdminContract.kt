@@ -14,6 +14,27 @@ data class AdminState(
     val selectedRoom: Room? = null,
     val selectedReportDate: String = "",
     val error: String? = null
+) {
+    val dailyReportSummary: DailyReportSummary
+        get() = AdminReportCalculator.calculateDailySummary(selectedReportDate, reservations, foods)
+
+    val dailyReservations: List<FoodReservation>
+        get() = reservations.filter { it.date == selectedReportDate }
+}
+
+data class DailyReportSummary(
+    val date: String,
+    val totalBreakfast: Int,
+    val lunchOrders: List<DailyReportFoodItem>,
+    val dinnerOrders: List<DailyReportFoodItem>,
+    val totalLunch: Int,
+    val totalDinner: Int
+)
+
+data class DailyReportFoodItem(
+    val foodId: String,
+    val foodName: String,
+    val quantity: Int
 )
 
 sealed class AdminIntent {

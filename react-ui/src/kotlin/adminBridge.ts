@@ -13,3 +13,7 @@ export type AdminStateJs = KotlinLibrary.com.braveboy.hotelzagrous.app.shared.fe
 export type AdminRoomJs = KotlinLibrary.com.braveboy.hotelzagrous.app.shared.features.admin.AdminRoomJs;
 export type AdminFoodItemJs = KotlinLibrary.com.braveboy.hotelzagrous.app.shared.features.admin.AdminFoodItemJs;
 export type AdminMenuConfigJs = KotlinLibrary.com.braveboy.hotelzagrous.app.shared.features.admin.AdminMenuConfigJs;
+export type AdminReservationJs = KotlinLibrary.com.braveboy.hotelzagrous.app.shared.features.admin.AdminReservationJs;
+export type AdminGuestMealSelectionJs = KotlinLibrary.com.braveboy.hotelzagrous.app.shared.features.admin.AdminGuestMealSelectionJs;
+export type DailyReportSummaryJs = KotlinLibrary.com.braveboy.hotelzagrous.app.shared.features.admin.DailyReportSummaryJs;
+export type DailyReportFoodItemJs = KotlinLibrary.com.braveboy.hotelzagrous.app.shared.features.admin.DailyReportFoodItemJs;

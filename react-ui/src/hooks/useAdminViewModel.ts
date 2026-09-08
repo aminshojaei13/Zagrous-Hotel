@@ -65,6 +65,11 @@ export function useAdminViewModel() {
     deleteFood: (id: string) => bridge.deleteFood(id),
     updateMenuConfig: (dayType: string, foodType: string, isEnabled: boolean) => {
       bridge.updateMenuConfig(dayType, foodType, isEnabled);
-    }
+    },
+    selectReportDate: (date: string) => bridge.selectReportDate(date),
+    markLunchDelivered: (roomNumber: string, guestIndex: number, date: string) =>
+      bridge.markLunchDelivered(roomNumber, guestIndex, date),
+    markDinnerDelivered: (roomNumber: string, guestIndex: number, date: string) =>
+      bridge.markDinnerDelivered(roomNumber, guestIndex, date)
   };
 }
