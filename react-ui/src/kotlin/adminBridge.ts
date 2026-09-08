@@ -11,3 +11,5 @@ export const getAdminBridge = () => bridgeInstance;
 export type AdminWebBridge = KotlinLibrary.com.braveboy.hotelzagrous.app.shared.features.admin.AdminWebBridge;
 export type AdminStateJs = KotlinLibrary.com.braveboy.hotelzagrous.app.shared.features.admin.AdminStateJs;
 export type AdminRoomJs = KotlinLibrary.com.braveboy.hotelzagrous.app.shared.features.admin.AdminRoomJs;
+export type AdminFoodItemJs = KotlinLibrary.com.braveboy.hotelzagrous.app.shared.features.admin.AdminFoodItemJs;
+export type AdminMenuConfigJs = KotlinLibrary.com.braveboy.hotelzagrous.app.shared.features.admin.AdminMenuConfigJs;

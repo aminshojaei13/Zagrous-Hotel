@@ -1,5 +1,5 @@
 import { useState, useEffect } from 'react';
-import { getAdminBridge, AdminStateJs, AdminRoomJs } from '../kotlin/adminBridge';
+import { getAdminBridge, AdminStateJs, AdminRoomJs, AdminFoodItemJs } from '../kotlin/adminBridge';
 
 export function useAdminViewModel() {
   const bridge = getAdminBridge();
@@ -48,6 +48,23 @@ export function useAdminViewModel() {
         room.breakfastCount
       );
     },
-    deleteRoom: (id: string) => bridge.deleteRoom(id)
+    deleteRoom: (id: string) => bridge.deleteRoom(id),
+
+    upsertFood: (food: AdminFoodItemJs) => {
+      bridge.upsertFood(
+        food.id,
+        food.name,
+        food.nameAr,
+        food.type,
+        food.dayType,
+        food.isActive,
+        food.isVisibleToUsers,
+        food.displayOrder
+      );
+    },
+    deleteFood: (id: string) => bridge.deleteFood(id),
+    updateMenuConfig: (dayType: string, foodType: string, isEnabled: boolean) => {
+      bridge.updateMenuConfig(dayType, foodType, isEnabled);
+    }
   };
 }

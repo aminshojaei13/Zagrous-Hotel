@@ -3,7 +3,7 @@
 package com.braveboy.hotelzagrous.app.shared.features.admin
 
 import com.braveboy.hotelzagrous.app.shared.data.HotelRepository
-import com.braveboy.hotelzagrous.core.Room
+import com.braveboy.hotelzagrous.core.*
 import kotlinx.coroutines.*
 import kotlin.js.JsExport
 import kotlin.js.JsName
@@ -94,10 +94,71 @@ class AdminWebBridge internal constructor(
         viewModel.onIntent(AdminIntent.DeleteRoom(id))
     }
 
+    fun upsertFood(
+        id: String,
+        name: String,
+        nameAr: String?,
+        type: String,
+        dayType: String,
+        isActive: Boolean,
+        isVisibleToUsers: Boolean,
+        displayOrder: Int
+    ) {
+        viewModel.onIntent(
+            AdminIntent.UpsertFood(
+                FoodItem(
+                    id = id,
+                    name = name,
+                    nameAr = nameAr,
+                    type = FoodType.valueOf(type),
+                    dayType = DayType.valueOf(dayType),
+                    isActive = isActive,
+                    isVisibleToUsers = isVisibleToUsers,
+                    displayOrder = displayOrder
+                )
+            )
+        )
+    }
+
+    fun deleteFood(id: String) {
+        viewModel.onIntent(AdminIntent.DeleteFood(id))
+    }
+
+    fun updateMenuConfig(dayType: String, foodType: String, isEnabled: Boolean) {
+        viewModel.onIntent(
+            AdminIntent.UpdateMenuConfig(
+                MenuConfig(
+                    dayType = DayType.valueOf(dayType),
+                    foodType = FoodType.valueOf(foodType),
+                    isEnabled = isEnabled
+                )
+            )
+        )
+    }
+
     private fun AdminState.toJs() = AdminStateJs(
         rooms = rooms.map { it.toAdminJs() }.toTypedArray(),
+        foods = foods.map { it.toAdminJs() }.toTypedArray(),
+        menuConfigs = menuConfigs.map { it.toAdminJs() }.toTypedArray(),
         isLoading = isLoading,
         error = error
+    )
+
+    private fun FoodItem.toAdminJs() = AdminFoodItemJs(
+        id = id,
+        name = name,
+        nameAr = nameAr,
+        type = type.name,
+        dayType = dayType.name,
+        isActive = isActive,
+        isVisibleToUsers = isVisibleToUsers,
+        displayOrder = displayOrder
+    )
+
+    private fun MenuConfig.toAdminJs() = AdminMenuConfigJs(
+        dayType = dayType.name,
+        foodType = foodType.name,
+        isEnabled = isEnabled
     )
 
     private fun Room.toAdminJs() = AdminRoomJs(
@@ -118,8 +179,29 @@ class AdminWebBridge internal constructor(
 @JsExport
 data class AdminStateJs(
     val rooms: Array<AdminRoomJs>,
+    val foods: Array<AdminFoodItemJs>,
+    val menuConfigs: Array<AdminMenuConfigJs>,
     val isLoading: Boolean,
     val error: String?
+)
+
+@JsExport
+data class AdminFoodItemJs(
+    val id: String,
+    val name: String,
+    val nameAr: String?,
+    val type: String,
+    val dayType: String,
+    val isActive: Boolean,
+    val isVisibleToUsers: Boolean,
+    val displayOrder: Int
+)
+
+@JsExport
+data class AdminMenuConfigJs(
+    val dayType: String,
+    val foodType: String,
+    val isEnabled: Boolean
 )
 
 @JsExport
