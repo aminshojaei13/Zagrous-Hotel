@@ -8,7 +8,7 @@ function App() {
   const { state } = useReservationViewModel();
 
   const urlParams = new URLSearchParams(window.location.search);
-  const isAdmin = window.location.port === "8091" || urlParams.get('mode') === 'admin';
+  const isAdmin =  //window.location.port === "8091" || urlParams.get('mode') === 'admin';
 
   if (isAdmin) {
     return <AdminPage />;

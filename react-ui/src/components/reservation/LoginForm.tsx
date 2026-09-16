@@ -17,68 +17,65 @@ export const LoginForm: React.FC = () => {
 
   if (state.isLoggedIn) {
     return (
-      <div className="login-card logged-in-container">
-        <h1>Welcome!</h1>
-        <p className="success-message">Successfully logged into Room {state.roomNumber}</p>
-        <p>Your reservation details will appear here soon.</p>
-        {/* Logout placeholder - no business logic for logout yet */}
-        <button style={{ marginTop: '20px', backgroundColor: '#5f6368' }} disabled>
-          Logout (Coming Soon)
-        </button>
+      <div className="m3-card logged-in-container">
+        <h1>خوش آمدید!</h1>
+        <p className="success-message">ورود موفق به اتاق {state.roomNumber}</p>
+        <p>جزئیات رزرو شما در حال بارگذاری است.</p>
       </div>
     );
   }
 
   return (
-    <div className="login-card">
-      <h1>Hotel Zagrous</h1>
-      <p style={{ textAlign: 'center', marginBottom: '30px', color: '#5f6368' }}>Guest Reservation System</p>
+    <div className="m3-card">
+      <div className="login-header">
+        <div className="hotel-logo">🏨</div>
+        <h1>خوش آمدید</h1>
+        <p style={{ color: 'var(--outline)' }}>سامانه رزرو غذای هتل زاگرس</p>
+      </div>
 
       {state.error && (
-        <div className="error-message">
-          {state.error === 'error_room_not_found' ? 'Room not found' :
-           state.error === 'error_id_mismatch' ? 'Identification ID does not match' :
-           state.error === 'error_fill_fields' ? 'Please fill all fields' :
-           state.error === 'error_connection' ? 'Connection error' : state.error}
+        <div className="error-banner">
+          ⚠️ {state.error === 'error_room_not_found' ? 'اتاقی با این شماره یافت نشد' :
+           state.error === 'error_id_mismatch' ? 'کد شناسایی نامعتبر است' :
+           state.error === 'error_fill_fields' ? 'لطفاً تمامی فیلدها را پر کنید' :
+           state.error === 'error_connection' ? 'خطا در برقراری ارتباط' : state.error}
         </div>
       )}
 
       <form onSubmit={handleSubmit}>
-        <div className="form-group">
-          <label htmlFor="roomNumber">Room Number</label>
+        <div className="m3-input-group">
+          <label htmlFor="roomNumber">شماره اتاق</label>
           <input
             id="roomNumber"
             type="text"
             value={roomNumber}
             onChange={(e) => setRoomNumber(e.target.value)}
             disabled={state.isLoading}
-            placeholder="e.g. 101"
+            placeholder="مثلاً 101"
             required
           />
         </div>
 
-        <div className="form-group">
-          <label htmlFor="id">Identification ID</label>
+        <div className="m3-input-group">
+          <label htmlFor="id">کد شناسایی</label>
           <input
             id="id"
             type="password"
             value={id}
             onChange={(e) => setId(e.target.value)}
             disabled={state.isLoading}
-            placeholder="Your ID"
+            placeholder="کد شناسایی شما"
             required
           />
         </div>
 
-        <button type="submit" disabled={state.isLoading || !roomNumber || !id}>
-          {state.isLoading ? 'Logging in...' : 'Login'}
+        <button type="submit" className="m3-button" disabled={state.isLoading || !roomNumber || !id}>
+          {state.isLoading ? 'در حال ورود...' : 'ورود به سامانه'}
         </button>
 
-        {state.isLoading && (
-          <div className="loading-indicator">
-            Connecting to server...
-          </div>
-        )}
+        <p style={{ textAlign: 'center', marginTop: '24px', fontSize: '12px', color: 'var(--outline)' }}>
+          در صورت بروز مشکل به پذیرش مراجعه فرمایید
+        </p>
       </form>
     </div>
   );

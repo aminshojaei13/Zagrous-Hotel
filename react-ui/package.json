@@ -10,9 +10,11 @@
     "preview": "vite preview"
   },
   "dependencies": {
+    "@js-joda/core": "^6.1.0",
+    "HotelZagrous-app-shared": "file:../app/shared/build/dist/js/productionLibrary",
     "react": "^18.3.1",
     "react-dom": "^18.3.1",
-    "HotelZagrous-app-shared": "file:../app/shared/build/dist/js/productionLibrary"
+    "ws": "^8.21.3"
   },
   "devDependencies": {
     "@types/react": "^18.3.3",

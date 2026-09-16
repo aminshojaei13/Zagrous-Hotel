@@ -18,7 +18,7 @@ import hotelzagrous.app.shared.generated.resources.BHoma
 import org.jetbrains.compose.resources.Font
 
 @Composable
-fun App(isAdmin: Boolean = false) {
+fun App(isAdmin: Boolean = true) {
     val repository = remember { HotelRepository() }
     val scope = rememberCoroutineScope()
     

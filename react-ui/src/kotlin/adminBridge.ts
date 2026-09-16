@@ -2,18 +2,16 @@ import * as KotlinLibrary from 'HotelZagrous-app-shared';
 
 const Lib = KotlinLibrary as any;
 
-const adminNamespace = Lib.com.braveboy.hotelzagrous.app.shared.features.admin;
-
-const bridgeInstance = adminNamespace.createAdminBridge();
+const bridgeInstance = Lib.createAdminBridge();
 
 export const getAdminBridge = () => bridgeInstance;
 
-export type AdminWebBridge = KotlinLibrary.com.braveboy.hotelzagrous.app.shared.features.admin.AdminWebBridge;
-export type AdminStateJs = KotlinLibrary.com.braveboy.hotelzagrous.app.shared.features.admin.AdminStateJs;
-export type AdminRoomJs = KotlinLibrary.com.braveboy.hotelzagrous.app.shared.features.admin.AdminRoomJs;
-export type AdminFoodItemJs = KotlinLibrary.com.braveboy.hotelzagrous.app.shared.features.admin.AdminFoodItemJs;
-export type AdminMenuConfigJs = KotlinLibrary.com.braveboy.hotelzagrous.app.shared.features.admin.AdminMenuConfigJs;
-export type AdminReservationJs = KotlinLibrary.com.braveboy.hotelzagrous.app.shared.features.admin.AdminReservationJs;
-export type AdminGuestMealSelectionJs = KotlinLibrary.com.braveboy.hotelzagrous.app.shared.features.admin.AdminGuestMealSelectionJs;
-export type DailyReportSummaryJs = KotlinLibrary.com.braveboy.hotelzagrous.app.shared.features.admin.DailyReportSummaryJs;
-export type DailyReportFoodItemJs = KotlinLibrary.com.braveboy.hotelzagrous.app.shared.features.admin.DailyReportFoodItemJs;
+export type AdminWebBridge = KotlinLibrary.AdminWebBridge;
+export type AdminStateJs = KotlinLibrary.AdminStateJs;
+export type AdminRoomJs = KotlinLibrary.AdminRoomJs;
+export type AdminFoodItemJs = KotlinLibrary.AdminFoodItemJs;
+export type AdminMenuConfigJs = KotlinLibrary.AdminMenuConfigJs;
+export type AdminReservationJs = KotlinLibrary.AdminReservationJs;
+export type AdminGuestMealSelectionJs = KotlinLibrary.AdminGuestMealSelectionJs;
+export type DailyReportSummaryJs = KotlinLibrary.DailyReportSummaryJs;
+export type DailyReportFoodItemJs = KotlinLibrary.DailyReportFoodItemJs;

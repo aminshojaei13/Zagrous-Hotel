@@ -16,19 +16,20 @@ interface GuestSummaryCardProps {
 export const GuestSummaryCard: React.FC<GuestSummaryCardProps> = ({ room, isArabic }) => {
   const t = {
     welcome: isArabic ? 'أهلاً بك' : 'خوش آمدید',
-    guestName: isArabic ? `السيد ${room.guestName}` : `جناب ${room.guestName}`,
+    guestName: isArabic ? `السيد ${room.guestName}` : `مهمان گرامی، جناب ${room.guestName}`,
     roomNumber: isArabic ? 'رقم الغرفة' : 'شماره اتاق',
-    guestCount: isArabic ? 'عدد الضيوف' : 'تعداد مهمان',
+    guestCount: isArabic ? 'عدد الضيوف' : 'تعداد نفرات',
     stayPeriod: isArabic ? 'فترة الإقامة' : 'بازه اقامت',
     to: isArabic ? 'إلى' : 'الی',
     persons: (count: number) => isArabic ? `${count} أشخاص` : `${count} نفر`,
   };
 
   return (
-    <div className="summary-card" dir={isArabic ? 'rtl' : 'rtl'}> {/* Project seems to use RTL for both */}
-      <h2>{t.welcome}, {t.guestName}</h2>
+    <div className="summary-card">
+      <h2>{t.welcome}</h2>
+      <p style={{ fontSize: '18px', marginBottom: '20px' }}>{t.guestName}</p>
 
-      <div className="summary-details">
+      <div className="summary-row">
         <div className="detail-item">
           <span className="detail-label">{t.roomNumber}</span>
           <span className="detail-value">{room.roomNumber}</span>

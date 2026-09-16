@@ -18,6 +18,7 @@ kotlin {
     jvm()
     
     js {
+        compilerOptions.moduleKind.set(org.jetbrains.kotlin.gradle.dsl.JsModuleKind.MODULE_ES)
         browser()
         binaries.executable()
         binaries.library()
