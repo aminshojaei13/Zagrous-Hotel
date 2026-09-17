@@ -12,19 +12,10 @@ export const AdminPage: React.FC = () => {
     state, addRoom, updateRoomStay, deleteRoom, loadData,
     markLunchDelivered, markDinnerDelivered, selectReportDate
   } = useAdminViewModel();
+
   const [currentTab, setCurrentTab] = useState<'rooms' | 'menu' | 'reservations' | 'report'>('rooms');
   const [isRoomFormOpen, setIsRoomFormOpen] = useState(false);
   const [editingRoom, setEditingRoom] = useState<AdminRoomJs | undefined>(undefined);
-
-  const handleAddRoomClick = () => {
-    setEditingRoom(undefined);
-    setIsRoomFormOpen(true);
-  };
-
-  const handleEditRoomClick = (room: AdminRoomJs) => {
-    setEditingRoom(room);
-    setIsRoomFormOpen(true);
-  };
 
   const handleRoomSubmit = (room: any) => {
     if (editingRoom) {
@@ -35,125 +26,96 @@ export const AdminPage: React.FC = () => {
     setIsRoomFormOpen(false);
   };
 
+  const navItems = [
+    { id: 'rooms', label: 'مدیریت اتاق‌ها', icon: '🛏️' },
+    { id: 'reservations', label: 'گزارش رزرو غذا', icon: '🍴' },
+    { id: 'report', label: 'گزارش و چاپ روزانه', icon: '📝' },
+    { id: 'menu', label: 'مدیریت منوی غذا', icon: '🍱' },
+  ];
+
   return (
-    <div className="dashboard-container" style={{ padding: '20px' }}>
-      <header style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '24px' }}>
-        <h1 style={{ margin: 0, fontSize: '24px', color: 'var(--primary-color)' }}>
-          Hotel Zagrous - Admin Panel
-        </h1>
-        <div style={{ display: 'flex', gap: '10px' }}>
-          <button onClick={loadData} disabled={state.isLoading} style={{ width: 'auto', padding: '8px 16px' }}>Refresh</button>
+    <div className="admin-layout" dir="rtl">
+      <aside className="admin-sidebar no-print">
+        <div style={{ padding: '0 16px 32px', display: 'flex', alignItems: 'center', gap: '12px' }}>
+          <span style={{ fontSize: '32px' }}>🏨</span>
+          <div style={{ fontWeight: 'bold', fontSize: '20px', color: 'var(--primary-color)' }}>هتل زاگرس</div>
         </div>
-      </header>
 
-      <nav style={{ display: 'flex', gap: '20px', borderBottom: '1px solid #ddd', marginBottom: '20px' }}>
-        <button
-          onClick={() => setCurrentTab('rooms')}
-          style={{
-            backgroundColor: 'transparent',
-            color: currentTab === 'rooms' ? 'var(--primary-color)' : '#666',
-            border: 'none',
-            borderBottom: currentTab === 'rooms' ? '2px solid var(--primary-color)' : 'none',
-            padding: '10px 0',
-            borderRadius: 0,
-            width: 'auto',
-            fontWeight: 'bold',
-            cursor: 'pointer'
-          }}
-        >
-          Rooms
-        </button>
-        <button
-          onClick={() => setCurrentTab('menu')}
-          style={{
-            backgroundColor: 'transparent',
-            color: currentTab === 'menu' ? 'var(--primary-color)' : '#666',
-            border: 'none',
-            borderBottom: currentTab === 'menu' ? '2px solid var(--primary-color)' : 'none',
-            padding: '10px 0',
-            borderRadius: 0,
-            width: 'auto',
-            fontWeight: 'bold',
-            cursor: 'pointer'
-          }}
-        >
-          Menu
-        </button>
-        <button
-          onClick={() => setCurrentTab('reservations')}
-          style={{
-            backgroundColor: 'transparent',
-            color: currentTab === 'reservations' ? 'var(--primary-color)' : '#666',
-            border: 'none',
-            borderBottom: currentTab === 'reservations' ? '2px solid var(--primary-color)' : 'none',
-            padding: '10px 0',
-            borderRadius: 0,
-            width: 'auto',
-            fontWeight: 'bold',
-            cursor: 'pointer'
-          }}
-        >
-          Deliveries
-        </button>
-        <button
-          onClick={() => setCurrentTab('report')}
-          style={{
-            backgroundColor: 'transparent',
-            color: currentTab === 'report' ? 'var(--primary-color)' : '#666',
-            border: 'none',
-            borderBottom: currentTab === 'report' ? '2px solid var(--primary-color)' : 'none',
-            padding: '10px 0',
-            borderRadius: 0,
-            width: 'auto',
-            fontWeight: 'bold',
-            cursor: 'pointer'
-          }}
-        >
-          Daily Report
-        </button>
-      </nav>
-
-      {state.error && <div className="error-message">{state.error}</div>}
-
-      {currentTab === 'rooms' && (
-        isRoomFormOpen ? (
-          <RoomForm
-            initialRoom={editingRoom}
-            onSubmit={handleRoomSubmit}
-            onCancel={() => setIsRoomFormOpen(false)}
-            isLoading={state.isLoading}
-          />
-        ) : (
-          <section style={{ marginTop: '20px' }}>
-            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '16px' }}>
-              <h2 style={{ margin: 0 }}>Room Management</h2>
-              <button onClick={handleAddRoomClick} style={{ width: 'auto', padding: '8px 16px' }}>Add Room</button>
+        <nav>
+          {navItems.map(item => (
+            <div
+              key={item.id}
+              className={`nav-item ${currentTab === item.id ? 'active' : ''}`}
+              onClick={() => {
+                setCurrentTab(item.id as any);
+                setIsRoomFormOpen(false);
+              }}
+            >
+              <span>{item.icon}</span>
+              <span>{item.label}</span>
             </div>
-            <RoomList
-              rooms={Array.from(state.rooms)}
-              onDelete={deleteRoom}
-              onEdit={handleEditRoomClick}
+          ))}
+        </nav>
+
+        <div style={{ marginTop: 'auto', padding: '16px' }}>
+          <button onClick={loadData} className="m3-button" style={{ fontSize: '14px', padding: '8px' }}>
+            بروزرسانی داده‌ها
+          </button>
+        </div>
+      </aside>
+
+      <main className="admin-content">
+        <header style={{ marginBottom: '32px' }}>
+          <h1 style={{ margin: 0, fontSize: '28px' }}>
+            {navItems.find(i => i.id === currentTab)?.label}
+          </h1>
+        </header>
+
+        {state.error && <div className="error-banner">{state.error}</div>}
+
+        {currentTab === 'rooms' && (
+          isRoomFormOpen ? (
+            <RoomForm
+              initialRoom={editingRoom}
+              onSubmit={handleRoomSubmit}
+              onCancel={() => setIsRoomFormOpen(false)}
+              isLoading={state.isLoading}
             />
-          </section>
-        )
-      )}
+          ) : (
+            <div>
+              <button
+                onClick={() => { setEditingRoom(undefined); setIsRoomFormOpen(true); }}
+                className="m3-button"
+                style={{ width: 'auto', marginBottom: '24px' }}
+              >
+                + افزودن اتاق جدید
+              </button>
+              <RoomList
+                rooms={Array.from(state.rooms)}
+                onDelete={deleteRoom}
+                onEdit={(r) => { setEditingRoom(r); setIsRoomFormOpen(true); }}
+              />
+            </div>
+          )
+        )}
 
-      {currentTab === 'menu' && <MenuManager />}
+        {currentTab === 'menu' && <MenuManager />}
 
-      {currentTab === 'reservations' && (
-        <ReservationList
-          state={state}
-          onMarkLunch={markLunchDelivered}
-          onMarkDinner={markDinnerDelivered}
-        />
-      )}
+        {currentTab === 'reservations' && (
+          <ReservationList
+            state={state}
+            onMarkLunch={markLunchDelivered}
+            onMarkDinner={markDinnerDelivered}
+          />
+        )}
 
-      {currentTab === 'report' && (
-        <DailyReport
-          state={state}
-          onSelectDate={selectReportDate}
-        />
-      )}
+        {currentTab === 'report' && (
+          <DailyReport
+            state={state}
+            onSelectDate={selectReportDate}
+          />
+        )}
+      </main>
     </div>
   );
 };
