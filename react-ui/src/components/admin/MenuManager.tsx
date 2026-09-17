@@ -3,6 +3,9 @@ import { useAdminViewModel } from '../../hooks/useAdminViewModel';
 import { FoodList } from './FoodList';
 import { FoodForm } from './FoodForm';
 import { AdminFoodItemJs } from '../../kotlin/adminBridge';
+import { FilterChip } from '../common/FilterChip';
+import { Switch } from '../common/Switch';
+import { Button } from '../common/Button';
 
 export const MenuManager: React.FC = () => {
   const { state, upsertFood, deleteFood, updateMenuConfig } = useAdminViewModel();
@@ -13,14 +16,14 @@ export const MenuManager: React.FC = () => {
   const [editingFood, setEditingFood] = useState<AdminFoodItemJs | undefined>(undefined);
 
   const dayTypes = [
-    { id: 'EVEN', label: 'Even' },
-    { id: 'ODD', label: 'Odd' },
-    { id: 'FRIDAY', label: 'Friday' }
+    { id: 'EVEN', label: 'زوج' },
+    { id: 'ODD', label: 'فرد' },
+    { id: 'FRIDAY', label: 'جمعه' }
   ];
 
   const foodTypes = [
-    { id: 'LUNCH', label: 'Lunch' },
-    { id: 'DINNER', label: 'Dinner' }
+    { id: 'LUNCH', label: 'ناهار' },
+    { id: 'DINNER', label: 'شام' }
   ];
 
   const currentConfig = Array.from(state.menuConfigs).find(
@@ -31,81 +34,58 @@ export const MenuManager: React.FC = () => {
     .filter(f => f.dayType === selectedDayType && f.type === selectedFoodType)
     .sort((a, b) => a.displayOrder - b.displayOrder);
 
-  const handleAddClick = () => {
-    setEditingFood(undefined);
-    setIsFormOpen(true);
-  };
-
-  const handleEditClick = (food: AdminFoodItemJs) => {
-    setEditingFood(food);
-    setIsFormOpen(true);
-  };
-
   const handleToggleConfig = (enabled: boolean) => {
     updateMenuConfig(selectedDayType, selectedFoodType, enabled);
   };
 
-  const handleUpsert = (foodData: any) => {
-    upsertFood(foodData as AdminFoodItemJs);
-    setIsFormOpen(false);
-  };
-
   return (
-    <div style={{ marginTop: '20px' }}>
-      <div style={{ display: 'flex', gap: '8px', marginBottom: '12px' }}>
+    <div>
+      <div style={{ display: 'flex', gap: '8px', marginBottom: '16px' }}>
         {dayTypes.map(dt => (
-          <button
+          <FilterChip
             key={dt.id}
+            label={dt.label}
+            selected={selectedDayType === dt.id}
             onClick={() => setSelectedDayType(dt.id)}
-            style={{
-              width: 'auto',
-              padding: '6px 12px',
-              fontSize: '14px',
-              backgroundColor: selectedDayType === dt.id ? 'var(--primary-color)' : '#eee',
-              color: selectedDayType === dt.id ? 'white' : 'black',
-              cursor: 'pointer'
-            }}
-          >
-            {dt.label}
-          </button>
+          />
         ))}
       </div>
 
-      <div style={{ display: 'flex', alignItems: 'center', gap: '16px', marginBottom: '20px' }}>
+      <div style={{ display: 'flex', alignItems: 'center', gap: '24px', marginBottom: '32px', background: 'var(--surface)', padding: '16px', borderRadius: '16px', border: '1px solid var(--outline-variant)' }}>
         <div style={{ display: 'flex', gap: '8px' }}>
           {foodTypes.map(ft => (
-            <button
+            <FilterChip
               key={ft.id}
+              label={ft.label}
+              selected={selectedFoodType === ft.id}
               onClick={() => setSelectedFoodType(ft.id)}
-              style={{
-                width: 'auto',
-                padding: '6px 12px',
-                fontSize: '14px',
-                backgroundColor: selectedFoodType === ft.id ? '#5f6368' : '#eee',
-                color: selectedFoodType === ft.id ? 'white' : 'black',
-                cursor: 'pointer'
-              }}
-            >
-              {ft.label}
-            </button>
+            />
           ))}
         </div>
 
-        <label style={{ display: 'flex', alignItems: 'center', gap: '8px', fontSize: '14px', fontWeight: 'bold' }}>
-          <input
-            type="checkbox"
-            checked={currentConfig?.isEnabled ?? true}
-            onChange={(e) => handleToggleConfig(e.target.checked)}
-          />
-          Category Enabled
-        </label>
+        <div style={{ flex: 1 }}></div>
 
-        <button
-          onClick={handleAddClick}
-          style={{ width: 'auto', padding: '6px 12px', fontSize: '14px', marginLeft: 'auto', cursor: 'pointer' }}
+        <div style={{ display: 'flex', alignItems: 'center', gap: '12px' }}>
+          <span style={{ fontSize: '14px' }}>وضعیت منو:</span>
+          <Switch
+            checked={currentConfig?.isEnabled ?? true}
+            onChange={handleToggleConfig}
+          />
+          <span style={{ fontSize: '14px', fontWeight: 'bold', color: (currentConfig?.isEnabled ?? true) ? 'green' : 'red' }}>
+            {(currentConfig?.isEnabled ?? true) ? 'فعال' : 'غیرفعال'}
+          </span>
+        </div>
+      </div>
+
+      <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '16px' }}>
+        <h2 style={{ margin: 0, fontSize: '20px' }}>لیست غذاها</h2>
+        <Button
+          variant="primary"
+          size="small"
+          onClick={() => { setEditingFood(undefined); setIsFormOpen(true); }}
         >
-          Add Food
-        </button>
+          + افزودن غذای جدید
+        </Button>
       </div>
 
       {isFormOpen ? (
@@ -113,7 +93,7 @@ export const MenuManager: React.FC = () => {
           initialFood={editingFood}
           defaultType={selectedFoodType}
           defaultDayType={selectedDayType}
-          onSubmit={handleUpsert}
+          onSubmit={(f) => { upsertFood(f as AdminFoodItemJs); setIsFormOpen(false); }}
           onCancel={() => setIsFormOpen(false)}
           isLoading={state.isLoading}
         />
@@ -121,15 +101,9 @@ export const MenuManager: React.FC = () => {
         <FoodList
           foods={filteredFoods}
           onDelete={deleteFood}
-          onEdit={handleEditClick}
-          onToggleActive={(f) => upsertFood({
-            id: f.id, name: f.name, nameAr: f.nameAr, type: f.type, dayType: f.dayType,
-            isActive: !f.isActive, isVisibleToUsers: f.isVisibleToUsers, displayOrder: f.displayOrder
-          } as AdminFoodItemJs)}
-          onToggleVisible={(f) => upsertFood({
-            id: f.id, name: f.name, nameAr: f.nameAr, type: f.type, dayType: f.dayType,
-            isActive: f.isActive, isVisibleToUsers: !f.isVisibleToUsers, displayOrder: f.displayOrder
-          } as AdminFoodItemJs)}
+          onEdit={(f) => { setEditingFood(f); setIsFormOpen(true); }}
+          onToggleActive={(f) => upsertFood({ ...f, isActive: !f.isActive } as AdminFoodItemJs)}
+          onToggleVisible={(f) => upsertFood({ ...f, isVisibleToUsers: !f.isVisibleToUsers } as AdminFoodItemJs)}
         />
       )}
     </div>

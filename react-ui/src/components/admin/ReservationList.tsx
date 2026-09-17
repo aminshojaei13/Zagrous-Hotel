@@ -1,5 +1,7 @@
 import React from 'react';
 import { AdminStateJs } from '../../kotlin/adminBridge';
+import { Card } from '../common/Card';
+import { Button } from '../common/Button';
 
 interface ReservationListProps {
   state: AdminStateJs;
@@ -12,50 +14,66 @@ export const ReservationList: React.FC<ReservationListProps> = ({ state, onMarkL
   const foodMap = new Map(Array.from(state.foods).map(f => [f.id, f]));
 
   if (reservations.length === 0) {
-    return <div style={{ padding: '20px', textAlign: 'center', color: '#666' }}>No deliveries found for {state.selectedReportDate}.</div>;
+    return (
+      <Card variant="outlined" shape="medium" style={{ padding: '40px', textAlign: 'center', color: 'var(--on-surface-variant)' }}>
+        هیچ رزروی برای تاریخ {state.selectedReportDate || 'انتخاب شده'} یافت نشد.
+      </Card>
+    );
   }
 
   return (
     <div style={{ display: 'flex', flexDirection: 'column', gap: '16px' }}>
       {reservations.map((res) => (
-        <div key={res.roomNumber} style={{ border: '1px solid #eee', borderRadius: '8px', overflow: 'hidden' }}>
-          <div style={{ backgroundColor: '#f8f9fa', padding: '12px', fontWeight: 'bold' }}>
-            Room {res.roomNumber}
+        <Card key={res.roomNumber} variant="outlined" shape="medium" style={{ overflow: 'hidden' }}>
+          <div style={{ backgroundColor: 'var(--surface-variant)', padding: '12px 20px', fontWeight: 'bold', fontSize: '18px', display: 'flex', justifyContent: 'space-between' }}>
+            <span>اتاق {res.roomNumber}</span>
+            <span style={{ fontSize: '14px', color: 'var(--primary-color)' }}>صبحانه: {res.breakfastCount} نفر</span>
           </div>
-          <div style={{ padding: '12px' }}>
+
+          <div style={{ padding: '12px 20px' }}>
             {Array.from(res.guestMealSelections).map((sel) => (
-              <div key={sel.guestIndex} style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', padding: '8px 0', borderBottom: '1px solid #fafafa' }}>
-                <span style={{ fontSize: '14px' }}>Guest {sel.guestIndex + 1}</span>
-                <div style={{ display: 'flex', gap: '8px' }}>
+              <div key={sel.guestIndex} style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', padding: '12px 0', borderBottom: '1px solid var(--background)' }}>
+                <span style={{ fontSize: '14px', fontWeight: 'bold' }}>مهمان {sel.guestIndex + 1}</span>
+
+                <div style={{ display: 'flex', gap: '12px' }}>
                   {sel.lunchFoodId && (
-                    <button
+                    <Button
+                      variant={sel.lunchDelivered ? 'outlined' : 'primary'}
+                      size="small"
                       onClick={() => onMarkLunch(res.roomNumber, sel.guestIndex, res.date)}
                       disabled={sel.lunchDelivered}
                       style={{
-                        fontSize: '11px', width: 'auto', padding: '4px 8px',
-                        backgroundColor: sel.lunchDelivered ? '#188038' : 'var(--primary-color)'
+                        minWidth: '140px',
+                        backgroundColor: sel.lunchDelivered ? '#e6f4ea' : undefined,
+                        borderColor: sel.lunchDelivered ? '#137333' : undefined,
+                        color: sel.lunchDelivered ? '#137333' : undefined
                       }}
                     >
-                      Lunch: {foodMap.get(sel.lunchFoodId)?.name || '...'} {sel.lunchDelivered ? '✓' : ''}
-                    </button>
+                      {sel.lunchDelivered ? '✓ ناهار تحویل شد' : `ناهار: ${foodMap.get(sel.lunchFoodId)?.name || '...'}`}
+                    </Button>
                   )}
+
                   {sel.dinnerFoodId && (
-                    <button
+                    <Button
+                      variant={sel.dinnerDelivered ? 'outlined' : 'primary'}
+                      size="small"
                       onClick={() => onMarkDinner(res.roomNumber, sel.guestIndex, res.date)}
                       disabled={sel.dinnerDelivered}
                       style={{
-                        fontSize: '11px', width: 'auto', padding: '4px 8px',
-                        backgroundColor: sel.dinnerDelivered ? '#188038' : 'var(--primary-color)'
+                        minWidth: '140px',
+                        backgroundColor: sel.dinnerDelivered ? '#e6f4ea' : undefined,
+                        borderColor: sel.dinnerDelivered ? '#137333' : undefined,
+                        color: sel.dinnerDelivered ? '#137333' : undefined
                       }}
                     >
-                      Dinner: {foodMap.get(sel.dinnerFoodId)?.name || '...'} {sel.dinnerDelivered ? '✓' : ''}
-                    </button>
+                      {sel.dinnerDelivered ? '✓ شام تحویل شد' : `شام: ${foodMap.get(sel.dinnerFoodId)?.name || '...'}`}
+                    </Button>
                   )}
                 </div>
               </div>
             ))}
           </div>
-        </div>
+        </Card>
       ))}
     </div>
   );

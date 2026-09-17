@@ -1,57 +1,36 @@
 import React from 'react';
+import { Select } from '../common/Select';
 
 interface BreakfastPickerProps {
-  date: string;
   count: number;
-  maxCount: number;
+  max: number;
   isArabic: boolean;
   disabled: boolean;
   onChange: (count: number) => void;
 }
 
-export const BreakfastPicker: React.FC<BreakfastPickerProps> = ({
-  count,
-  maxCount,
-  isArabic,
-  disabled,
-  onChange,
-}) => {
-  const t = {
-    label: isArabic ? 'عدد وجبات الإفطار' : 'تعداد صبحانه',
-    noBreakfast: isArabic ? 'بدون إفطار' : 'بدون صبحانه',
-    persons: (n: number) => isArabic ? `${n} أشخاص` : `${n} نفر`,
-  };
+export const BreakfastPicker: React.FC<BreakfastPickerProps> = ({ count, max, isArabic, disabled, onChange }) => {
+  const options = [
+    { value: 0, label: isArabic ? 'بدون إفطار' : 'بدون صبحانه' },
+    ...Array.from({ length: max }, (_, i) => ({
+      value: i + 1,
+      label: isArabic ? `${i + 1} أشخاص` : `${i + 1} نفر`
+    }))
+  ];
 
   return (
-    <div className="breakfast-picker" style={{
-      marginTop: '12px',
-      paddingTop: '12px',
-      borderTop: '1px dashed #eee',
-      display: 'flex',
-      alignItems: 'center',
-      justifyContent: 'space-between'
-    }}>
-      <label style={{ fontSize: '14px', fontWeight: '500' }}>{t.label}</label>
-
-      <select
+    <div style={{ marginBottom: '20px', padding: '12px', background: 'var(--surface-variant)', borderRadius: '12px' }}>
+      <Select
+        label={isArabic ? 'عدد وجبات الإفطار' : 'تعداد وعده صبحانه'}
+        options={options}
         value={count}
         onChange={(e) => onChange(parseInt(e.target.value))}
         disabled={disabled}
-        style={{
-          padding: '6px 12px',
-          borderRadius: '4px',
-          border: '1px solid #dadce0',
-          fontSize: '14px',
-          minWidth: '120px'
-        }}
-      >
-        <option value={0}>{t.noBreakfast}</option>
-        {Array.from({ length: maxCount }).map((_, i) => (
-          <option key={i + 1} value={i + 1}>
-            {t.persons(i + 1)}
-          </option>
-        ))}
-      </select>
+        leadingIcon="🍳"
+      />
+      <div style={{ fontSize: '11px', color: 'var(--on-surface-variant)', marginTop: '8px', paddingRight: '4px' }}>
+        {isArabic ? 'بوفيه مفتوح' : 'سلف سرویس'}
+      </div>
     </div>
   );
 };

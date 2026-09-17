@@ -1,5 +1,8 @@
 import React from 'react';
 import { AdminStateJs } from '../../kotlin/adminBridge';
+import { Button } from '../common/Button';
+import { Card } from '../common/Card';
+import { TextField } from '../common/TextField';
 
 interface DailyReportProps {
   state: AdminStateJs;
@@ -15,116 +18,134 @@ export const DailyReport: React.FC<DailyReportProps> = ({ state, onSelectDate })
   };
 
   return (
-    <div style={{ marginTop: '20px' }}>
-      <div className="no-print" style={{ display: 'flex', gap: '12px', alignItems: 'center', marginBottom: '24px' }}>
-        <input
-          type="text"
-          value={reportDate}
-          onChange={(e) => onSelectDate(e.target.value)}
-          placeholder="YYYY/MM/DD"
-          style={{ width: '150px', padding: '8px' }}
-        />
-        <div style={{ fontSize: '14px', fontWeight: 'bold' }}>خلاصه گزارش روزانه</div>
-        <button
-          onClick={handlePrint}
-          style={{ width: 'auto', padding: '8px 16px', marginLeft: 'auto', backgroundColor: '#625B71' }}
-        >
-          چاپ گزارش
-        </button>
-      </div>
+    <div>
+      <Card variant="outlined" shape="medium" className="no-print" style={{ padding: '24px', marginBottom: '24px' }}>
+        <div style={{ display: 'flex', gap: '16px', alignItems: 'flex-end' }}>
+          <div style={{ width: '200px' }}>
+            <TextField
+              label="تاریخ گزارش"
+              value={reportDate}
+              onChange={(e) => onSelectDate(e.target.value)}
+              placeholder="YYYY/MM/DD"
+              leadingIcon="📅"
+            />
+          </div>
+          <div style={{ flex: 1 }}></div>
+          <Button
+            variant="outlined"
+            onClick={handlePrint}
+            style={{ width: 'auto' }}
+          >
+            🖨️ چاپ گزارش برای آشپزخانه
+          </Button>
+        </div>
+      </Card>
 
+      {/* Printable Area */}
       <div className="print-only printable-report">
-        <h2 style={{ textAlign: 'center' }}>گزارش آماری غذای هتل زاگرس</h2>
-        <p style={{ textAlign: 'center' }}>تاریخ: {reportDate}</p>
+        <div style={{ textAlign: 'center', marginBottom: '32px', borderBottom: '2px solid black', paddingBottom: '16px' }}>
+          <h1 style={{ margin: '0 0 8px 0' }}>گزارش آماری غذای هتل زاگرس</h1>
+          <div style={{ fontSize: '18px' }}>تاریخ: {reportDate}</div>
+        </div>
 
-        <table className="report-table">
+        <table className="report-table" style={{ width: '100%', borderCollapse: 'collapse' }}>
           <thead>
             <tr>
-              <th>وعده</th>
-              <th>نام غذا</th>
-              <th>تعداد</th>
+              <th style={{ border: '1px solid black', padding: '12px', backgroundColor: '#f2f2f2' }}>وعده</th>
+              <th style={{ border: '1px solid black', padding: '12px', backgroundColor: '#f2f2f2' }}>نام غذا / منو</th>
+              <th style={{ border: '1px solid black', padding: '12px', backgroundColor: '#f2f2f2' }}>تعداد نهایی</th>
             </tr>
           </thead>
           <tbody>
             <tr>
-              <td>صبحانه</td>
-              <td>سلف سرویس</td>
-              <td>{summary.totalBreakfast}</td>
+              <td style={{ border: '1px solid black', padding: '12px', textAlign: 'center', fontWeight: 'bold' }}>صبحانه</td>
+              <td style={{ border: '1px solid black', padding: '12px' }}>بوفه سلف سرویس</td>
+              <td style={{ border: '1px solid black', padding: '12px', textAlign: 'center', fontSize: '18px', fontWeight: 'bold' }}>{summary.totalBreakfast}</td>
             </tr>
+
             {summary.lunchOrders.length > 0 ? (
               Array.from(summary.lunchOrders).map((item, index) => (
                 <tr key={`lunch-${item.foodId}`}>
-                  {index === 0 && <td rowSpan={summary.lunchOrders.length}>ناهار</td>}
-                  <td>{item.foodName}</td>
-                  <td>{item.quantity}</td>
+                  {index === 0 && <td rowSpan={summary.lunchOrders.length + 1} style={{ border: '1px solid black', padding: '12px', textAlign: 'center', fontWeight: 'bold' }}>ناهار</td>}
+                  <td style={{ border: '1px solid black', padding: '12px' }}>{item.foodName}</td>
+                  <td style={{ border: '1px solid black', padding: '12px', textAlign: 'center' }}>{item.quantity}</td>
                 </tr>
               ))
             ) : (
               <tr>
-                <td>ناهار</td>
-                <td>-</td>
-                <td>0</td>
+                <td style={{ border: '1px solid black', padding: '12px', textAlign: 'center', fontWeight: 'bold' }}>ناهار</td>
+                <td style={{ border: '1px solid black', padding: '12px' }}>-</td>
+                <td style={{ border: '1px solid black', padding: '12px', textAlign: 'center' }}>0</td>
               </tr>
             )}
-            <tr style={{ fontWeight: 'bold', backgroundColor: '#f9f9f9' }}>
-              <td colSpan={2}>جمع کل ناهار</td>
-              <td>{summary.totalLunch}</td>
+            <tr style={{ fontWeight: 'bold', backgroundColor: '#fafafa' }}>
+              <td style={{ border: '1px solid black', padding: '12px', textAlign: 'left' }}>جمع کل ناهار:</td>
+              <td style={{ border: '1px solid black', padding: '12px', textAlign: 'center', fontSize: '18px' }}>{summary.totalLunch}</td>
             </tr>
+
             {summary.dinnerOrders.length > 0 ? (
               Array.from(summary.dinnerOrders).map((item, index) => (
                 <tr key={`dinner-${item.foodId}`}>
-                  {index === 0 && <td rowSpan={summary.dinnerOrders.length}>شام</td>}
-                  <td>{item.foodName}</td>
-                  <td>{item.quantity}</td>
+                  {index === 0 && <td rowSpan={summary.dinnerOrders.length + 1} style={{ border: '1px solid black', padding: '12px', textAlign: 'center', fontWeight: 'bold' }}>شام</td>}
+                  <td style={{ border: '1px solid black', padding: '12px' }}>{item.foodName}</td>
+                  <td style={{ border: '1px solid black', padding: '12px', textAlign: 'center' }}>{item.quantity}</td>
                 </tr>
               ))
             ) : (
               <tr>
-                <td>شام</td>
-                <td>-</td>
-                <td>0</td>
+                <td style={{ border: '1px solid black', padding: '12px', textAlign: 'center', fontWeight: 'bold' }}>شام</td>
+                <td style={{ border: '1px solid black', padding: '12px' }}>-</td>
+                <td style={{ border: '1px solid black', padding: '12px', textAlign: 'center' }}>0</td>
               </tr>
             )}
-            <tr style={{ fontWeight: 'bold', backgroundColor: '#f9f9f9' }}>
-              <td colSpan={2}>جمع کل شام</td>
-              <td>{summary.totalDinner}</td>
+            <tr style={{ fontWeight: 'bold', backgroundColor: '#fafafa' }}>
+              <td style={{ border: '1px solid black', padding: '12px', textAlign: 'left' }}>جمع کل شام:</td>
+              <td style={{ border: '1px solid black', padding: '12px', textAlign: 'center', fontSize: '18px' }}>{summary.totalDinner}</td>
             </tr>
           </tbody>
         </table>
+
+        <div style={{ marginTop: '40px', display: 'flex', justifyContent: 'space-between' }}>
+          <div>امضاء مدیر داخلی: .......................</div>
+          <div>امضاء سرآشپز: .......................</div>
+        </div>
       </div>
 
-      <div className="no-print" style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(200px, 1fr))', gap: '16px', marginBottom: '30px' }}>
-        <div className="report-box" style={{ padding: '16px', border: '1px solid #eee', borderRadius: '8px' }}>
-          <h4 style={{ margin: '0 0 10px 0' }}>Breakfast</h4>
-          <div style={{ fontSize: '24px', fontWeight: 'bold', color: 'var(--primary-color)' }}>{summary.totalBreakfast}</div>
-          <div style={{ fontSize: '12px', color: '#888' }}>Total persons</div>
-        </div>
+      {/* Screen View (Summary Boxes) */}
+      <div className="no-print" style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(250px, 1fr))', gap: '20px' }}>
+        <Card variant="elevated" shape="medium" style={{ padding: '24px', textAlign: 'center' }}>
+          <h4 style={{ margin: '0 0 16px 0', color: 'var(--on-surface-variant)' }}>مجموع صبحانه</h4>
+          <div style={{ fontSize: '48px', fontWeight: 'bold', color: 'var(--primary-color)' }}>{summary.totalBreakfast}</div>
+          <div style={{ fontSize: '14px', color: 'var(--outline)', marginTop: '8px' }}>تعداد نفرات</div>
+        </Card>
 
-        <div className="report-box" style={{ padding: '16px', border: '1px solid #eee', borderRadius: '8px' }}>
-          <h4 style={{ margin: '0 0 10px 0' }}>Lunch</h4>
+        <Card variant="elevated" shape="medium" style={{ padding: '24px' }}>
+          <h4 style={{ margin: '0 0 16px 0', color: 'var(--on-surface-variant)', textAlign: 'center' }}>آمار ناهار</h4>
           {Array.from(summary.lunchOrders).map((item) => (
-            <div key={item.foodId} style={{ display: 'flex', justifyContent: 'space-between', fontSize: '14px', marginBottom: '4px' }}>
+            <div key={item.foodId} style={{ display: 'flex', justifyContent: 'space-between', padding: '8px 0', borderBottom: '1px solid var(--background)' }}>
               <span>{item.foodName}</span>
               <span style={{ fontWeight: 'bold' }}>{item.quantity}</span>
             </div>
           ))}
-          <div style={{ marginTop: '8px', paddingTop: '8px', borderTop: '1px solid #eee', fontWeight: 'bold' }}>
-            Total: {summary.totalLunch}
+          <div style={{ marginTop: '16px', paddingTop: '16px', borderTop: '2px solid var(--primary-container)', fontWeight: 'bold', display: 'flex', justifyContent: 'space-between' }}>
+            <span>جمع کل ناهار:</span>
+            <span>{summary.totalLunch}</span>
           </div>
-        </div>
+        </Card>
 
-        <div className="report-box" style={{ padding: '16px', border: '1px solid #eee', borderRadius: '8px' }}>
-          <h4 style={{ margin: '0 0 10px 0' }}>Dinner</h4>
+        <Card variant="elevated" shape="medium" style={{ padding: '24px' }}>
+          <h4 style={{ margin: '0 0 16px 0', color: 'var(--on-surface-variant)', textAlign: 'center' }}>آمار شام</h4>
           {Array.from(summary.dinnerOrders).map((item) => (
-            <div key={item.foodId} style={{ display: 'flex', justifyContent: 'space-between', fontSize: '14px', marginBottom: '4px' }}>
+            <div key={item.foodId} style={{ display: 'flex', justifyContent: 'space-between', padding: '8px 0', borderBottom: '1px solid var(--background)' }}>
               <span>{item.foodName}</span>
               <span style={{ fontWeight: 'bold' }}>{item.quantity}</span>
             </div>
           ))}
-          <div style={{ marginTop: '8px', paddingTop: '8px', borderTop: '1px solid #eee', fontWeight: 'bold' }}>
-            Total: {summary.totalDinner}
+          <div style={{ marginTop: '16px', paddingTop: '16px', borderTop: '2px solid var(--primary-container)', fontWeight: 'bold', display: 'flex', justifyContent: 'space-between' }}>
+            <span>جمع کل شام:</span>
+            <span>{summary.totalDinner}</span>
           </div>
-        </div>
+        </Card>
       </div>
     </div>
   );

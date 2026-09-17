@@ -1,4 +1,6 @@
 import React from 'react';
+import { Button } from '../common/Button';
+import { ErrorBanner } from '../common/ErrorBanner';
 import { ReservationStateJs } from '../../kotlin/reservationBridge';
 
 interface ConfirmSectionProps {
@@ -9,49 +11,29 @@ interface ConfirmSectionProps {
 export const ConfirmSection: React.FC<ConfirmSectionProps> = ({ state, onConfirm }) => {
   const isArabic = state.isArabic;
 
-  const t = {
-    title: isArabic ? 'تأكيد الحجز' : 'تایید نهایی رزرو',
-    summary: isArabic ? 'ملخص الحجز:' : 'خلاصه رزرو:',
-    totalDays: (n: number) => isArabic ? `إجمالي الأيام: ${n}` : `مجموع روزها: ${n}`,
-    confirmBtn: isArabic ? 'تأكيد و حفظ' : 'ثبت نهایی و تایید',
-    loading: isArabic ? 'جاري الحفظ...' : 'در حال ثبت...',
-    success: isArabic ? 'تم الحجز بنجاح' : 'رزرو با موفقیت ثبت شد',
-    failed: isArabic ? 'فشل الحجز' : 'خطا در ثبت رزرو',
-  };
-
-  const isSuccess = state.error === 'reservation_success';
-  const isError = state.error === 'reservation_failed';
-
   return (
-    <div className="confirm-section" style={{
-      marginTop: '32px',
-      padding: '24px',
-      backgroundColor: '#f8f9fa',
-      borderRadius: '12px',
-      border: '1px solid #dee2e6',
-      textAlign: 'center'
-    }}>
-      <h3 style={{ margin: '0 0 16px 0' }}>{t.title}</h3>
+    <section style={{ marginTop: '40px', paddingBottom: '60px' }}>
+      {state.error === 'reservation_success' && (
+        <ErrorBanner variant="success" message={isArabic ? 'تم الحجز بنجاح' : 'رزرو با موفقیت ثبت شد'} />
+      )}
 
-      <p style={{ color: '#5f6368', marginBottom: '24px' }}>
-        {t.totalDays(state.stayDays.length)}
-      </p>
+      {state.error === 'reservation_failed' && (
+        <ErrorBanner variant="error" message={isArabic ? 'فشل في تسجيل الحجز' : 'خطا در ثبت رزرو'} />
+      )}
 
-      {isSuccess && <div className="success-message">{t.success}</div>}
-      {isError && <div className="error-message">{t.failed}</div>}
-      {state.error && !isSuccess && !isError && <div className="error-message">{state.error}</div>}
-
-      <button
+      <Button
         onClick={onConfirm}
-        disabled={state.isLoading || isSuccess}
-        style={{
-          height: '56px',
-          fontSize: '18px',
-          backgroundColor: isSuccess ? 'var(--success-color)' : 'var(--primary-color)'
-        }}
+        size="large"
+        isLoading={state.isLoading}
+        style={{ height: '64px', fontSize: '18px' }}
       >
-        {state.isLoading ? t.loading : isSuccess ? '✓' : t.confirmBtn}
-      </button>
-    </div>
+        <span style={{ fontSize: '24px', marginLeft: '12px' }}>✅</span>
+        {isArabic ? 'التأكيد النهائي وحجز الوجبات' : 'ثبت نهایی و تایید رزروها'}
+      </Button>
+
+      <div style={{ textAlign: 'center', marginTop: '16px', color: 'var(--on-surface-variant)', fontSize: '12px' }}>
+        {isArabic ? 'يرجى مراجعة كافة الاختيارات قبل التأكيد' : 'لطفاً قبل تایید نهایی، تمامی انتخاب‌های خود را بازبینی فرمایید.'}
+      </div>
+    </section>
   );
 };

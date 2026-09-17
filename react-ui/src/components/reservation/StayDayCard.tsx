@@ -1,11 +1,8 @@
 import React from 'react';
-import { MealSelection } from './MealSelection';
+import { Card } from '../common/Card';
 import { BreakfastPicker } from './BreakfastPicker';
-import {
-  getReservationBridge,
-  FoodItemJs,
-  FoodReservationJs
-} from '../../kotlin/reservationBridge';
+import { MealSelection } from './MealSelection';
+import { FoodItemJs, FoodReservationJs } from '../../kotlin/reservationBridge';
 
 interface StayDayCardProps {
   date: string;
@@ -19,86 +16,77 @@ interface StayDayCardProps {
 }
 
 export const StayDayCard: React.FC<StayDayCardProps> = ({
-  date,
-  guestCount,
-  availableFoods,
-  tempReservations,
-  isArabic,
-  isLoading,
-  onFoodChange,
-  onBreakfastChange,
+  date, guestCount, availableFoods, tempReservations, isArabic, isLoading,
+  onFoodChange, onBreakfastChange
 }) => {
-  const bridge = getReservationBridge();
-  const dayType = bridge.getDayType(date);
+  const reservation = Array.from(tempReservations).find(r => r.date === date);
 
-  const reservation = tempReservations.find(r => r.date === date);
-  const currentBreakfastCount = reservation?.breakfastCount || 0;
+  // Business logic for locking (Simplified for UI parity - keep as is)
+  const isLocked = false;
 
-  // Filter foods for this specific day and type
-  const dayFoods = availableFoods.filter(f => f.dayType === dayType);
-  const lunchOptions = dayFoods.filter(f => f.type === 'LUNCH');
-  const dinnerOptions = dayFoods.filter(f => f.type === 'DINNER');
-
-  const t = {
-    date: isArabic ? `التاريخ: ${date}` : `تاریخ: ${date}`,
-    guest: (index: number) => isArabic ? `الضيف ${index}` : `مهمان ${index}`,
-    lunch: isArabic ? 'وجبة الغداء' : 'وعده ناهار',
-    dinner: isArabic ? 'وجبة العشاء' : 'وعده شام',
-  };
+  // In Compose, dayType is calculated from DateUtils.
+  // We'll keep the current simple filtering or assume availableFoods is already filtered by Kotlin (it is).
+  const lunchFoods = Array.from(availableFoods).filter(f => f.type === 'LUNCH');
+  const dinnerFoods = Array.from(availableFoods).filter(f => f.type === 'DINNER');
 
   return (
-    <div className="stay-day-card" style={{
-      backgroundColor: 'white',
-      borderRadius: '8px',
-      padding: '16px',
-      marginBottom: '16px',
-      border: '1px solid #e0e0e0',
-      boxShadow: '0 2px 4px rgba(0,0,0,0.05)'
-    }}>
-      <div style={{ fontWeight: 'bold', borderBottom: '1px solid #eee', paddingBottom: '8px', marginBottom: '12px', color: 'var(--primary-color)' }}>
-        {t.date}
+    <Card variant="outlined" shape="large" style={{ padding: '20px', marginBottom: '24px' }}>
+      <div style={{ display: 'flex', alignItems: 'center', gap: '12px', marginBottom: '20px' }}>
+        <div style={{
+          background: 'var(--primary-container)',
+          width: '40px', height: '40px',
+          borderRadius: '50%',
+          display: 'flex', alignItems: 'center', justifyContent: 'center',
+          color: 'var(--primary-color)',
+          fontSize: '20px'
+        }}>📅</div>
+        <h3 style={{ margin: 0, fontSize: '18px', color: 'var(--on-surface)' }}>
+          {isArabic ? `التاريخ: ${date}` : `تاریخ: ${date}`}
+        </h3>
       </div>
 
       <BreakfastPicker
-        date={date}
-        count={currentBreakfastCount}
-        maxCount={guestCount}
+        count={reservation?.breakfastCount || 0}
+        max={guestCount}
         isArabic={isArabic}
-        disabled={isLoading}
+        disabled={isLoading || isLocked}
         onChange={(count) => onBreakfastChange(date, count)}
       />
 
-      <div style={{ marginTop: '16px' }}>
-        {Array.from({ length: guestCount }).map((_, index) => {
-          const selection = reservation?.guestMealSelections.find(s => s.guestIndex === index);
+      <div style={{ height: '1px', background: 'var(--outline-variant)', opacity: 0.3, margin: '24px 0' }}></div>
 
-          return (
-            <div key={index} className="guest-row" style={{ marginBottom: index === guestCount - 1 ? 0 : '16px', paddingTop: '12px', borderTop: index === 0 ? 'none' : '1px solid #f5f5f5' }}>
-              <div style={{ fontSize: '14px', fontWeight: '500', marginBottom: '8px' }}>
-                {t.guest(index + 1)}
-              </div>
-              <div style={{ display: 'flex', gap: '12px' }}>
-                <MealSelection
-                  label={t.lunch}
-                  foods={lunchOptions}
-                  selectedId={selection?.lunchFoodId || null}
-                  isArabic={isArabic}
-                  disabled={isLoading}
-                  onSelect={(id) => onFoodChange(date, index, id, 'LUNCH')}
-                />
-                <MealSelection
-                  label={t.dinner}
-                  foods={dinnerOptions}
-                  selectedId={selection?.dinnerFoodId || null}
-                  isArabic={isArabic}
-                  disabled={isLoading}
-                  onSelect={(id) => onFoodChange(date, index, id, 'DINNER')}
-                />
-              </div>
+      {Array.from({ length: guestCount }).map((_, idx) => {
+        const selection = Array.from(reservation?.guestMealSelections || []).find(s => s.guestIndex === idx);
+
+        return (
+          <div key={idx} style={{ marginBottom: idx === guestCount - 1 ? 0 : '24px' }}>
+            <div style={{ fontSize: '14px', fontWeight: 'bold', color: 'var(--primary-color)', marginBottom: '12px' }}>
+              {isArabic ? `اختيار الضيف ${idx + 1}:` : `انتخاب مهمان ${idx + 1}:`}
             </div>
-          );
-        })}
-      </div>
-    </div>
+
+            <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '12px' }}>
+              <MealSelection
+                label={isArabic ? 'وجبة الغداء' : 'وعده ناهار'}
+                icon="☀️"
+                foods={lunchFoods}
+                selectedId={selection?.lunchFoodId || null}
+                isArabic={isArabic}
+                disabled={isLoading || isLocked}
+                onChange={(fId) => onFoodChange(date, idx, fId, 'LUNCH')}
+              />
+              <MealSelection
+                label={isArabic ? 'وجبة العشاء' : 'وعده شام'}
+                icon="🌙"
+                foods={dinnerFoods}
+                selectedId={selection?.dinnerFoodId || null}
+                isArabic={isArabic}
+                disabled={isLoading || isLocked}
+                onChange={(fId) => onFoodChange(date, idx, fId, 'DINNER')}
+              />
+            </div>
+          </div>
+        );
+      })}
+    </Card>
   );
 };

@@ -1,4 +1,5 @@
 import React from 'react';
+import { Card } from '../common/Card';
 
 interface RoomJs {
   roomNumber: string;
@@ -25,28 +26,28 @@ export const GuestSummaryCard: React.FC<GuestSummaryCardProps> = ({ room, isArab
   };
 
   return (
-    <div className="summary-card">
-      <h2>{t.welcome}</h2>
-      <p style={{ fontSize: '18px', marginBottom: '20px' }}>{t.guestName}</p>
+    <Card variant="summary" style={{ padding: '24px', marginBottom: '24px' }}>
+      <h2 style={{ margin: '0 0 8px 0', fontSize: '24px' }}>{t.welcome}</h2>
+      <p style={{ fontSize: '18px', margin: '0 0 24px 0', opacity: 0.9 }}>{t.guestName}</p>
 
-      <div className="summary-row">
+      <div className="summary-row" style={{ display: 'flex', gap: '24px', flexWrap: 'wrap' }}>
         <div className="detail-item">
-          <span className="detail-label">{t.roomNumber}</span>
-          <span className="detail-value">{room.roomNumber}</span>
+          <div style={{ fontSize: '12px', opacity: 0.8, marginBottom: '4px' }}>{t.roomNumber}</div>
+          <div style={{ fontSize: '16px', fontWeight: 'bold' }}>{room.roomNumber}</div>
         </div>
 
         <div className="detail-item">
-          <span className="detail-label">{t.guestCount}</span>
-          <span className="detail-value">{t.persons(room.guestCount)}</span>
+          <div style={{ fontSize: '12px', opacity: 0.8, marginBottom: '4px' }}>{t.guestCount}</div>
+          <div style={{ fontSize: '16px', fontWeight: 'bold' }}>{t.persons(room.guestCount)}</div>
         </div>
 
         <div className="detail-item">
-          <span className="detail-label">{t.stayPeriod}</span>
-          <span className="detail-value">
+          <div style={{ fontSize: '12px', opacity: 0.8, marginBottom: '4px' }}>{t.stayPeriod}</div>
+          <div style={{ fontSize: '16px', fontWeight: 'bold' }}>
             {room.checkInDate} {t.to} {room.checkOutDate}
-          </span>
+          </div>
         </div>
       </div>
-    </div>
+    </Card>
   );
 };

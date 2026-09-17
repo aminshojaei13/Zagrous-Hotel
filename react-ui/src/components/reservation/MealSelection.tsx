@@ -1,48 +1,41 @@
 import React from 'react';
+import { Select } from '../common/Select';
 import { FoodItemJs } from '../../kotlin/reservationBridge';
 
 interface MealSelectionProps {
   label: string;
+  icon: string;
   foods: FoodItemJs[];
-  selectedId: string | null | undefined;
+  selectedId: string | null;
   isArabic: boolean;
   disabled: boolean;
-  onSelect: (foodId: string | null) => void;
+  onChange: (foodId: string | null) => void;
 }
 
 export const MealSelection: React.FC<MealSelectionProps> = ({
-  label,
-  foods,
-  selectedId,
-  isArabic,
-  disabled,
-  onSelect,
+  label, icon, foods, selectedId, isArabic, disabled, onChange
 }) => {
+  const options = [
+    { value: 'none', label: isArabic ? 'عدم الاختيار' : 'عدم انتخاب' },
+    ...foods.map(f => ({
+      value: f.id,
+      label: (isArabic && f.nameAr) ? f.nameAr : f.name
+    }))
+  ];
+
+  const handleChange = (e: React.ChangeEvent<HTMLSelectElement>) => {
+    const val = e.target.value;
+    onChange(val === 'none' ? null : val);
+  };
+
   return (
-    <div className="meal-selection" style={{ flex: 1 }}>
-      <label style={{ fontSize: '12px', color: '#5f6368', display: 'block', marginBottom: '4px' }}>
-        {label}
-      </label>
-      <select
-        value={selectedId || ''}
-        onChange={(e) => onSelect(e.target.value || null)}
-        disabled={disabled}
-        style={{
-          width: '100%',
-          padding: '8px',
-          borderRadius: '4px',
-          border: '1px solid #dadce0',
-          backgroundColor: disabled ? '#f1f3f4' : 'white',
-          fontSize: '14px'
-        }}
-      >
-        <option value="">{isArabic ? 'لم يتم الاختيار' : 'انتخاب نشده'}</option>
-        {foods.map((food) => (
-          <option key={food.id} value={food.id}>
-            {isArabic && food.nameAr ? food.nameAr : food.name}
-          </option>
-        ))}
-      </select>
-    </div>
+    <Select
+      label={label}
+      options={options}
+      value={selectedId || 'none'}
+      onChange={handleChange}
+      disabled={disabled}
+      leadingIcon={icon}
+    />
   );
 };
