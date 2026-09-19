@@ -39,7 +39,7 @@ export const FoodForm: React.FC<FoodFormProps> = ({
       <form onSubmit={handleSubmit}>
         <h3 style={{ marginTop: 0, marginBottom: '24px' }}>{initialFood ? 'ویرایش غذا' : 'افزودن غذای جدید'}</h3>
 
-        <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '16px' }}>
+        <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(180px, 1fr))', gap: '16px' }}>
           <TextField
             label="نام غذا (فارسی)"
             value={name}

@@ -33,6 +33,10 @@
   --elevation-2: 0px 2px 6px 2px rgba(0, 0, 0, 0.15), 0px 1px 2px 0px rgba(0, 0, 0, 0.3);
 }
 
+* {
+  box-sizing: border-box;
+}
+
 body {
   margin: 0;
   padding: 0;
@@ -40,6 +44,7 @@ body {
   background-color: var(--background);
   color: var(--on-surface);
   direction: rtl;
+  overflow-x: hidden;
 }
 
 /* Common Button Styles */
@@ -122,6 +127,9 @@ body {
   color: var(--on-surface);
   outline: none;
   padding: 0 8px;
+  width: 100%;
+  min-width: 0;
+  text-overflow: ellipsis;
 }
 
 .m3-textfield__icon {
@@ -156,6 +164,11 @@ body {
   outline: none;
   appearance: none;
   padding: 0 8px;
+  width: 100%;
+  min-width: 0;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  overflow: hidden;
 }
 
 .m3-select__arrow {
@@ -307,13 +320,37 @@ input:checked + .m3-switch__slider:before { transform: translateX(20px); }
 }
 
 /* Layout Helpers */
-.container { display: flex; justify-content: center; align-items: center; min-height: 100vh; padding: 16px; }
+.container { display: flex; justify-content: center; align-items: center; min-height: 100vh; padding: 16px; width: 100%; }
 .dashboard-container { max-width: 800px; margin: 0 auto; padding: 16px; }
 
 /* Admin Layout */
-.admin-layout { display: flex; min-height: 100vh; }
-.admin-sidebar { width: 260px; background: var(--surface); border-left: 1px solid var(--outline-variant); padding: 24px 12px; display: flex; flex-direction: column; }
-.admin-content { flex: 1; padding: 32px; background-color: var(--background); }
+.admin-layout {
+  display: flex;
+  min-height: 100vh;
+  width: 100%;
+  overflow: hidden;
+}
+
+.admin-sidebar {
+  width: 260px;
+  min-width: 260px;
+  background: var(--surface);
+  border-left: 1px solid var(--outline-variant);
+  padding: 24px 12px;
+  display: flex;
+  flex-direction: column;
+  height: 100vh;
+  position: sticky;
+  top: 0;
+}
+
+.admin-content {
+  flex: 1;
+  padding: 32px;
+  background-color: var(--background);
+  overflow-y: auto;
+  min-width: 0; /* Important for flex child overflow */
+}
 .nav-item { padding: 16px; border-radius: var(--radius-medium); cursor: pointer; display: flex; align-items: center; gap: 12px; color: var(--on-surface-variant); margin-bottom: 4px; }
 .nav-item.active { background-color: var(--primary-container); color: var(--primary-color); font-weight: bold; }
 

@@ -44,14 +44,14 @@ export const RoomForm: React.FC<RoomFormProps> = ({ initialRoom, onSubmit, onCan
       <form onSubmit={handleSubmit}>
         <h2 style={{ marginTop: 0, marginBottom: '24px' }}>{initialRoom ? 'ویرایش اطلاعات اتاق' : 'افزودن اتاق جدید'}</h2>
 
-        <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '16px' }}>
+        <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(200px, 1fr))', gap: '16px' }}>
           <TextField label="شماره اتاق" value={roomNumber} onChange={(e) => setRoomNumber(e.target.value)} required />
           <TextField label="نام مهمان" value={guestName} onChange={(e) => setGuestName(e.target.value)} required />
         </div>
 
         <TextField label="کد شناسایی (پسورد ورود)" value={identificationId} onChange={(e) => setIdentificationId(e.target.value)} required />
 
-        <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '16px', alignItems: 'center' }}>
+        <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(200px, 1fr))', gap: '16px', alignItems: 'center' }}>
           <TextField label="تعداد نفرات" type="number" value={guestCount} onChange={(e) => setGuestCount(e.target.value)} required />
           <div style={{ paddingTop: '20px' }}>
             <Checkbox label="شامل صبحانه" checked={hasBreakfast} onChange={setHasBreakfast} />
@@ -62,7 +62,7 @@ export const RoomForm: React.FC<RoomFormProps> = ({ initialRoom, onSubmit, onCan
           <TextField label="تعداد صبحانه" type="number" value={breakfastCount} onChange={(e) => setBreakfastCount(e.target.value)} required />
         )}
 
-        <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '16px' }}>
+        <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(200px, 1fr))', gap: '16px' }}>
           <TextField label="تاریخ ورود" placeholder="YYYY/MM/DD" value={checkIn} onChange={(e) => setCheckIn(e.target.value)} required />
           <TextField label="تاریخ خروج" placeholder="YYYY/MM/DD" value={checkOut} onChange={(e) => setCheckOut(e.target.value)} required />
         </div>

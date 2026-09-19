@@ -19,7 +19,7 @@ export const RoomList: React.FC<RoomListProps> = ({ rooms, onDelete, onEdit }) =
   }
 
   return (
-    <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(300px, 1fr))', gap: '16px' }}>
+    <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(280px, 1fr))', gap: '16px' }}>
       {rooms.map((room) => (
         <Card key={room.id || room.roomNumber} variant="elevated" shape="medium" style={{ padding: '20px' }}>
           <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start' }}>

@@ -64,7 +64,7 @@ export const StayDayCard: React.FC<StayDayCardProps> = ({
               {isArabic ? `اختيار الضيف ${idx + 1}:` : `انتخاب مهمان ${idx + 1}:`}
             </div>
 
-            <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '12px' }}>
+            <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(140px, 1fr))', gap: '12px' }}>
               <MealSelection
                 label={isArabic ? 'وجبة الغداء' : 'وعده ناهار'}
                 icon="☀️"
