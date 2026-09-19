@@ -1,23 +1,32 @@
 <?php
 
 use Illuminate\Support\Facades\Route;
-use App\Http\Controllers\Api\HotelController;
+use App\Http\Controllers\Api\RoomController;
+use App\Http\Controllers\Api\FoodController;
+use App\Http\Controllers\Api\ReservationController;
+use App\Http\Controllers\Api\AdminController;
 
-Route::delete('/admin/clear-all', [HotelController::class, 'clearAllData']);
+Route::prefix('admin')->group(function () {
+    Route::delete('/clear-all', [AdminController::class, 'clearAllData']);
+});
 
-Route::get('/rooms', [HotelController::class, 'getRooms']);
-Route::get('/rooms/{idOrNumber}', [HotelController::class, 'getRoom']);
-Route::post('/rooms', [HotelController::class, 'upsertRoom']);
-Route::delete('/rooms/{id}', [HotelController::class, 'deleteRoom']);
-Route::put('/rooms/{id}/stay', [HotelController::class, 'updateRoomStay']);
+// Rooms
+Route::get('/rooms', [RoomController::class, 'index']);
+Route::get('/rooms/{idOrNumber}', [RoomController::class, 'show']);
+Route::post('/rooms', [RoomController::class, 'store']);
+Route::delete('/rooms/{room}', [RoomController::class, 'destroy']);
+Route::put('/rooms/{room}/stay', [RoomController::class, 'updateStay']);
 
-Route::get('/foods', [HotelController::class, 'getFoods']);
-Route::post('/foods', [HotelController::class, 'upsertFood']);
-Route::delete('/foods/{id}', [HotelController::class, 'deleteFood']);
+// Reservations
+Route::get('/reservations', [ReservationController::class, 'index']);
+Route::post('/reservations', [ReservationController::class, 'store']);
+Route::get('/rooms/{roomNumber}/reservations', [ReservationController::class, 'roomReservations']);
 
-Route::get('/menu-configs', [HotelController::class, 'getMenuConfigs']);
-Route::post('/menu-configs', [HotelController::class, 'upsertMenuConfig']);
+// Foods
+Route::get('/foods', [FoodController::class, 'index']);
+Route::post('/foods', [FoodController::class, 'store']);
+Route::delete('/foods/{food}', [FoodController::class, 'destroy']);
 
-Route::get('/reservations', [HotelController::class, 'getReservations']);
-Route::get('/rooms/{roomNumber}/reservations', [HotelController::class, 'getReservationsForRoom']);
-Route::post('/reservations', [HotelController::class, 'saveReservation']);
+// Menu Configs
+Route::get('/menu-configs', [FoodController::class, 'menuConfigs']);
+Route::post('/menu-configs', [FoodController::class, 'upsertMenuConfig']);

@@ -5,4 +5,6 @@ import io.ktor.client.engine.android.Android
 
 actual fun createHotelHttpClient(): HttpClient = HttpClient(Android)
 
-actual fun defaultApiBaseUrl(): String = "http://192.168.10.107:8092/api"
+// Pointing to Laravel backend (default port 8000)
+// Using 10.0.2.2 for Android Emulator to access localhost
+actual fun defaultApiBaseUrl(): String = "http://10.0.2.2:8000/api"

@@ -9,6 +9,6 @@ actual fun createHotelHttpClient(): HttpClient = HttpClient(Js)
 actual fun defaultApiBaseUrl(): String {
     val protocol = window.location.protocol
     val hostname = window.location.hostname.ifBlank { "localhost" }
-    // تنظیم شده روی پورت ۸۰۹۲ طبق درخواست شما
-    return "$protocol//$hostname:8092/api"
+    // Laravel backend on port 8000
+    return "$protocol//$hostname:8000/api"
 }
